@@ -80,3 +80,4 @@ Use `docker compose -f docker-compose.prod.yml down` to stop all services.
   `docker compose -f docker-compose.prod.yml exec backend npx prisma migrate deploy`.
 * **Telegram payments** – verify signed payloads and check backend logs on `payment.telegram-stars` activity.
 
+
