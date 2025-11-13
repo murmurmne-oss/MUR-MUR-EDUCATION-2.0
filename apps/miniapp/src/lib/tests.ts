@@ -70,28 +70,66 @@ export function parseTestQuestions(rawQuestions: unknown): ParsedTestQuestion[] 
     const rawOptions = questionRecord.options;
 
     if (Array.isArray(rawOptions)) {
-      const optionRecords = rawOptions as Array<Record<string, unknown>>;
+      const optionRecords = rawOptions as unknown[];
       options = optionRecords
         .map((option, index) => {
-          const text =
-            typeof option.text === 'string'
-              ? option.text.trim()
-              : typeof option.value === 'string'
-                ? option.value.trim()
-                : typeof option === 'string'
-                  ? option.trim()
-                  : typeof option === 'number' || typeof option === 'boolean'
-                    ? String(option)
-                    : '';
-          if (text.length === 0) {
-            return null;
+          if (option && typeof option === 'object') {
+            const optionObject = option as Record<string, unknown>;
+            const rawText =
+              typeof optionObject.text === 'string'
+                ? optionObject.text
+                : typeof optionObject.value === 'string'
+                  ? optionObject.value
+                  : undefined;
+            const textCandidate =
+              rawText?.trim() ??
+              (typeof optionObject.value === 'number' ||
+              typeof optionObject.value === 'boolean'
+                ? String(optionObject.value)
+                : '');
+            const text =
+              textCandidate && textCandidate.length > 0
+                ? textCandidate
+                : typeof optionObject.label === 'string'
+                  ? optionObject.label.trim()
+                  : '';
+            if (text.length === 0) {
+              return null;
+            }
+            const idValue =
+              typeof optionObject.id === 'string' && optionObject.id.length > 0
+                ? optionObject.id
+                : createLocalId() + `-${index}`;
+            const isCorrect = optionObject.isCorrect === true;
+            return {
+              id: idValue,
+              text,
+              isCorrect,
+            };
           }
-          const isCorrect = option.isCorrect === true;
-          return {
-            id: (option.id as string) ?? createLocalId() + `-${index}`,
-            text,
-            isCorrect,
-          };
+
+          if (typeof option === 'string') {
+            const text = option.trim();
+            if (text.length === 0) {
+              return null;
+            }
+            return {
+              id: createLocalId() + `-${index}`,
+              text,
+              isCorrect: false,
+            };
+          }
+
+          if (typeof option === 'number' || typeof option === 'boolean') {
+            const text = String(option);
+            return {
+              id: createLocalId() + `-${index}`,
+              text,
+              isCorrect: false,
+            };
+          }
+
+          return null;
         })
         .filter((option): option is ParsedTestQuestion['options'][number] => option !== null);
     }

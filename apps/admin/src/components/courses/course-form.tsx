@@ -363,10 +363,11 @@ function parseLessonContentToState(
                   : null;
               }
               if (item && typeof item === "object") {
-                const text =
+                const rawText =
                   typeof (item as { text?: unknown }).text === "string"
-                    ? (item as { text?: string }).text.trim()
-                    : "";
+                    ? (item as { text?: string }).text
+                    : undefined;
+                const text = rawText?.trim() ?? "";
                 if (!text) {
                   return null;
                 }
@@ -1137,7 +1138,7 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
     moduleId: string,
     lessonId: string,
     blockId: string,
-    patch: Partial<LessonContentBlockState>,
+    patch: Partial<Omit<LessonContentBlockState, "type">>,
   ) => {
     updateLessonState(moduleId, lessonId, (lesson) => ({
       ...lesson,
@@ -1528,36 +1529,34 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
           if (block.type === "video") {
             const url = block.url.trim();
             if (!url) return null;
+            const caption = block.caption?.trim();
+            const coverImageUrl = block.coverImageUrl?.trim();
             return {
               type: "video" as const,
               url,
-              caption: block.caption.trim().length > 0
-                ? block.caption.trim()
-                : undefined,
+              caption: caption && caption.length > 0 ? caption : undefined,
               autoplay: !!block.autoplay,
-              coverImageUrl: block.coverImageUrl.trim().length > 0
-                ? block.coverImageUrl.trim()
-                : undefined,
+              coverImageUrl:
+                coverImageUrl && coverImageUrl.length > 0 ? coverImageUrl : undefined,
             };
           }
 
           if (block.type === "audio") {
             const url = block.url.trim();
             if (!url) return null;
+            const caption = block.caption?.trim();
             return {
               type: "audio" as const,
               url,
-              caption: block.caption.trim().length > 0
-                ? block.caption.trim()
-                : undefined,
+              caption: caption && caption.length > 0 ? caption : undefined,
             };
           }
 
           if (block.type === "section") {
-            const title = block.title.trim();
-            const description = block.description.trim();
+            const title = block.title?.trim() ?? "";
+            const description = block.description?.trim() ?? "";
             const items = block.items
-              .map((item) => item.text.trim())
+              .map((item) => item.text?.trim() ?? "")
               .filter((text) => text.length > 0)
               .map((text) => ({ text }));
 
@@ -1573,16 +1572,7 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
             };
           }
 
-          const text = block.text.trim();
-          if (!text) return null;
-          return {
-            type: "paragraph",
-            text,
-            fontFamily: block.fontFamily,
-            fontSize: block.fontSize,
-            fontWeight: block.fontWeight,
-            align: block.align,
-          };
+          return null;
         })
         .filter((block): block is Exclude<typeof block, null> => block !== null);
 

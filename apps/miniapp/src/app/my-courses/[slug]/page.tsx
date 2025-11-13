@@ -59,10 +59,14 @@ const STATUS_ACCENTS: Record<LessonStatus, string> = {
   COMPLETED: 'text-brand-pink',
 };
 
-const FONT_FAMILY_CLASSES: Record<
-  NonNullable<LessonContentBlock['fontFamily']>,
-  string
-> = {
+type ParagraphBlock = Extract<LessonContentBlock, { type: 'paragraph' }>;
+type ParagraphFontFamily = Exclude<ParagraphBlock['fontFamily'], undefined>;
+type ParagraphFontSize = Exclude<ParagraphBlock['fontSize'], undefined>;
+type ParagraphFontWeight = Exclude<ParagraphBlock['fontWeight'], undefined>;
+type AlignableBlock = Extract<LessonContentBlock, { align?: unknown }>;
+type BlockAlign = Exclude<AlignableBlock['align'], undefined>;
+
+const FONT_FAMILY_CLASSES: Record<ParagraphFontFamily, string> = {
   mono: 'font-mono',
   sans: 'font-sans',
   serif: 'font-serif',
@@ -70,10 +74,7 @@ const FONT_FAMILY_CLASSES: Record<
   handwriting: 'font-handwriting',
 };
 
-const FONT_SIZE_CLASSES: Record<
-  NonNullable<LessonContentBlock['fontSize']>,
-  string
-> = {
+const FONT_SIZE_CLASSES: Record<ParagraphFontSize, string> = {
   sm: 'text-sm',
   md: 'text-base',
   lg: 'text-lg',
@@ -81,19 +82,13 @@ const FONT_SIZE_CLASSES: Record<
   '2xl': 'text-2xl',
 };
 
-const FONT_WEIGHT_CLASSES: Record<
-  NonNullable<LessonContentBlock['fontWeight']>,
-  string
-> = {
+const FONT_WEIGHT_CLASSES: Record<ParagraphFontWeight, string> = {
   bold: 'font-semibold',
   medium: 'font-medium',
   regular: 'font-normal',
 };
 
-const ALIGN_CLASSES: Record<
-  NonNullable<LessonContentBlock['align']>,
-  string
-> = {
+const ALIGN_CLASSES: Record<BlockAlign, string> = {
   center: 'text-center',
   left: 'text-left',
   right: 'text-right',
@@ -579,10 +574,11 @@ export default function MyCourseDetailsPage({
           matchingEnrollment?.progress.nextLessonTitle;
 
         const initialLesson =
-          (nextLessonTitle &&
-            flattenedLessons.find(
-              (item) => item.lesson.title === nextLessonTitle,
-            )) ??
+          (nextLessonTitle
+            ? flattenedLessons.find(
+                (item) => item.lesson.title === nextLessonTitle,
+              )
+            : undefined) ??
           flattenedLessons[0] ??
           null;
 

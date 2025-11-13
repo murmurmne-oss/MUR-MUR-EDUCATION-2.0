@@ -105,14 +105,19 @@ export default function UserDetailPage() {
 
   const handleProgressAction = async (
     courseId: string,
-    action: ProgressPayload["action"],
+    action: Extract<ProgressPayload["action"], "complete" | "reset">,
   ) => {
     if (!userId) return;
 
     setPendingCourse(courseId);
     setFeedback(null);
     try {
-      await apiClient.updateProgress(userId, { courseId, action });
+      const payload: Extract<
+        ProgressPayload,
+        { action: "complete" | "reset" }
+      > = { courseId, action };
+
+      await apiClient.updateProgress(userId, payload);
       await refreshEnrollments();
       setFeedback(
         action === "complete"

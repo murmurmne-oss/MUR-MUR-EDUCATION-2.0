@@ -743,7 +743,9 @@ export default function CourseDetailsPage({
                                     handleToggleOption(
                                       question.id,
                                       option.id,
-                                      question.type,
+                                      question.type === "multiple"
+                                        ? "multiple"
+                                        : "single",
                                     )
                                   }
                                   className="size-4 accent-brand-pink disabled:cursor-not-allowed"
