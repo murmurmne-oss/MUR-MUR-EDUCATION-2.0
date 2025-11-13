@@ -1,0 +1,20 @@
+{
+	address :80
+	email {$CADDY_EMAIL}
+}
+
+api.murmurmne.com {
+	encode gzip
+	reverse_proxy backend:4000
+}
+
+mini.murmurmne.com {
+	encode gzip
+	reverse_proxy miniapp:3000
+}
+
+admin.murmurmne.com {
+	encode gzip
+	reverse_proxy admin:3000
+}
+

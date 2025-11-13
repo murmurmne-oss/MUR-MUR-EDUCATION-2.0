@@ -1,0 +1,41 @@
+@import url("https://fonts.googleapis.com/css2?family=Caveat:wght@400;600&family=Playfair+Display:wght@400;600;700&display=swap");
+@import "tailwindcss";
+
+:root {
+  color-scheme: light;
+}
+
+@theme inline {
+  --color-background: #ffffff;
+  --color-surface: #f9fafb;
+  --color-card: #f3f4f6;
+  --color-border: #e5e7eb;
+
+  --color-text-dark: #111827;
+  --color-text-medium: #374151;
+  --color-text-light: #6b7280;
+
+  --color-brand-pink: #f173a5;
+  --color-brand-orange: #fb3b00;
+  --color-brand-yellow: #d6db00;
+
+  --font-sans: var(--font-montserrat);
+}
+
+body {
+  @apply min-h-screen bg-surface text-text-medium font-sans antialiased;
+}
+
+.grid-auto-fit {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+@layer utilities {
+  .font-display {
+    font-family: "Playfair Display", "Times New Roman", serif;
+  }
+
+  .font-handwriting {
+    font-family: "Caveat", "Comic Sans MS", cursive;
+  }
+}

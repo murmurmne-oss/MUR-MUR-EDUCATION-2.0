@@ -1,0 +1,73 @@
+version: "3.9"
+
+services:
+  backend:
+    build:
+      context: ../apps/backend
+      dockerfile: Dockerfile
+    image: murmur-backend:latest
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      TELEGRAM_STARS_WEBHOOK_SECRET: ${TELEGRAM_STARS_WEBHOOK_SECRET}
+      DATABASE_URL: ${DATABASE_URL}
+      REDIS_URL: ${REDIS_URL-}
+      CORS_ORIGIN: ${CORS_ORIGIN-https://mini.murmurmne.com,https://admin.murmurmne.com}
+      UPLOADS_DIR: /uploads
+    volumes:
+      - backend_uploads:/uploads
+    expose:
+      - "4000"
+    command: >
+      sh -c "npx prisma migrate deploy && node dist/main.js"
+
+  miniapp:
+    build:
+      context: ../apps/miniapp
+      dockerfile: Dockerfile
+    image: murmur-miniapp:latest
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL}
+    expose:
+      - "3000"
+
+  admin:
+    build:
+      context: ../apps/admin
+      dockerfile: Dockerfile
+    image: murmur-admin:latest
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL}
+    expose:
+      - "3000"
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      CADDY_EMAIL: ${CADDY_EMAIL}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - backend
+      - miniapp
+      - admin
+
+volumes:
+  backend_uploads:
+  caddy_data:
+  caddy_config:
+
