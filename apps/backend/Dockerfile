@@ -10,13 +10,15 @@ COPY . .
 RUN npx prisma generate
 RUN npm run build
 
+
+
+
 FROM node:20-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 COPY package.json package-lock.json* ./
+COPY prisma ./prisma        
 RUN npm install --omit=dev
 COPY --from=builder /app/dist ./dist
-COPY prisma ./prisma
+EXPOSE 3001
 CMD ["node", "dist/main.js"]
-
-
