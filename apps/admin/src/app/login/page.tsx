@@ -1,8 +1,7 @@
+export const dynamic = "force-dynamic";
+
 import LoginForm from "./login-form";
-import {
-  getEnabledAuthModes,
-  loadAdminAuthConfig,
-} from "@/lib/admin-auth-config";
+import { getEnabledAuthModes, loadAdminAuthConfig } from "@/lib/admin-auth-config";
 
 type LoginPageProps = {
   searchParams?: {

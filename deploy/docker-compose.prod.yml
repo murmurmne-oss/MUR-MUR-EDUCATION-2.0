@@ -44,6 +44,11 @@ services:
       dockerfile: Dockerfile
       args:
         NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL}
+        ADMIN_USERNAME: ${ADMIN_USERNAME-}
+        ADMIN_PASSWORD: ${ADMIN_PASSWORD-}
+        ADMIN_ALLOWED_IDS: ${ADMIN_ALLOWED_IDS-}
+        ADMIN_ACCESS_TOKEN: ${ADMIN_ACCESS_TOKEN-}
+        ADMIN_SESSION_SECRET: ${ADMIN_SESSION_SECRET}
     image: murmur-admin:latest
     restart: unless-stopped
     environment:
