@@ -1,7 +1,10 @@
 function normalizeBaseUrl(rawValue: string | undefined) {
   let base = rawValue?.trim();
   if (!base || base.length === 0) {
-    base = "http://localhost:4000";
+    base =
+      process.env.NODE_ENV === "production"
+        ? "https://api.murmurmne.com"
+        : "http://localhost:4000";
   }
 
   if (!/^https?:\/\//i.test(base)) {
