@@ -19,7 +19,6 @@ interface TelegramWebApp {
   ready: () => void;
   expand: () => void;
   initStarPayment?: (params: unknown) => Promise<unknown>;
-  openInvoice?: (url: string, callback?: (status?: string) => void) => void;
 }
 
 declare global {
@@ -254,9 +253,7 @@ export function useTelegram() {
     greetingName,
     colorScheme: state.colorScheme,
     webApp: state.webApp,
-    supportsStarPayment:
-      typeof state.webApp?.openInvoice === "function" ||
-      typeof state.webApp?.initStarPayment === "function",
+    supportsStarPayment: typeof state.webApp?.initStarPayment === "function",
   };
 }
 

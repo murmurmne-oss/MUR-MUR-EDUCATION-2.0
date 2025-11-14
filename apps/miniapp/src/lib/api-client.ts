@@ -291,20 +291,6 @@ export type SyncUserPayload = {
   languageCode?: string | null;
 };
 
-export type TelegramStarsInvoiceUser = {
-  id: string;
-  firstName?: string | null;
-  lastName?: string | null;
-  username?: string | null;
-  languageCode?: string | null;
-  avatarUrl?: string | null;
-};
-
-export type TelegramStarsInvoiceResponse = {
-  invoiceUrl: string;
-  amountInStars: number;
-};
-
 export const apiClient = {
   getCatalog: () => request<CatalogCategory[]>("/catalog"),
   getCourse: (idOrSlug: string) =>
@@ -348,17 +334,6 @@ export const apiClient = {
     request<SubmitTestResult>(`/courses/${idOrSlug}/tests/${testId}/submit`, {
       method: "POST",
       body: JSON.stringify(payload),
-    }),
-  createTelegramStarsInvoice: (
-    courseSlug: string,
-    user: TelegramStarsInvoiceUser,
-  ) =>
-    request<TelegramStarsInvoiceResponse>(`/payments/telegram-stars/invoice`, {
-      method: "POST",
-      body: JSON.stringify({
-        courseSlug,
-        user,
-      }),
     }),
 };
 
