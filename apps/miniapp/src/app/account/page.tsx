@@ -1,7 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTelegram } from "@/hooks/useTelegram";
+import { useUserProfile } from "@/hooks/useUserProfile";
+import { apiClient } from "@/lib/api-client";
 
 const frequencyOptions = [
   { value: "never", label: "Никогда" },
@@ -16,11 +18,63 @@ const daytimeOptions = [
   { value: "evening", label: "Вечер" },
 ];
 
+const DEV_USER_ID = process.env.NEXT_PUBLIC_DEV_USER_ID ?? "555666777";
+
 export default function AccountPage() {
-  const { greetingName } = useTelegram();
+  const { user, greetingName } = useTelegram();
   const [frequency, setFrequency] = useState("daily");
   const [daytime, setDaytime] = useState("morning");
   const [consent, setConsent] = useState(true);
+  useEffect(() => {
+    if (!user?.id) {
+      return;
+    }
+
+    apiClient
+      .syncUserProfile({
+        id: user.id.toString(),
+        firstName: user.first_name ?? null,
+        lastName: user.last_name ?? null,
+        username: user.username ?? null,
+        avatarUrl: user.photo_url ?? null,
+        languageCode: user.language_code ?? null,
+      })
+      .catch((syncError) => {
+        console.error("Failed to sync user profile", syncError);
+      });
+  }, [
+    user?.id,
+    user?.first_name,
+    user?.last_name,
+    user?.username,
+    user?.photo_url,
+    user?.language_code,
+  ]);
+
+  const resolvedUserId = useMemo(() => {
+    if (user?.id && Number.isFinite(Number(user.id))) {
+      return user.id.toString();
+    }
+
+    if (process.env.NODE_ENV !== "production") {
+      return DEV_USER_ID;
+    }
+
+    return null;
+  }, [user?.id]);
+  const { profile } = useUserProfile(resolvedUserId);
+  const displayName = useMemo(() => {
+    if (profile?.firstName || profile?.lastName) {
+      return [profile?.firstName, profile?.lastName]
+        .filter(Boolean)
+        .join(" ")
+        .trim();
+    }
+    if (profile?.username) {
+      return profile.username;
+    }
+    return greetingName;
+  }, [profile?.firstName, profile?.lastName, profile?.username, greetingName]);
 
   return (
     <div className="flex flex-1 flex-col bg-background text-text-dark">
@@ -37,7 +91,7 @@ export default function AccountPage() {
             Mur Mur Education
           </p>
           <h2 className="mt-2 text-xl font-semibold text-text-dark">
-            {greetingName}
+            {displayName || "Гость"}
           </h2>
           <p className="mt-1 text-sm text-text-medium">
             Ваша персональная зона для обучения и поддержки.

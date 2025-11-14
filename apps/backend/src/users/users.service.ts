@@ -56,15 +56,26 @@ export type ReminderInput = {
   isEnabled: boolean;
 };
 
-export type ProgressUpdateInput = {
-  courseId: string;
-  action: 'complete' | 'reset';
-} | {
-  courseId: string;
-  lessonId: string;
-  action: 'lesson';
-  status?: LessonProgressStatus;
-  progressPercent?: number;
+export type ProgressUpdateInput =
+  | {
+      courseId: string;
+      action: 'complete' | 'reset';
+    }
+  | {
+      courseId: string;
+      lessonId: string;
+      action: 'lesson';
+      status?: LessonProgressStatus;
+      progressPercent?: number;
+    };
+
+export type SyncUserInput = {
+  id: string;
+  firstName?: string | null;
+  lastName?: string | null;
+  username?: string | null;
+  avatarUrl?: string | null;
+  languageCode?: string | null;
 };
 
 @Injectable()
@@ -556,5 +567,32 @@ export class UsersService {
     if (!user) {
       throw new NotFoundException(`User ${userId} not found`);
     }
+  }
+
+  async syncUser(input: SyncUserInput) {
+    if (!input.id) {
+      throw new BadRequestException('User id is required');
+    }
+
+    const user = await this.prisma.user.upsert({
+      where: { id: input.id },
+      update: {
+        firstName: input.firstName ?? null,
+        lastName: input.lastName ?? null,
+        username: input.username ?? null,
+        avatarUrl: input.avatarUrl ?? null,
+        languageCode: input.languageCode ?? null,
+      },
+      create: {
+        id: input.id,
+        firstName: input.firstName ?? null,
+        lastName: input.lastName ?? null,
+        username: input.username ?? null,
+        avatarUrl: input.avatarUrl ?? null,
+        languageCode: input.languageCode ?? null,
+      },
+    });
+
+    return user;
   }
 }

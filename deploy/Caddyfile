@@ -1,5 +1,4 @@
 {
-	address :80
 	email {$CADDY_EMAIL}
 }
 
@@ -11,6 +10,8 @@ api.murmurmne.com {
 mini.murmurmne.com {
 	encode gzip
 	reverse_proxy miniapp:3000
+	header -X-Frame-Options
+	header Content-Security-Policy "frame-ancestors https://web.telegram.org https://*.telegram.org https://mini.murmurmne.com"
 }
 
 admin.murmurmne.com {

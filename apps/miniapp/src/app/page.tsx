@@ -6,6 +6,7 @@ import { startTransition, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useTelegram } from "@/hooks/useTelegram";
+import { useUserProfile } from "@/hooks/useUserProfile";
 import {
   apiClient,
   CatalogCategory,
@@ -13,6 +14,7 @@ import {
 } from "@/lib/api-client";
 
 const CARD_COLORS = ["bg-brand-pink", "bg-brand-orange", "bg-brand-yellow"];
+const DEV_USER_ID = process.env.NEXT_PUBLIC_DEV_USER_ID ?? "555666777";
 
 function pickCardColor(index: number) {
   return CARD_COLORS[index % CARD_COLORS.length];
@@ -20,10 +22,60 @@ function pickCardColor(index: number) {
 
 export default function HomePage() {
   const router = useRouter();
-  const { greetingName } = useTelegram();
+  const { user, greetingName } = useTelegram();
   const [catalog, setCatalog] = useState<CatalogCategory[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    if (!user?.id) {
+      return;
+    }
+
+    apiClient
+      .syncUserProfile({
+        id: user.id.toString(),
+        firstName: user.first_name ?? null,
+        lastName: user.last_name ?? null,
+        username: user.username ?? null,
+        avatarUrl: user.photo_url ?? null,
+        languageCode: user.language_code ?? null,
+      })
+      .catch((syncError) => {
+        console.error("Failed to sync user profile", syncError);
+      });
+  }, [
+    user?.id,
+    user?.first_name,
+    user?.last_name,
+    user?.username,
+    user?.photo_url,
+    user?.language_code,
+  ]);
+
+  const resolvedUserId = useMemo(() => {
+    if (user?.id && Number.isFinite(Number(user.id))) {
+      return user.id.toString();
+    }
+
+    if (process.env.NODE_ENV !== "production") {
+      return DEV_USER_ID;
+    }
+
+    return null;
+  }, [user?.id]);
+  const { profile } = useUserProfile(resolvedUserId);
+  const displayName = useMemo(() => {
+    if (profile?.firstName || profile?.lastName) {
+      return [profile?.firstName, profile?.lastName]
+        .filter(Boolean)
+        .join(" ")
+        .trim();
+    }
+    if (profile?.username) {
+      return profile.username;
+    }
+    return greetingName;
+  }, [profile?.firstName, profile?.lastName, profile?.username, greetingName]);
 
   useEffect(() => {
     let active = true;
@@ -80,7 +132,7 @@ export default function HomePage() {
 
         <div className="relative z-10 w-full max-w-xs text-center text-text-dark">
           <h1 className="text-3xl font-semibold leading-tight">
-            Hello, {greetingName}!
+            Hello, {displayName || "Гость"}!
           </h1>
           <p className="mt-1 text-sm text-text-medium">
             Welcome to Sexual Wellness world MUR MUR

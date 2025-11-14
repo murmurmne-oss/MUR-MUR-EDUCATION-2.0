@@ -3,6 +3,7 @@ import {
   UsersService,
   type ProgressUpdateInput,
   type ReminderInput,
+  type SyncUserInput,
 } from './users.service';
 
 @Controller('users')
@@ -32,5 +33,10 @@ export class UsersController {
   @Post(':id/progress')
   updateProgress(@Param('id') id: string, @Body() body: ProgressUpdateInput) {
     return this.usersService.updateCourseProgress(id, body);
+  }
+
+  @Post('sync')
+  syncUser(@Body() body: SyncUserInput) {
+    return this.usersService.syncUser(body);
   }
 }
