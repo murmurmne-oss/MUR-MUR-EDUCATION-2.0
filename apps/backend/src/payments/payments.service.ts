@@ -153,6 +153,67 @@ export class PaymentsService {
     };
   }
 
+  async sendStarsInvoice(dto: CreateStarsInvoiceDto) {
+    if (!this.telegramApiBase) {
+      throw new Error(
+        'TELEGRAM_BOT_TOKEN is not configured. Unable to send Telegram Stars invoice.',
+      );
+    }
+
+    const course = await this.prisma.course.findUnique({
+      where: { slug: dto.courseSlug },
+    });
+
+    if (!course) {
+      throw new Error('Курс не найден. Попробуйте выбрать другой курс.');
+    }
+
+    if (course.isFree) {
+      throw new Error('Этот курс бесплатный — оформлять оплату не нужно.');
+    }
+
+    const amountInStars = this.calculateStarsAmount(course);
+    if (!amountInStars) {
+      throw new Error(
+        'Не удалось рассчитать стоимость курса в Telegram Stars. Обновите настройки курса и попробуйте снова.',
+      );
+    }
+
+    const payload: InvoicePayload = {
+      type: 'course_access',
+      courseSlug: course.slug,
+      userId: dto.user.id.toString(),
+      starsAmount: amountInStars,
+      issuedAt: Date.now(),
+    };
+
+    const title =
+      course.title?.slice(0, 32) ?? 'Mur Mur Education · доступ к курсу';
+    const description = (
+      course.shortDescription ??
+      course.description ??
+      'Получите доступ к курсу Mur Mur Education.'
+    ).slice(0, 255);
+
+    await this.callTelegramApi('sendInvoice', {
+      chat_id: Number(dto.user.id) || dto.user.id,
+      title,
+      description,
+      payload: JSON.stringify(payload),
+      currency: 'XTR',
+      prices: [
+        {
+          label: title,
+          amount: amountInStars,
+        },
+      ],
+      provider_token: '',
+      photo_url: course.coverImageUrl ?? undefined,
+    });
+
+    return { status: 'sent' };
+  }
+
   async handleTelegramUpdate(body: TelegramUpdate, secret?: string) {
     if (!this.verifyWebhookSecret(secret)) {
       this.logger.warn('Rejected Telegram webhook due to invalid secret token');

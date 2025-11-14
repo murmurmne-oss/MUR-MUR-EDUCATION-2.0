@@ -310,6 +310,20 @@ export type SubmitTestResult = {
   }>;
 };
 
+export type TelegramStarsInvoiceUser = {
+  id: string;
+  firstName?: string | null;
+  lastName?: string | null;
+  username?: string | null;
+  languageCode?: string | null;
+  avatarUrl?: string | null;
+};
+
+export type SendTelegramStarsInvoicePayload = {
+  courseSlug: string;
+  user: TelegramStarsInvoiceUser;
+};
+
 export type UserProfile = {
   id: string;
   firstName: string | null;
@@ -369,6 +383,11 @@ export const apiClient = {
     payload: SubmitTestPayload,
   ) =>
     request<SubmitTestResult>(`/courses/${idOrSlug}/tests/${testId}/submit`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  sendTelegramStarsInvoice: (payload: SendTelegramStarsInvoicePayload) =>
+    request<{ status: string }>(`/payments/telegram-stars/send-invoice`, {
       method: "POST",
       body: JSON.stringify(payload),
     }),

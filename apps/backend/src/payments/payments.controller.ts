@@ -14,6 +14,11 @@ export class PaymentsController {
     return this.paymentsService.createStarsInvoice(body);
   }
 
+  @Post('send-invoice')
+  async sendInvoice(@Body() body: CreateStarsInvoiceDto) {
+    return this.paymentsService.sendStarsInvoice(body);
+  }
+
   @Post('webhook')
   async handleWebhook(
     @Headers('x-telegram-bot-api-secret-token') secret: string | undefined,
