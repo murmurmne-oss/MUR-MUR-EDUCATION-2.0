@@ -1,6 +1,12 @@
 "use client";
 
-import { startTransition, useEffect, useMemo, useState } from "react";
+import {
+  startTransition,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 
 interface TelegramWebAppUser {
   id: number;
@@ -19,7 +25,6 @@ interface TelegramWebApp {
   ready: () => void;
   expand: () => void;
   initStarPayment?: (params: unknown) => Promise<unknown>;
-  openInvoice?: (url: string, callback?: (status?: string) => void) => void;
 }
 
 declare global {
@@ -28,6 +33,9 @@ declare global {
       WebApp?: TelegramWebApp;
     };
   }
+  interface WindowEventMap {
+    "telegram-sdk-ready": Event;
+  }
 }
 
 const defaultState = {
@@ -35,6 +43,11 @@ const defaultState = {
   colorScheme: "light" as "light" | "dark",
   webApp: null as TelegramWebApp | null,
 };
+
+const TELEGRAM_SDK_READY_EVENT = "telegram-sdk-ready";
+const UNSUPPORTED_TIMEOUT_MS = 4000;
+
+export type TelegramStatus = "checking" | "ready" | "fallback" | "unsupported";
 
 function parseHashParamsOrRef() {
   if (typeof window === "undefined") {
@@ -163,62 +176,68 @@ function isDarkColor(color: string) {
 
 export function useTelegram() {
   const [state, setState] = useState(defaultState);
+  const [status, setStatus] = useState<TelegramStatus>("checking");
+  const [initError, setInitError] = useState<string | null>(null);
+
+  const updateFromSources = useCallback(() => {
+    if (typeof window === "undefined") {
+      return false;
+    }
+
+    const webApp = window.Telegram?.WebApp ?? null;
+    const fallbackUser = parseUserFromHash();
+    const fallbackScheme = detectColorSchemeFromHash();
+
+    if (webApp) {
+      try {
+        webApp.ready();
+        webApp.expand?.();
+      } catch (readyError) {
+        console.warn("Failed to call Telegram WebApp ready()", readyError);
+      }
+
+      startTransition(() => {
+        setState((prev) => ({
+          user: webApp.initDataUnsafe?.user ?? fallbackUser ?? prev.user,
+          colorScheme: webApp.colorScheme ?? fallbackScheme ?? prev.colorScheme,
+          webApp,
+        }));
+        setStatus("ready");
+        setInitError(null);
+      });
+      return true;
+    }
+
+    if (fallbackUser) {
+      startTransition(() => {
+        setState((prev) => ({
+          user: fallbackUser,
+          colorScheme: fallbackScheme,
+          webApp: prev.webApp,
+        }));
+        setStatus((prev) => (prev === "ready" ? prev : "fallback"));
+        setInitError(null);
+      });
+    } else {
+      startTransition(() => {
+        setState((prev) => ({
+          ...prev,
+          webApp: null,
+          colorScheme: fallbackScheme,
+        }));
+      });
+      setStatus((prev) =>
+        prev === "ready" ? prev : ("checking" as TelegramStatus),
+      );
+    }
+
+    return false;
+  }, []);
 
   useEffect(() => {
     if (typeof window === "undefined") {
       return;
     }
-
-    const updateFromSources = () => {
-      const webApp = window.Telegram?.WebApp ?? null;
-      const fallbackUser = parseUserFromHash();
-      const fallbackScheme = detectColorSchemeFromHash();
-
-      if (webApp) {
-        webApp.ready();
-        webApp.expand();
-
-        startTransition(() => {
-          setState((prev) => {
-            if (
-              prev.user === (webApp.initDataUnsafe?.user ?? fallbackUser) &&
-              prev.colorScheme === (webApp.colorScheme ?? fallbackScheme) &&
-              prev.webApp === webApp
-            ) {
-              return prev;
-            }
-
-            return {
-              user: webApp.initDataUnsafe?.user ?? fallbackUser,
-              colorScheme: webApp.colorScheme ?? fallbackScheme,
-              webApp,
-            };
-          });
-        });
-        return;
-      }
-
-      if (fallbackUser) {
-        startTransition(() => {
-          setState((prev) => {
-            if (
-              prev.user === fallbackUser &&
-              prev.colorScheme === fallbackScheme &&
-              prev.webApp === null
-            ) {
-              return prev;
-            }
-
-            return {
-              user: fallbackUser,
-              colorScheme: fallbackScheme,
-              webApp: null,
-            };
-          });
-        });
-        return;
-      }
-    };
 
     updateFromSources();
 
@@ -226,20 +245,58 @@ export function useTelegram() {
       updateFromSources();
     };
 
-    window.addEventListener("hashchange", hashListener);
+    let webAppCheckInterval: number | null = null;
+    let unsupportedTimeout: number | null = null;
 
-    const webAppCheckInterval = window.setInterval(() => {
-      if (window.Telegram?.WebApp) {
-        updateFromSources();
-        window.clearInterval(webAppCheckInterval);
+    const sdkReadyListener = () => {
+      if (updateFromSources()) {
+        if (webAppCheckInterval !== null) {
+          window.clearInterval(webAppCheckInterval);
+        }
+        if (unsupportedTimeout !== null) {
+          window.clearTimeout(unsupportedTimeout);
+        }
+      }
+    };
+
+    window.addEventListener("hashchange", hashListener);
+    window.addEventListener(TELEGRAM_SDK_READY_EVENT, sdkReadyListener);
+
+    webAppCheckInterval = window.setInterval(() => {
+      if (updateFromSources()) {
+        if (webAppCheckInterval !== null) {
+          window.clearInterval(webAppCheckInterval);
+        }
+        if (unsupportedTimeout !== null) {
+          window.clearTimeout(unsupportedTimeout);
+        }
       }
     }, 500);
 
+    unsupportedTimeout = window.setTimeout(() => {
+      if (window.Telegram?.WebApp) {
+        return;
+      }
+
+      startTransition(() => {
+        setStatus((prev) => (prev === "ready" ? prev : "unsupported"));
+        setInitError(
+          "Мы не обнаружили Telegram WebApp. Откройте мини‑приложение через Telegram, чтобы продолжить.",
+        );
+      });
+    }, UNSUPPORTED_TIMEOUT_MS);
+
     return () => {
       window.removeEventListener("hashchange", hashListener);
-      window.clearInterval(webAppCheckInterval);
+      window.removeEventListener(TELEGRAM_SDK_READY_EVENT, sdkReadyListener);
+      if (webAppCheckInterval !== null) {
+        window.clearInterval(webAppCheckInterval);
+      }
+      if (unsupportedTimeout !== null) {
+        window.clearTimeout(unsupportedTimeout);
+      }
     };
-  }, []);
+  }, [updateFromSources]);
 
   const greetingName = useMemo(() => {
     if (!state.user) {
@@ -254,9 +311,11 @@ export function useTelegram() {
     greetingName,
     colorScheme: state.colorScheme,
     webApp: state.webApp,
-    supportsStarPayment:
-      typeof state.webApp?.initStarPayment === "function" ||
-      typeof state.webApp?.openInvoice === "function",
+    supportsStarPayment: typeof state.webApp?.initStarPayment === "function",
+    status,
+    initError,
+    isReady: status === "ready",
+    isUnavailable: status === "unsupported",
   };
 }
 

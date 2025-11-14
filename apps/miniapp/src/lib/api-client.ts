@@ -1,3 +1,15 @@
+export class ApiError extends Error {
+  status: number;
+  details?: unknown;
+
+  constructor(message: string, status: number, details?: unknown) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+    this.details = details;
+  }
+}
+
 function normalizeBaseUrl(rawValue: string | undefined) {
   let base = rawValue?.trim();
   if (!base || base.length === 0) {
@@ -26,35 +38,60 @@ function buildUrl(path: string) {
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(buildUrl(path), {
-    ...init,
-    headers: {
-      "Content-Type": "application/json",
-      ...init?.headers,
-    },
-    cache: "no-store",
-  });
+  let response: Response;
+  try {
+    response = await fetch(buildUrl(path), {
+      ...init,
+      headers: {
+        "Content-Type": "application/json",
+        ...init?.headers,
+      },
+      cache: "no-store",
+    });
+  } catch (networkError) {
+    throw new ApiError(
+      "Не удалось подключиться к серверу. Проверьте интернет и попробуйте ещё раз.",
+      0,
+      networkError,
+    );
+  }
 
   if (!response.ok) {
     const contentType = response.headers.get("content-type") ?? "";
-    let message: string;
+    let parsedBody: unknown = null;
+    let rawMessage = "";
+
     if (contentType.includes("application/json")) {
       try {
-        const data = (await response.json()) as { message?: unknown } | null;
-        message =
-          typeof data?.message === "string"
-            ? data.message
-            : JSON.stringify(data);
+        parsedBody = (await response.json()) as { message?: unknown } | null;
+        rawMessage =
+          typeof (parsedBody as { message?: unknown } | null)?.message === "string"
+            ? ((parsedBody as { message?: unknown } | null)?.message as string)
+            : JSON.stringify(parsedBody);
       } catch {
-        message = await response.text();
+        rawMessage = await response.text();
       }
     } else {
-      message = await response.text();
+      rawMessage = await response.text();
     }
-    throw new Error(message || `Request failed with status ${response.status}`);
+
+    const friendlyMessage =
+      response.status >= 500
+        ? "Сервер временно недоступен. Попробуйте повторить запрос позже."
+        : rawMessage || `Запрос завершился с ошибкой ${response.status}.`;
+
+    throw new ApiError(friendlyMessage, response.status, parsedBody ?? rawMessage);
   }
 
-  return response.json() as Promise<T>;
+  try {
+    return (await response.json()) as T;
+  } catch (parseError) {
+    throw new ApiError(
+      "Сервер вернул неожиданный ответ. Обновите страницу и попробуйте снова.",
+      response.status,
+      parseError,
+    );
+  }
 }
 
 export type CatalogCourse = {
@@ -291,20 +328,6 @@ export type SyncUserPayload = {
   languageCode?: string | null;
 };
 
-export type TelegramStarsInvoiceUser = {
-  id: string;
-  firstName?: string | null;
-  lastName?: string | null;
-  username?: string | null;
-  languageCode?: string | null;
-  avatarUrl?: string | null;
-};
-
-export type TelegramStarsInvoiceResponse = {
-  invoiceUrl: string;
-  amountInStars: number;
-};
-
 export const apiClient = {
   getCatalog: () => request<CatalogCategory[]>("/catalog"),
   getCourse: (idOrSlug: string) =>
@@ -348,17 +371,6 @@ export const apiClient = {
     request<SubmitTestResult>(`/courses/${idOrSlug}/tests/${testId}/submit`, {
       method: "POST",
       body: JSON.stringify(payload),
-    }),
-  createTelegramStarsInvoice: (
-    courseSlug: string,
-    user: TelegramStarsInvoiceUser,
-  ) =>
-    request<TelegramStarsInvoiceResponse>(`/payments/telegram-stars/invoice`, {
-      method: "POST",
-      body: JSON.stringify({
-        courseSlug,
-        user,
-      }),
     }),
 };
 
