@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Montserrat } from "next/font/google";
 import "./globals.css";
-import { AdminNav } from "@/components/admin/admin-nav";
+import { AppShell } from "@/components/layout/app-shell";
 
 const montserrat = Montserrat({
   subsets: ["latin", "cyrillic"],
@@ -26,14 +26,7 @@ export default function RootLayout({
       <body
         className={`${montserrat.variable} antialiased bg-surface text-text-medium`}
       >
-        <div className="flex min-h-screen">
-          <AdminNav />
-          <main className="w-full flex-1 bg-surface px-4 py-6 md:px-8">
-            <div className="mx-auto flex h-full max-w-6xl flex-col gap-6">
-              {children}
-            </div>
-          </main>
-        </div>
+        <AppShell>{children}</AppShell>
       </body>
     </html>
   );

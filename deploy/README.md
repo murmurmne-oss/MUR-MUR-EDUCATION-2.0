@@ -27,6 +27,14 @@ cp env.example .env
 # edit .env and fill in secrets (TELEGRAM tokens, DATABASE_URL, etc.)
 ```
 
+Mandatory admin security variables:
+
+* `ADMIN_SESSION_SECRET` – any long random string used to sign admin sessions.
+* Either:
+  * `ADMIN_USERNAME` + `ADMIN_PASSWORD` for login/password access, or
+  * `ADMIN_ALLOWED_IDS` (comma-separated list of Telegram IDs) for ID-based access.
+* Optional fallback: `ADMIN_ACCESS_TOKEN` (legacy one-time code).
+
 ## 4. Build and start
 
 ```bash
@@ -40,7 +48,7 @@ The first start runs Prisma migrations automatically (`npx prisma migrate deploy
 
 * `https://api.murmurmne.com/health` → should return the API health response (add the endpoint if missing).
 * `https://mini.murmurmne.com` → mini application loads.
-* `https://admin.murmurmne.com` → admin panel loads.
+* `https://admin.murmurmne.com` → admin panel loads (login screen appears).
 
 Use `docker compose -f docker-compose.prod.yml logs -f <service>` to tail logs.
 

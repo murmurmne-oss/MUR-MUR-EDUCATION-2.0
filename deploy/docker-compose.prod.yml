@@ -14,19 +14,21 @@ services:
       TELEGRAM_STARS_WEBHOOK_SECRET: ${TELEGRAM_STARS_WEBHOOK_SECRET}
       DATABASE_URL: ${DATABASE_URL}
       REDIS_URL: ${REDIS_URL-}
-      CORS_ORIGIN: ${CORS_ORIGIN-https://mini.murmurmne.com,https://admin.murmurmne.com}
+      CORS_ORIGIN: https://mini.murmurmne.com,https://admin.murmurmne.com
       UPLOADS_DIR: /uploads
     volumes:
       - backend_uploads:/uploads
     expose:
       - "4000"
     command: >
-      sh -c "npx prisma migrate deploy && node dist/main.js"
+      sh -c "npx prisma migrate deploy && node dist/src/main.js"
 
   miniapp:
     build:
       context: ../apps/miniapp
       dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL}
     image: murmur-miniapp:latest
     restart: unless-stopped
     environment:
@@ -40,12 +42,19 @@ services:
     build:
       context: ../apps/admin
       dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL}
     image: murmur-admin:latest
     restart: unless-stopped
     environment:
       NODE_ENV: production
       PORT: 3000
       NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL}
+      ADMIN_USERNAME: ${ADMIN_USERNAME-}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD-}
+      ADMIN_ALLOWED_IDS: ${ADMIN_ALLOWED_IDS-}
+      ADMIN_ACCESS_TOKEN: ${ADMIN_ACCESS_TOKEN-}
+      ADMIN_SESSION_SECRET: ${ADMIN_SESSION_SECRET}
     expose:
       - "3000"
 

@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { BarChart3, BookOpen, Home, Users } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import { useTransition } from "react";
+import { BarChart3, BookOpen, Home, LogOut, Users } from "lucide-react";
 
 export const ADMIN_NAV_ITEMS = [
   {
@@ -29,6 +30,19 @@ export const ADMIN_NAV_ITEMS = [
 
 export function AdminNav() {
   const pathname = usePathname();
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
+
+  const handleLogout = () => {
+    startTransition(async () => {
+      try {
+        await fetch("/api/auth/logout", { method: "POST" });
+      } finally {
+        router.push("/login");
+        router.refresh();
+      }
+    });
+  };
 
   return (
     <aside className="flex min-h-screen w-[240px] flex-col border-r border-border bg-white/95 px-6 py-8 shadow-sm">
@@ -68,6 +82,16 @@ export function AdminNav() {
         Управляйте курсами, пользователями и аналитикой в режиме реального
         времени.
       </div>
+
+      <button
+        type="button"
+        onClick={handleLogout}
+        disabled={isPending}
+        className="mt-6 flex items-center justify-center gap-2 rounded-2xl border border-border px-4 py-2 text-sm font-semibold text-text-medium transition hover:border-brand-pink hover:text-brand-pink disabled:cursor-not-allowed disabled:opacity-60"
+      >
+        <LogOut size={16} />
+        <span>{isPending ? "Выходим..." : "Выйти"}</span>
+      </button>
     </aside>
   );
 }
