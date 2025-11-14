@@ -121,7 +121,7 @@ function parseUserFromHash(): TelegramWebAppUser | null {
 }
 
 function detectColorSchemeFromHash(): "light" | "dark" {
-  const hashParams = parseHashParams();
+  const hashParams = parseHashParamsOrRef();
   if (hashParams) {
     const themeParams = decodeValue(hashParams.get("tgWebAppThemeParams"));
     if (themeParams) {
