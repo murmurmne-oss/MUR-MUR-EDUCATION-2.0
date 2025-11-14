@@ -168,18 +168,17 @@ export default function CourseDetailsPage({
     [course],
   );
 
+  const supportsOpenInvoice =
+    typeof webApp?.openInvoice === "function" && supportsStarPayment;
+  const supportsInitStarPayment =
+    typeof webApp?.initStarPayment === "function" && supportsStarPayment;
+
   const canUseTelegramStars = useMemo(() => {
     if (!isPaidCourse) {
       return true;
     }
-    if (!priceAmountInStars) {
-      return false;
-    }
-    return (
-      supportsStarPayment &&
-      typeof webApp?.initStarPayment === "function"
-    );
-  }, [isPaidCourse, priceAmountInStars, supportsStarPayment, webApp]);
+    return supportsOpenInvoice || supportsInitStarPayment;
+  }, [isPaidCourse, supportsInitStarPayment, supportsOpenInvoice]);
 
   const actionDisabled =
     isLoading || isEnrolling || (isPaidCourse && !canUseTelegramStars);
@@ -189,22 +188,18 @@ export default function CourseDetailsPage({
       return null;
     }
 
-    if (!course.isFree && !priceAmountInStars) {
-      if (course.priceCurrency === "EUR") {
-        return "Не удалось конвертировать стоимость курса в Telegram Stars. Проверьте настройку курса конвертации.";
+    if (!course.isFree) {
+      if (!priceAmountInStars) {
+        return "Стоимость курса пока пересчитывается в Telegram Stars — повторите попытку позже.";
       }
-      return "Оплата для этого курса появится позже. Следите за обновлениями.";
-    }
 
-    if (!course.isFree && !canUseTelegramStars) {
-      if (!supportsStarPayment || typeof webApp?.initStarPayment !== "function") {
+      if (!canUseTelegramStars) {
         return "Обновите приложение Telegram до последней версии, чтобы оплатить через Stars.";
       }
-      return "Обновите приложение Telegram до последней версии, чтобы оплатить через Stars.";
     }
 
     return null;
-  }, [course, priceAmountInStars, canUseTelegramStars, supportsStarPayment, webApp]);
+  }, [course, priceAmountInStars, canUseTelegramStars]);
 
   const resetTestState = () => {
     setTestSession(null);
@@ -365,57 +360,96 @@ export default function CourseDetailsPage({
         return;
       }
 
-      if (!supportsStarPayment || typeof webApp?.initStarPayment !== "function") {
+      if (!webApp) {
         setEnrollError(
-          "Оплата через Telegram Stars пока недоступна в вашем Telegram. Обновите приложение и попробуйте снова.",
+          "Оплата через Telegram пока недоступна. Перезапустите мини‑приложение и попробуйте снова.",
         );
         return;
       }
 
-      const paymentPayload = {
-        courseSlug: course.slug,
-        userId: resolvedUserId,
-        requestedAt: Date.now(),
-        priceCurrency: course.priceCurrency,
-        priceAmount: course.priceAmount,
-        amountInStars: priceAmountInStars,
-      };
+      if (supportsOpenInvoice && typeof webApp.openInvoice === "function") {
+        setIsEnrolling(true);
+        try {
+          const invoice = await apiClient.createTelegramStarsInvoice(
+            course.slug,
+            {
+              id: resolvedUserId,
+              firstName: tgUser?.first_name ?? null,
+              lastName: tgUser?.last_name ?? null,
+              username: tgUser?.username ?? null,
+              languageCode: tgUser?.language_code ?? null,
+              avatarUrl: tgUser?.photo_url ?? null,
+            },
+          );
 
-      const requestPayload: Record<string, unknown> = {
-        slug: course.slug,
-        payload: JSON.stringify(paymentPayload),
-        amount: priceAmountInStars,
-        currency: "XTR",
-      };
+          setPaymentStatus(
+            `Мы открыли счёт на ${invoice.amountInStars} ⭐. Подтвердите оплату в Telegram, чтобы получить доступ к курсу.`,
+          );
+          setEnrollError(null);
 
-      if (course.title) {
-        requestPayload.title = course.title;
-      }
-      const descriptionSource = course.shortDescription ?? course.description;
-      if (descriptionSource) {
-        requestPayload.description = descriptionSource.slice(0, 120);
-      }
-      if (course.coverImageUrl) {
-        requestPayload.photo_url = course.coverImageUrl;
+          webApp.openInvoice(invoice.invoiceUrl, (status?: string) => {
+            if (status === "paid") {
+              setPaymentStatus(
+                "Оплата подтверждена. Доступ появится автоматически в течение нескольких секунд.",
+              );
+              setEnrollError(null);
+            } else if (status === "cancelled") {
+              setEnrollError("Оплата отменена. Попробуйте снова, когда будете готовы.");
+            }
+          });
+        } catch (paymentError) {
+          console.error("Failed to create Telegram invoice", paymentError);
+          setEnrollError(
+            paymentError instanceof Error
+              ? paymentError.message
+              : "Не удалось запустить оплату. Попробуйте позже.",
+          );
+        } finally {
+          setIsEnrolling(false);
+        }
+        return;
       }
 
-      setIsEnrolling(true);
-      try {
-        await webApp.initStarPayment(requestPayload);
-        const euroLabel = formatPrice(course.priceAmount, course.priceCurrency);
-        setPaymentStatus(
-          `Оплата запущена. Telegram спишет ${priceAmountInStars} ⭐ (${euroLabel}). После подтверждения доступ к курсу откроется автоматически.`,
-        );
-      } catch (paymentError) {
-        console.error("Failed to init Telegram Stars payment", paymentError);
-        setEnrollError(
-          paymentError instanceof Error
-            ? paymentError.message
-            : "Не удалось запустить оплату. Попробуйте позже.",
-        );
-      } finally {
-        setIsEnrolling(false);
+      if (
+        supportsInitStarPayment &&
+        typeof webApp.initStarPayment === "function"
+      ) {
+        const paymentPayload = {
+          courseSlug: course.slug,
+          userId: resolvedUserId,
+          requestedAt: Date.now(),
+          priceCurrency: course.priceCurrency,
+          priceAmount: course.priceAmount,
+          amountInStars: priceAmountInStars,
+        };
+
+        setIsEnrolling(true);
+        try {
+          await webApp.initStarPayment({
+            slug: course.slug,
+            payload: JSON.stringify(paymentPayload),
+            amount: priceAmountInStars,
+            currency: "XTR",
+          });
+          setPaymentStatus(
+            `Telegram открыл окно оплаты на ${priceAmountInStars} ⭐. После подтверждения доступ к курсу появится автоматически.`,
+          );
+        } catch (paymentError) {
+          console.error("Failed to init Telegram Stars payment", paymentError);
+          setEnrollError(
+            paymentError instanceof Error
+              ? paymentError.message
+              : "Не удалось запустить оплату. Попробуйте позже.",
+          );
+        } finally {
+          setIsEnrolling(false);
+        }
+        return;
       }
+
+      setEnrollError(
+        "Оплата через Telegram пока недоступна в этом клиенте. Обновите приложение и попробуйте снова.",
+      );
       return;
     }
 

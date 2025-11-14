@@ -1,15 +1,15 @@
 import { Injectable, Logger } from '@nestjs/common';
 import {
   ActivityActorType,
+  Course,
   CourseAccessStatus,
   CourseAccessType,
   Currency,
   PaymentStatus,
 } from '@prisma/client';
-import { createHmac, timingSafeEqual } from 'node:crypto';
 import { PrismaService } from '../prisma/prisma.service';
 
-type TelegramStarsUser = {
+type TelegramUser = {
   id: number | string;
   first_name?: string;
   last_name?: string;
@@ -18,68 +18,278 @@ type TelegramStarsUser = {
   photo_url?: string;
 };
 
-export type TelegramStarsPayload = {
-  event: string;
-  payload: {
-    courseSlug: string;
-    paymentId: string;
-    amount: number;
-    currency: Currency;
-    status: 'paid' | 'failed' | 'pending';
+type TelegramSuccessfulPayment = {
+  currency: string;
+  total_amount: number;
+  invoice_payload: string;
+  telegram_payment_charge_id: string;
+};
+
+type TelegramPreCheckoutQuery = {
+  id: string;
+  from: TelegramUser;
+  currency: string;
+  total_amount: number;
+  invoice_payload: string;
+};
+
+export type TelegramUpdate = {
+  update_id: number;
+  message?: {
+    from?: TelegramUser;
+    successful_payment?: TelegramSuccessfulPayment;
   };
-  user: TelegramStarsUser;
+  channel_post?: {
+    from?: TelegramUser;
+    successful_payment?: TelegramSuccessfulPayment;
+  };
+  edited_message?: {
+    from?: TelegramUser;
+    successful_payment?: TelegramSuccessfulPayment;
+  };
+  pre_checkout_query?: TelegramPreCheckoutQuery;
+};
+
+type InvoicePayload = {
+  type: 'course_access';
+  courseSlug: string;
+  userId: string;
+  starsAmount: number;
+  issuedAt: number;
+};
+
+export type CreateStarsInvoiceDto = {
+  courseSlug: string;
+  user: {
+    id: string | number;
+    firstName?: string | null;
+    lastName?: string | null;
+    username?: string | null;
+    languageCode?: string | null;
+    avatarUrl?: string | null;
+  };
 };
 
 @Injectable()
 export class PaymentsService {
   private readonly logger = new Logger(PaymentsService.name);
+  private readonly botToken = process.env.TELEGRAM_BOT_TOKEN?.trim() ?? null;
   private readonly webhookSecret =
-    process.env.TELEGRAM_STARS_WEBHOOK_SECRET?.trim() ??
-    process.env.TELEGRAM_BOT_TOKEN?.trim() ??
-    null;
+    process.env.TELEGRAM_WEBHOOK_SECRET_TOKEN?.trim() ?? null;
+  private readonly starsPerEuro = this.parseStarsPerEuro(
+    process.env.TELEGRAM_STARS_PER_EURO ??
+      process.env.NEXT_PUBLIC_TELEGRAM_STARS_PER_EURO ??
+      '60',
+  );
+  private readonly telegramApiBase = this.botToken
+    ? `https://api.telegram.org/bot${this.botToken}`
+    : null;
+  private hasWarnedAboutWebhookSecret = false;
 
   constructor(private readonly prisma: PrismaService) {}
 
-  async handleTelegramStarsWebhook(
-    body: TelegramStarsPayload,
-    context?: { rawBody?: Buffer; signature?: string },
-  ) {
-    if (!this.verifySignature(context?.rawBody, context?.signature)) {
-      this.logger.warn('Rejected Telegram Stars webhook due to invalid signature');
-      return { ok: false, reason: 'invalid_signature' };
+  async createStarsInvoice(dto: CreateStarsInvoiceDto) {
+    if (!this.telegramApiBase) {
+      throw new Error(
+        'TELEGRAM_BOT_TOKEN is not configured. Unable to create Telegram Stars invoice.',
+      );
     }
 
-    if (!body || body.event !== 'purchase') {
-      this.logger.warn('Unsupported Telegram Stars webhook event', body);
-      return { ok: false, reason: 'unsupported_event' };
+    const course = await this.prisma.course.findUnique({
+      where: { slug: dto.courseSlug },
+    });
+
+    if (!course) {
+      throw new Error('Курс не найден. Попробуйте выбрать другой курс.');
     }
 
-    if (body.payload.status !== 'paid') {
-      this.logger.log(
-        `Ignoring webhook with status ${body.payload.status} for payment ${body.payload.paymentId}`,
+    if (course.isFree) {
+      throw new Error('Этот курс бесплатный — оформлять оплату не нужно.');
+    }
+
+    const amountInStars = this.calculateStarsAmount(course);
+    if (!amountInStars) {
+      throw new Error(
+        'Не удалось рассчитать стоимость курса в Telegram Stars. Обновите настройки курса и попробуйте снова.',
+      );
+    }
+
+    const payload: InvoicePayload = {
+      type: 'course_access',
+      courseSlug: course.slug,
+      userId: dto.user.id.toString(),
+      starsAmount: amountInStars,
+      issuedAt: Date.now(),
+    };
+
+    const title =
+      course.title?.slice(0, 32) ?? 'Mur Mur Education · доступ к курсу';
+    const description = (
+      course.shortDescription ??
+      course.description ??
+      'Получите доступ к курсу Mur Mur Education.'
+    ).slice(0, 255);
+
+    const invoiceUrl = await this.callTelegramApi<string>(
+      'createInvoiceLink',
+      {
+        title,
+        description,
+        payload: JSON.stringify(payload),
+        currency: 'XTR',
+        prices: [
+          {
+            label: title,
+            amount: amountInStars,
+          },
+        ],
+        photo_url: course.coverImageUrl ?? undefined,
+      },
+    );
+
+    return {
+      invoiceUrl,
+      amountInStars,
+    };
+  }
+
+  async handleTelegramUpdate(body: TelegramUpdate, secret?: string) {
+    if (!this.verifyWebhookSecret(secret)) {
+      this.logger.warn('Rejected Telegram webhook due to invalid secret token');
+      return { ok: false, reason: 'invalid_secret' };
+    }
+
+    if (!body) {
+      this.logger.warn('Received empty Telegram webhook body');
+      return { ok: false, reason: 'empty_body' };
+    }
+
+    if (body.pre_checkout_query) {
+      await this.answerPreCheckoutQuery(body.pre_checkout_query.id, true);
+      this.logger.debug(
+        `Approved pre-checkout query ${body.pre_checkout_query.id}`,
       );
       return { ok: true };
     }
 
+    const payment =
+      body.message?.successful_payment ??
+      body.edited_message?.successful_payment ??
+      body.channel_post?.successful_payment;
+
+    if (!payment) {
+      this.logger.debug('Telegram webhook does not contain a payment event');
+      return { ok: true };
+    }
+
+    await this.processSuccessfulPayment(
+      payment,
+      body.message?.from ??
+        body.edited_message?.from ??
+        body.channel_post?.from,
+    );
+    return { ok: true };
+  }
+
+  private parseStarsPerEuro(raw: string | number | undefined): number | null {
+    if (typeof raw === 'number') {
+      return Number.isFinite(raw) && raw > 0 ? raw : null;
+    }
+    if (typeof raw === 'string' && raw.trim().length > 0) {
+      const parsed = Number(raw.trim());
+      if (Number.isFinite(parsed) && parsed > 0) {
+        return parsed;
+      }
+    }
+    return null;
+  }
+
+  private calculateStarsAmount(course: Course): number | null {
+    if (course.isFree) {
+      return null;
+    }
+
+    if (course.priceCurrency === Currency.TELEGRAM_STAR) {
+      return Math.max(1, course.priceAmount);
+    }
+
+    if (course.priceCurrency === Currency.EUR) {
+      if (!this.starsPerEuro) {
+        this.logger.warn(
+          'TELEGRAM_STARS_PER_EURO is not configured; unable to convert EUR price.',
+        );
+        return null;
+      }
+      const euroValue = course.priceAmount / 100;
+      return Math.max(1, Math.round(euroValue * this.starsPerEuro));
+    }
+
+    return null;
+  }
+
+  private verifyWebhookSecret(secret?: string) {
+    if (!this.webhookSecret) {
+      if (!this.hasWarnedAboutWebhookSecret) {
+        this.logger.warn(
+          'TELEGRAM_WEBHOOK_SECRET_TOKEN is not configured. Configure it to validate Telegram webhooks for better security.',
+        );
+        this.hasWarnedAboutWebhookSecret = true;
+      }
+      return true;
+    }
+    return secret === this.webhookSecret;
+  }
+
+  private parseInvoicePayload(payload: string): InvoicePayload | null {
+    if (!payload) {
+      return null;
+    }
+
+    try {
+      const parsed = JSON.parse(payload) as InvoicePayload;
+      if (parsed?.type === 'course_access' && parsed.courseSlug && parsed.userId) {
+        return parsed;
+      }
+    } catch (error) {
+      this.logger.error('Failed to parse invoice payload', error);
+    }
+    return null;
+  }
+
+  private async processSuccessfulPayment(
+    payment: TelegramSuccessfulPayment,
+    telegramUser?: TelegramUser,
+  ) {
+    const payload = this.parseInvoicePayload(payment.invoice_payload);
+    if (!payload) {
+      this.logger.error('Received Telegram payment with invalid invoice payload');
+      return;
+    }
+
     const course = await this.prisma.course.findUnique({
-      where: { slug: body.payload.courseSlug },
+      where: { slug: payload.courseSlug },
     });
 
     if (!course) {
-      this.logger.error(
-        `Course with slug ${body.payload.courseSlug} not found`,
-      );
-      return { ok: false, reason: 'course_not_found' };
+      this.logger.error(`Course with slug ${payload.courseSlug} not found`);
+      return;
     }
 
-    const userId = body.user.id.toString();
+    const userId =
+      payload.userId ?? telegramUser?.id?.toString();
+    if (!userId) {
+      this.logger.error('Unable to determine user ID for paid invoice');
+      return;
+    }
+
     const displayName =
-      body.user.first_name ??
-      body.user.username ??
-      body.user.last_name ??
+      telegramUser?.first_name ??
+      telegramUser?.username ??
+      telegramUser?.last_name ??
       userId;
-    const paymentCurrency =
-      body.payload.currency === Currency.TELEGRAM_STAR
+
+    const priceCurrency =
+      payment.currency.toUpperCase() === 'XTR'
         ? Currency.TELEGRAM_STAR
         : Currency.EUR;
 
@@ -87,19 +297,19 @@ export class PaymentsService {
       await tx.user.upsert({
         where: { id: userId },
         update: {
-          firstName: body.user.first_name ?? displayName,
-          lastName: body.user.last_name ?? null,
-          username: body.user.username ?? null,
-          languageCode: body.user.language_code ?? null,
-          avatarUrl: body.user.photo_url ?? null,
+          firstName: telegramUser?.first_name ?? displayName,
+          lastName: telegramUser?.last_name ?? null,
+          username: telegramUser?.username ?? null,
+          languageCode: telegramUser?.language_code ?? null,
+          avatarUrl: telegramUser?.photo_url ?? null,
         },
         create: {
           id: userId,
-          firstName: body.user.first_name ?? displayName,
-          lastName: body.user.last_name ?? null,
-          username: body.user.username ?? null,
-          languageCode: body.user.language_code ?? null,
-          avatarUrl: body.user.photo_url ?? null,
+          firstName: telegramUser?.first_name ?? displayName,
+          lastName: telegramUser?.last_name ?? null,
+          username: telegramUser?.username ?? null,
+          languageCode: telegramUser?.language_code ?? null,
+          avatarUrl: telegramUser?.photo_url ?? null,
         },
       });
 
@@ -113,10 +323,10 @@ export class PaymentsService {
         update: {
           status: CourseAccessStatus.ACTIVE,
           accessType: CourseAccessType.PURCHASED,
-          paymentId: body.payload.paymentId,
+          paymentId: payment.telegram_payment_charge_id,
           paymentStatus: PaymentStatus.PAID,
-          pricePaid: body.payload.amount,
-          priceCurrency: paymentCurrency,
+          pricePaid: payment.total_amount,
+          priceCurrency,
           activatedAt: new Date(),
         },
         create: {
@@ -124,10 +334,10 @@ export class PaymentsService {
           courseId: course.id,
           status: CourseAccessStatus.ACTIVE,
           accessType: CourseAccessType.PURCHASED,
-          paymentId: body.payload.paymentId,
+          paymentId: payment.telegram_payment_charge_id,
           paymentStatus: PaymentStatus.PAID,
-          pricePaid: body.payload.amount,
-          priceCurrency: paymentCurrency,
+          pricePaid: payment.total_amount,
+          priceCurrency,
           activatedAt: new Date(),
         },
       });
@@ -138,59 +348,64 @@ export class PaymentsService {
           actorType: ActivityActorType.USER,
           action: 'payment.telegram-stars',
           metadata: {
-            courseSlug: body.payload.courseSlug,
-            paymentId: body.payload.paymentId,
-            amount: body.payload.amount,
-            currency: body.payload.currency,
+            courseSlug: course.slug,
+            paymentId: payment.telegram_payment_charge_id,
+            amount: payment.total_amount,
+            currency: payment.currency,
           },
           courseId: course.id,
         },
       });
     });
 
-    return { ok: true };
+    this.logger.log(
+      `Activated course ${course.slug} for user ${userId} after successful payment ${payment.telegram_payment_charge_id}`,
+    );
   }
 
-  private verifySignature(rawBody?: Buffer, signature?: string): boolean {
-    if (!this.webhookSecret) {
+  private async callTelegramApi<T>(
+    method: string,
+    payload: Record<string, unknown>,
+  ): Promise<T> {
+    if (!this.telegramApiBase) {
+      throw new Error('Telegram API base URL is not configured');
+    }
+    const response = await fetch(`${this.telegramApiBase}/${method}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
+    const data = (await response.json()) as {
+      ok: boolean;
+      result: T;
+      description?: string;
+    };
+    if (!data.ok) {
+      throw new Error(
+        data.description ?? `Telegram API method ${method} failed`,
+      );
+    }
+    return data.result;
+  }
+
+  private async answerPreCheckoutQuery(
+    id: string,
+    ok: boolean,
+    errorMessage?: string,
+  ) {
+    try {
+      await this.callTelegramApi('answerPreCheckoutQuery', {
+        pre_checkout_query_id: id,
+        ok,
+        error_message: ok ? undefined : errorMessage,
+      });
+    } catch (error) {
       this.logger.error(
-        'Telegram Stars webhook secret is not configured. Set TELEGRAM_STARS_WEBHOOK_SECRET or TELEGRAM_BOT_TOKEN.',
+        `Failed to answer pre-checkout query ${id}`,
+        error,
       );
-      return false;
-    }
-
-    if (!rawBody || !signature) {
-      this.logger.warn('Missing raw body or signature for Telegram Stars webhook validation');
-      return false;
-    }
-
-    const normalizedSignature = signature.startsWith('sha256=')
-      ? signature.slice(7)
-      : signature;
-
-    let received: Buffer;
-    let expected: Buffer;
-
-    try {
-      expected = Buffer.from(
-        createHmac('sha256', this.webhookSecret).update(rawBody).digest('hex'),
-        'hex',
-      );
-      received = Buffer.from(normalizedSignature.toLowerCase(), 'hex');
-    } catch (error) {
-      this.logger.error('Failed to prepare Telegram Stars signature comparison', error);
-      return false;
-    }
-
-    if (expected.length === 0 || expected.length !== received.length) {
-      return false;
-    }
-
-    try {
-      return timingSafeEqual(expected, received);
-    } catch (error) {
-      this.logger.error('Failed to compare Telegram Stars signatures', error);
-      return false;
     }
   }
 }

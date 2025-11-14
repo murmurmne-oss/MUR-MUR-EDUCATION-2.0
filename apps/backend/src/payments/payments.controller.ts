@@ -1,29 +1,24 @@
+import { Body, Controller, Headers, Post } from '@nestjs/common';
 import {
-  Body,
-  Controller,
-  Headers,
-  Post,
-  Req,
-} from '@nestjs/common';
-import type { RawBodyRequest } from '@nestjs/common';
-import type { Request } from 'express';
-import { PaymentsService, type TelegramStarsPayload } from './payments.service';
+  PaymentsService,
+  type CreateStarsInvoiceDto,
+  type TelegramUpdate,
+} from './payments.service';
 
 @Controller('payments/telegram-stars')
 export class PaymentsController {
   constructor(private readonly paymentsService: PaymentsService) {}
 
+  @Post('invoice')
+  async createInvoice(@Body() body: CreateStarsInvoiceDto) {
+    return this.paymentsService.createStarsInvoice(body);
+  }
+
   @Post('webhook')
   async handleWebhook(
-    @Req() request: RawBodyRequest<Request>,
-    @Headers('x-telegram-signature') signature: string | undefined,
-    @Body() body: TelegramStarsPayload,
+    @Headers('x-telegram-bot-api-secret-token') secret: string | undefined,
+    @Body() body: TelegramUpdate,
   ) {
-    const rawBody = request.rawBody;
-    const result = await this.paymentsService.handleTelegramStarsWebhook(body, {
-      rawBody,
-      signature,
-    });
-    return result;
+    return this.paymentsService.handleTelegramUpdate(body, secret);
   }
 }

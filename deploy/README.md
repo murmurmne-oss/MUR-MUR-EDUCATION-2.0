@@ -40,6 +40,8 @@ Frontend variables for the mini app:
 * `NEXT_PUBLIC_API_BASE_URL` – points to the backend API (`https://api.murmurmne.com`).
 * `NEXT_PUBLIC_TELEGRAM_STARS_PER_EURO` – number of Telegram Stars that correspond to 1 EUR (used to convert Euro prices to Stars inside the mini app; defaults to 60).
 * `NEXT_PUBLIC_TELEGRAM_SDK_URL` – path or URL to the Telegram WebApp SDK (by default `/telegram-web-app.js`). Place the SDK file under `apps/miniapp/public` if you want to serve it from your own domain.
+* `TELEGRAM_STARS_PER_EURO` – backend-side conversion ratio (set the same value you use on the frontend).
+* `TELEGRAM_WEBHOOK_SECRET_TOKEN` – optional shared secret for Telegram bot webhooks (recommended).
 
 ## 4. Build and start
 
@@ -62,10 +64,11 @@ Use `docker compose -f docker-compose.prod.yml logs -f <service>` to tail logs.
 
 ```bash
 curl -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/setWebhook" \
-  -d "url=https://api.murmurmne.com/payments/telegram-stars/webhook"
+  -d "url=https://api.murmurmne.com/payments/telegram-stars/webhook" \
+  -d "secret_token=${TELEGRAM_WEBHOOK_SECRET_TOKEN}"
 ```
 
-Re-run the command whenever the API domain changes.
+If you rotate the domain or secret token, call `setWebhook` again (optionally with `-d "drop_pending_updates=true"` to clear old queue).
 
 ## 7. Updating the stack
 
