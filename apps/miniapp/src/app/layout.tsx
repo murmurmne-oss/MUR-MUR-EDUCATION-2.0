@@ -2,15 +2,7 @@ import type { Metadata } from "next";
 import { Montserrat } from "next/font/google";
 import "./globals.css";
 import { BottomNav } from "@/components/navigation/bottom-nav";
-import dynamic from "next/dynamic";
-
-const TelegramSdkLoader = dynamic(
-  () =>
-    import("@/components/common/telegram-sdk-loader").then(
-      (mod) => mod.TelegramSdkLoader,
-    ),
-  { ssr: false },
-);
+import { TelegramSdkLoader } from "@/components/common/telegram-sdk-loader";
 
 const montserrat = Montserrat({
   subsets: ["latin", "cyrillic"],
