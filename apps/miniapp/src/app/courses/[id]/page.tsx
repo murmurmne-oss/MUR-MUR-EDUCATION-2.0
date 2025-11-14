@@ -25,6 +25,38 @@ import { useTelegram } from "@/hooks/useTelegram";
 const DEV_USER_ID =
   process.env.NEXT_PUBLIC_DEV_USER_ID ?? "555666777";
 
+const RAW_STARS_PER_EURO = Number(
+  process.env.NEXT_PUBLIC_TELEGRAM_STARS_PER_EURO ?? "60",
+);
+const STARS_PER_EURO =
+  Number.isFinite(RAW_STARS_PER_EURO) && RAW_STARS_PER_EURO > 0
+    ? RAW_STARS_PER_EURO
+    : null;
+const MIN_STARS_AMOUNT = 1;
+
+function calculateStarsAmount(course: CourseDetails): number | null {
+  if (course.isFree) {
+    return null;
+  }
+
+  if (course.priceCurrency === "TELEGRAM_STAR") {
+    return Math.max(MIN_STARS_AMOUNT, course.priceAmount);
+  }
+
+  if (course.priceCurrency === "EUR") {
+    if (!STARS_PER_EURO) {
+      console.warn(
+        "[payments] NEXT_PUBLIC_TELEGRAM_STARS_PER_EURO is not configured; unable to convert EUR to Stars.",
+      );
+      return null;
+    }
+    const euroValue = course.priceAmount / 100;
+    return Math.max(MIN_STARS_AMOUNT, Math.round(euroValue * STARS_PER_EURO));
+  }
+
+  return null;
+}
+
 export default function CourseDetailsPage({
   params,
 }: {
@@ -109,54 +141,70 @@ export default function CourseDetailsPage({
     );
   }, [course]);
 
+  const priceAmountInStars = useMemo(() => {
+    if (!course) {
+      return null;
+    }
+    return calculateStarsAmount(course);
+  }, [course]);
+
   const priceLabel = useMemo(() => {
     if (!course) return "";
-    return course.isFree
-      ? "Бесплатно"
-      : formatPrice(course.priceAmount, course.priceCurrency);
-  }, [course]);
+    if (course.isFree) {
+      return "Бесплатно";
+    }
+    const baseLabel = formatPrice(course.priceAmount, course.priceCurrency);
+    if (
+      priceAmountInStars &&
+      course.priceCurrency !== "TELEGRAM_STAR"
+    ) {
+      return `${baseLabel} · ${priceAmountInStars} ⭐`;
+    }
+    return baseLabel;
+  }, [course, priceAmountInStars]);
 
   const isPaidCourse = useMemo(
     () => Boolean(course && !course.isFree),
     [course],
   );
 
-  const isTelegramStarCourse = useMemo(
-    () =>
-      Boolean(
-        course &&
-          !course.isFree &&
-          course.priceCurrency === "TELEGRAM_STAR",
-      ),
-    [course],
-  );
-
-  const canUseTelegramStars = useMemo(
-    () =>
-      isTelegramStarCourse &&
+  const canUseTelegramStars = useMemo(() => {
+    if (!isPaidCourse) {
+      return true;
+    }
+    if (!priceAmountInStars) {
+      return false;
+    }
+    return (
       supportsStarPayment &&
-      typeof webApp?.initStarPayment === "function",
-    [isTelegramStarCourse, supportsStarPayment, webApp],
-  );
+      typeof webApp?.initStarPayment === "function"
+    );
+  }, [isPaidCourse, priceAmountInStars, supportsStarPayment, webApp]);
 
   const actionDisabled =
-    isLoading || isEnrolling || (isTelegramStarCourse && !canUseTelegramStars);
+    isLoading || isEnrolling || (isPaidCourse && !canUseTelegramStars);
 
   const paymentDisabledReason = useMemo(() => {
     if (!course) {
       return null;
     }
 
-    if (!course.isFree && course.priceCurrency !== "TELEGRAM_STAR") {
+    if (!course.isFree && !priceAmountInStars) {
+      if (course.priceCurrency === "EUR") {
+        return "Не удалось конвертировать стоимость курса в Telegram Stars. Проверьте настройку курса конвертации.";
+      }
       return "Оплата для этого курса появится позже. Следите за обновлениями.";
     }
 
-    if (isTelegramStarCourse && !canUseTelegramStars) {
+    if (!course.isFree && !canUseTelegramStars) {
+      if (!supportsStarPayment || typeof webApp?.initStarPayment !== "function") {
+        return "Обновите приложение Telegram до последней версии, чтобы оплатить через Stars.";
+      }
       return "Обновите приложение Telegram до последней версии, чтобы оплатить через Stars.";
     }
 
     return null;
-  }, [course, isTelegramStarCourse, canUseTelegramStars]);
+  }, [course, priceAmountInStars, canUseTelegramStars, supportsStarPayment, webApp]);
 
   const resetTestState = () => {
     setTestSession(null);
@@ -310,9 +358,9 @@ export default function CourseDetailsPage({
     setPaymentStatus(null);
 
     if (!course.isFree) {
-      if (course.priceCurrency !== "TELEGRAM_STAR") {
+      if (!priceAmountInStars) {
         setEnrollError(
-          "Для этого курса ещё не настроена оплата через Telegram Stars. Напишите в поддержку, если нужна помощь.",
+          "Не удалось рассчитать стоимость курса в Telegram Stars. Напишите в поддержку, если нужна помощь.",
         );
         return;
       }
@@ -328,16 +376,18 @@ export default function CourseDetailsPage({
         courseSlug: course.slug,
         userId: resolvedUserId,
         requestedAt: Date.now(),
+        priceCurrency: course.priceCurrency,
+        priceAmount: course.priceAmount,
+        amountInStars: priceAmountInStars,
       };
 
       const requestPayload: Record<string, unknown> = {
         slug: course.slug,
         payload: JSON.stringify(paymentPayload),
+        amount: priceAmountInStars,
+        currency: "XTR",
       };
 
-      if (course.priceCurrency === "TELEGRAM_STAR") {
-        requestPayload.amount = course.priceAmount;
-      }
       if (course.title) {
         requestPayload.title = course.title;
       }
@@ -352,8 +402,9 @@ export default function CourseDetailsPage({
       setIsEnrolling(true);
       try {
         await webApp.initStarPayment(requestPayload);
+        const euroLabel = formatPrice(course.priceAmount, course.priceCurrency);
         setPaymentStatus(
-          "Оплата запущена. Как только Telegram подтвердит перевод звёзд, доступ откроется автоматически. Проверьте раздел «Мои курсы» спустя пару секунд.",
+          `Оплата запущена. Telegram спишет ${priceAmountInStars} ⭐ (${euroLabel}). После подтверждения доступ к курсу откроется автоматически.`,
         );
       } catch (paymentError) {
         console.error("Failed to init Telegram Stars payment", paymentError);

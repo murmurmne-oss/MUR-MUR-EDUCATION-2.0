@@ -29,12 +29,16 @@ services:
       dockerfile: Dockerfile
       args:
         NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL}
+        NEXT_PUBLIC_TELEGRAM_STARS_PER_EURO: ${NEXT_PUBLIC_TELEGRAM_STARS_PER_EURO-60}
+        NEXT_PUBLIC_TELEGRAM_SDK_URL: ${NEXT_PUBLIC_TELEGRAM_SDK_URL-/telegram-web-app.js}
     image: murmur-miniapp:latest
     restart: unless-stopped
     environment:
       NODE_ENV: production
       PORT: 3000
       NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL}
+      NEXT_PUBLIC_TELEGRAM_STARS_PER_EURO: ${NEXT_PUBLIC_TELEGRAM_STARS_PER_EURO-60}
+      NEXT_PUBLIC_TELEGRAM_SDK_URL: ${NEXT_PUBLIC_TELEGRAM_SDK_URL-/telegram-web-app.js}
     expose:
       - "3000"
 

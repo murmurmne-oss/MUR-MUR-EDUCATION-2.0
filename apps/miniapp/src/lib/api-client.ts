@@ -273,12 +273,37 @@ export type SubmitTestResult = {
   }>;
 };
 
+export type UserProfile = {
+  id: string;
+  firstName: string | null;
+  lastName: string | null;
+  username: string | null;
+  avatarUrl: string | null;
+  languageCode: string | null;
+};
+
+export type SyncUserPayload = {
+  id: string;
+  firstName?: string | null;
+  lastName?: string | null;
+  username?: string | null;
+  avatarUrl?: string | null;
+  languageCode?: string | null;
+};
+
 export const apiClient = {
   getCatalog: () => request<CatalogCategory[]>("/catalog"),
   getCourse: (idOrSlug: string) =>
     request<CourseDetails>(`/courses/${idOrSlug}`),
   getUserEnrollments: (userId: string) =>
     request<UserEnrollmentsResponse>(`/users/${userId}/enrollments`),
+  getUserProfile: (userId: string) =>
+    request<UserProfile>(`/users/${userId}`),
+  syncUserProfile: (payload: SyncUserPayload) =>
+    request<UserProfile>(`/users/sync`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
   enrollCourse: (idOrSlug: string, payload: EnrollCoursePayload) =>
     request<{ status: string }>(`/courses/${idOrSlug}/enroll`, {
       method: "POST",
