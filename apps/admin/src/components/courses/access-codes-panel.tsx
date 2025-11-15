@@ -111,12 +111,10 @@ export function AccessCodesPanel({ courseSlug }: AccessCodesPanelProps) {
           label: "Аннулирован",
           className: "bg-slate-200 text-slate-600",
         },
-      }) satisfies Record<
-        string,
-        { label: string; className: string }
-      >,
+      }) as const,
     [],
   );
+  type StatusKey = keyof typeof statusMeta;
 
   return (
     <section className="rounded-3xl bg-white p-6 shadow-sm">
@@ -226,7 +224,8 @@ export function AccessCodesPanel({ courseSlug }: AccessCodesPanelProps) {
           ) : (
             <ul className="mt-4 space-y-3">
               {codes.map((item) => {
-                const status = statusMeta[item.status] ?? {
+                const statusKey = (item.status as StatusKey) ?? "AVAILABLE";
+                const status = statusMeta[statusKey] ?? {
                   label: item.status,
                   className: "bg-border text-text-dark",
                 };
