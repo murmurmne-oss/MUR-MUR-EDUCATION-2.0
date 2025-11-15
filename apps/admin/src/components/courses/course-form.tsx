@@ -34,6 +34,11 @@ const CURRENCY_OPTIONS = [
   { value: "TELEGRAM_STAR", label: "TELEGRAM_STAR — Telegram Stars" },
 ];
 
+const LANGUAGE_OPTIONS = [
+  { value: "SR", label: "Srpski (latinica)" },
+  { value: "RU", label: "Русский" },
+];
+
 const QUESTION_TYPE_OPTIONS: Array<{ value: QuestionKind; label: string }> = [
   { value: "single", label: "Один ответ" },
   { value: "multiple", label: "Несколько ответов" },
@@ -52,6 +57,7 @@ type FormState = {
   coverImageUrl: string;
   promoVideoUrl: string;
   category: string;
+  language: string;
   level: string;
   priceValue: string;
   priceCurrency: string;
@@ -867,6 +873,7 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
     coverImageUrl: initialCourse?.coverImageUrl ?? "",
     promoVideoUrl: initialCourse?.promoVideoUrl ?? "",
     category: initialCourse?.category ?? CATEGORY_OPTIONS[0]?.value ?? "",
+    language: initialCourse?.language ?? LANGUAGE_OPTIONS[0]?.value ?? "SR",
     level: initialCourse?.level ?? LEVEL_OPTIONS[0]?.value ?? "BEGINNER",
     priceValue:
       initialCourse && !initialCourse.isFree
@@ -897,6 +904,7 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
         coverImageUrl: initialCourse.coverImageUrl ?? "",
         promoVideoUrl: initialCourse.promoVideoUrl ?? "",
         category: initialCourse.category,
+      language: initialCourse.language,
         level: initialCourse.level,
         priceValue: initialCourse.isFree
           ? ""
@@ -1682,6 +1690,7 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
       priceCurrency: formState.isFree ? "EUR" : formState.priceCurrency,
       isFree: formState.isFree,
       isPublished: formState.isPublished,
+      language: formState.language,
       modules: modulesPayload,
       tests: testsPayload,
     };
@@ -1798,6 +1807,23 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
             className="rounded-2xl border border-border bg-surface px-4 py-2 text-sm text-text-dark outline-none focus:border-brand-pink"
           >
             {CATEGORY_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className="flex flex-col gap-2 text-sm text-text-dark">
+          Язык курса
+          <select
+            value={formState.language}
+            onChange={(event) =>
+              handleFormChange("language", event.target.value)
+            }
+            className="rounded-2xl border border-border bg-surface px-4 py-2 text-sm text-text-dark outline-none focus:border-brand-pink"
+          >
+            {LANGUAGE_OPTIONS.map((option) => (
               <option key={option.value} value={option.value}>
                 {option.label}
               </option>

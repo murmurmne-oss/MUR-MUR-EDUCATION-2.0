@@ -29,6 +29,9 @@ export default function CoursesPage() {
   }, [user?.id]);
   const { profile } = useUserProfile(resolvedUserId);
   const preferredLanguage = profile?.languageCode ?? "sr";
+  const normalizedLanguage = preferredLanguage.toLowerCase().startsWith("ru")
+    ? "RU"
+    : "SR";
   const { t } = useMemo(
     () => createTranslator(preferredLanguage),
     [preferredLanguage],
@@ -45,7 +48,6 @@ export default function CoursesPage() {
       .then((data) => {
         if (!active) return;
         setCatalog(data);
-        setSelectedCategory(data[0]?.id ?? null);
         setError(null);
       })
       .catch((catalogError: unknown) => {
@@ -62,23 +64,51 @@ export default function CoursesPage() {
     };
   }, [t]);
 
+  const filteredCatalog = useMemo(
+    () =>
+      catalog
+        .map((category) => ({
+          ...category,
+          courses: category.courses.filter(
+            (course) => (course.language ?? "SR") === normalizedLanguage,
+          ),
+        }))
+        .filter((category) => category.courses.length > 0),
+    [catalog, normalizedLanguage],
+  );
+
+  useEffect(() => {
+    if (!filteredCatalog.length) {
+      setSelectedCategory(null);
+      return;
+    }
+    setSelectedCategory((prev) => {
+      if (prev && filteredCatalog.some((category) => category.id === prev)) {
+        return prev;
+      }
+      return filteredCatalog[0]?.id ?? null;
+    });
+  }, [filteredCatalog]);
+
   const categories = useMemo(
     () =>
-      catalog.map((category) => ({
+      filteredCatalog.map((category) => ({
         id: category.id,
         label: category.label,
       })),
-    [catalog],
+    [filteredCatalog],
   );
 
   const coursesToShow = useMemo(() => {
-    if (!catalog.length) return [];
+    if (!filteredCatalog.length) return [];
     if (!selectedCategory) {
-      return catalog.flatMap((category) => category.courses);
+      return filteredCatalog.flatMap((category) => category.courses);
     }
-    return catalog.find((category) => category.id === selectedCategory)
-      ?.courses ?? [];
-  }, [catalog, selectedCategory]);
+    return (
+      filteredCatalog.find((category) => category.id === selectedCategory)
+        ?.courses ?? []
+    );
+  }, [filteredCatalog, selectedCategory]);
 
   return (
     <div className="flex flex-1 flex-col bg-background text-text-dark">
@@ -90,26 +120,28 @@ export default function CoursesPage() {
       </header>
 
       <main className="mt-6 flex flex-1 flex-col gap-6 px-4 pb-12">
-        <section className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
-          {categories.map((category) => (
-            <button
-              key={category.id}
-              type="button"
-              onClick={() =>
-                setSelectedCategory((prev) =>
-                  prev === category.id ? null : category.id,
-                )
-              }
-              className={`whitespace-nowrap rounded-full border px-4 py-2 text-sm font-medium transition-colors ${
-                selectedCategory === category.id
-                  ? "border-brand-pink bg-brand-pink text-white"
-                  : "border-card bg-white text-text-medium hover:border-brand-pink hover:text-text-dark"
-              }`}
-            >
-              {category.label}
-            </button>
-          ))}
-        </section>
+        {categories.length > 0 ? (
+          <section className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
+            {categories.map((category) => (
+              <button
+                key={category.id}
+                type="button"
+                onClick={() =>
+                  setSelectedCategory((prev) =>
+                    prev === category.id ? null : category.id,
+                  )
+                }
+                className={`whitespace-nowrap rounded-full border px-4 py-2 text-sm font-medium transition-colors ${
+                  selectedCategory === category.id
+                    ? "border-brand-pink bg-brand-pink text-white"
+                    : "border-card bg-white text-text-medium hover:border-brand-pink hover:text-text-dark"
+                }`}
+              >
+                {category.label}
+              </button>
+            ))}
+          </section>
+        ) : null}
 
         {isLoading ? (
           <section className="space-y-4">
@@ -123,6 +155,10 @@ export default function CoursesPage() {
         ) : error ? (
           <section className="rounded-3xl bg-card p-5 text-sm text-brand-orange">
             {error}
+          </section>
+        ) : filteredCatalog.length === 0 ? (
+          <section className="rounded-3xl bg-card p-5 text-sm text-text-medium">
+            {t("Скоро появятся курсы на выбранном языке.")}
           </section>
         ) : (
           <section className="space-y-4">

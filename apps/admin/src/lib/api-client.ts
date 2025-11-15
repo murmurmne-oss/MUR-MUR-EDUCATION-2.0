@@ -92,6 +92,7 @@ export type CourseSummary = {
   shortDescription: string | null;
   coverImageUrl: string | null;
   category: string;
+  language?: string;
   isPublished?: boolean;
   priceAmount: number;
   priceCurrency: string;
@@ -112,6 +113,7 @@ export type CourseDetails = {
   coverImageUrl: string | null;
   promoVideoUrl: string | null;
   category: string;
+  language: string;
   level: string;
   isFree: boolean;
   isPublished: boolean;
@@ -184,6 +186,7 @@ export type CoursePayload = {
   coverImageUrl?: string | null;
   promoVideoUrl?: string | null;
   category: string;
+  language: string;
   level?: string;
   priceAmount: number;
   priceCurrency: string;
@@ -368,6 +371,10 @@ export const apiClient = {
     request<CourseDetails>(`/courses/${idOrSlug}`, {
       method: "PUT",
       body: JSON.stringify(payload),
+    }),
+  deleteCourse: (idOrSlug: string) =>
+    request<{ status: string }>(`/courses/${idOrSlug}`, {
+      method: "DELETE",
     }),
   getCourseAccessCodes: (idOrSlug: string) =>
     request<CourseAccessCode[]>(`/courses/${idOrSlug}/access-codes`),

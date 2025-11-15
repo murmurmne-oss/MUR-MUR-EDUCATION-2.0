@@ -65,6 +65,8 @@ const TRANSLATIONS: Record<Locale, Record<string, string>> = {
       "Otvorite kurs da biste videli detalje i dobili pristup.",
     "Не удалось загрузить курсы. Попробуйте позже.":
       "Ne možemo da učitamo kurseve. Pokušajte kasnije.",
+    "Скоро появятся курсы на выбранном языке.":
+      "Uskoro će se pojaviti kursevi na odabranom jeziku.",
     "{modules} модулей · {lessons} уроков":
       "{modules} modula · {lessons} lekcija",
     "{count} участников уже учатся": "{count} polaznika već uči",

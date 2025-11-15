@@ -48,6 +48,7 @@ model Course {
   coverImageUrl    String?
   promoVideoUrl    String?
   category         CourseCategory
+  language         CourseLanguage @default(SR)
   level            CourseLevel    @default(BEGINNER)
   priceAmount      Int            @default(0)
   priceCurrency    Currency       @default(EUR)
@@ -267,6 +268,11 @@ enum CourseCategory {
   EROS_EVERY_DAY
   MEN_WOMEN
   PSYCHOSEXUALITY
+}
+
+enum CourseLanguage {
+  SR
+  RU
 }
 
 enum CourseLevel {

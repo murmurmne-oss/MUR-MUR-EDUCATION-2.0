@@ -101,6 +101,7 @@ export type CatalogCourse = {
   shortDescription: string | null;
   coverImageUrl: string | null;
   isFree: boolean;
+  language?: string;
   price: {
     amount: number;
     currency: string;
@@ -128,6 +129,7 @@ export type CourseDetails = {
   coverImageUrl: string | null;
   promoVideoUrl: string | null;
   category: string;
+  language?: string;
   level: string;
   isFree: boolean;
   priceAmount: number;

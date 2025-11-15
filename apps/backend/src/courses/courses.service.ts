@@ -10,6 +10,7 @@ import {
   CourseAccessStatus,
   CourseAccessType,
   CourseCategory,
+  CourseLanguage,
   CourseLevel,
   Currency,
   LessonContentType,
@@ -55,6 +56,7 @@ export type CourseInput = {
   coverImageUrl?: string | null;
   promoVideoUrl?: string | null;
   category: CourseCategory;
+  language: CourseLanguage;
   level?: CourseLevel;
   priceAmount: number;
   priceCurrency: Currency;
@@ -275,6 +277,7 @@ export class CoursesService {
         coverImageUrl: data.coverImageUrl,
         promoVideoUrl: data.promoVideoUrl,
         category: data.category,
+        language: data.language ?? CourseLanguage.SR,
         level: data.level ?? CourseLevel.BEGINNER,
         priceAmount: data.isFree ? 0 : data.priceAmount,
         priceCurrency: data.priceCurrency,
@@ -345,6 +348,7 @@ export class CoursesService {
           coverImageUrl: data.coverImageUrl,
           promoVideoUrl: data.promoVideoUrl,
           category: data.category,
+          language: data.language ?? existing.language,
           level: data.level ?? existing.level,
           priceAmount: data.isFree ? 0 : data.priceAmount,
           priceCurrency: data.priceCurrency,
@@ -672,6 +676,25 @@ export class CoursesService {
     });
 
     return { status: 'redeemed' };
+  }
+
+  async remove(idOrSlug: string): Promise<{ status: string }> {
+    const course = await this.prisma.course.findFirst({
+      where: {
+        OR: [{ id: idOrSlug }, { slug: idOrSlug }],
+      },
+      select: { id: true },
+    });
+
+    if (!course) {
+      throw new NotFoundException(`Course ${idOrSlug} not found`);
+    }
+
+    await this.prisma.course.delete({
+      where: { id: course.id },
+    });
+
+    return { status: 'deleted' };
   }
 
   async startTest(

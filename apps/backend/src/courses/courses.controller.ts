@@ -1,4 +1,12 @@
-import { Body, Controller, Get, Param, Post, Put } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Post,
+  Put,
+} from '@nestjs/common';
 import { CoursesService } from './courses.service';
 import type {
   CourseInput,
@@ -31,6 +39,11 @@ export class CoursesController {
   @Put(':idOrSlug')
   updateCourse(@Param('idOrSlug') idOrSlug: string, @Body() body: CourseInput) {
     return this.coursesService.update(idOrSlug, body);
+  }
+
+  @Delete(':idOrSlug')
+  deleteCourse(@Param('idOrSlug') idOrSlug: string) {
+    return this.coursesService.remove(idOrSlug);
   }
 
   @Post(':idOrSlug/enroll')

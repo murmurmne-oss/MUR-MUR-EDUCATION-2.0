@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { CourseCategory, Prisma } from '@prisma/client';
+import { CourseCategory, CourseLanguage, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
 type CatalogCourse = {
@@ -9,6 +9,7 @@ type CatalogCourse = {
   shortDescription: string | null;
   coverImageUrl: string | null;
   isFree: boolean;
+  language: CourseLanguage;
   price: {
     amount: number;
     currency: string;
@@ -86,6 +87,7 @@ export class CatalogService {
         shortDescription: course.shortDescription,
         coverImageUrl: course.coverImageUrl,
         isFree: course.isFree,
+        language: course.language,
         price: {
           amount: course.priceAmount,
           currency: course.priceCurrency,
