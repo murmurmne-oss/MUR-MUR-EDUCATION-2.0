@@ -574,22 +574,30 @@ export class UsersService {
       throw new BadRequestException('User id is required');
     }
 
+    const updateData: Prisma.UserUpdateInput = {
+      firstName: input.firstName ?? null,
+      lastName: input.lastName ?? null,
+      username: input.username ?? null,
+      avatarUrl: input.avatarUrl ?? null,
+    };
+
+    if (Object.prototype.hasOwnProperty.call(input, 'languageCode')) {
+      updateData.languageCode = input.languageCode ?? null;
+    }
+
     const user = await this.prisma.user.upsert({
       where: { id: input.id },
-      update: {
-        firstName: input.firstName ?? null,
-        lastName: input.lastName ?? null,
-        username: input.username ?? null,
-        avatarUrl: input.avatarUrl ?? null,
-        languageCode: input.languageCode ?? null,
-      },
+      update: updateData,
       create: {
         id: input.id,
         firstName: input.firstName ?? null,
         lastName: input.lastName ?? null,
         username: input.username ?? null,
         avatarUrl: input.avatarUrl ?? null,
-        languageCode: input.languageCode ?? null,
+        languageCode:
+          input.languageCode === undefined || input.languageCode === null
+            ? 'sr'
+            : input.languageCode,
       },
     });
 

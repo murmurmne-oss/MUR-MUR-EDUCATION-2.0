@@ -12,6 +12,7 @@ import {
   CatalogCategory,
   formatPrice,
 } from "@/lib/api-client";
+import { createTranslator } from "@/lib/i18n";
 
 const CARD_COLORS = ["bg-brand-pink", "bg-brand-orange", "bg-brand-yellow"];
 const DEV_USER_ID = process.env.NEXT_PUBLIC_DEV_USER_ID ?? "555666777";
@@ -38,7 +39,6 @@ export default function HomePage() {
         lastName: user.last_name ?? null,
         username: user.username ?? null,
         avatarUrl: user.photo_url ?? null,
-        languageCode: user.language_code ?? null,
       })
       .catch((syncError) => {
         console.error("Failed to sync user profile", syncError);
@@ -49,7 +49,6 @@ export default function HomePage() {
     user?.last_name,
     user?.username,
     user?.photo_url,
-    user?.language_code,
   ]);
 
   const resolvedUserId = useMemo(() => {
@@ -64,6 +63,11 @@ export default function HomePage() {
     return null;
   }, [user?.id]);
   const { profile } = useUserProfile(resolvedUserId);
+  const preferredLanguage = profile?.languageCode ?? "sr";
+  const { t } = useMemo(
+    () => createTranslator(preferredLanguage),
+    [preferredLanguage],
+  );
   const displayName = useMemo(() => {
     if (profile?.firstName || profile?.lastName) {
       return [profile?.firstName, profile?.lastName]
@@ -93,7 +97,7 @@ export default function HomePage() {
         console.error("Failed to load catalog", catalogError);
         if (!active) return;
         startTransition(() => {
-          setError("Не удалось загрузить каталог. Попробуйте обновить.");
+          setError(t("Не удалось загрузить каталог. Попробуйте обновить."));
         });
       })
       .finally(() => {
@@ -105,7 +109,7 @@ export default function HomePage() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [t]);
 
   const featuredCourse = useMemo(() => {
     if (!catalog.length) return null;
@@ -132,10 +136,10 @@ export default function HomePage() {
 
         <div className="relative z-10 w-full max-w-xs text-center text-text-dark">
           <h1 className="text-3xl font-semibold leading-tight">
-            Hello, {displayName || "Гость"}!
+            {t("Hello, {name}!", { name: displayName || t("Гость") })}
           </h1>
           <p className="mt-1 text-sm text-text-medium">
-            Welcome to Sexual Wellness world MUR MUR
+            {t("Welcome to Sexual Wellness world MUR MUR")}
           </p>
         </div>
       </header>
@@ -158,7 +162,7 @@ export default function HomePage() {
                 />
               ) : (
                 <div className="flex h-full w-full items-center justify-center bg-card text-text-medium">
-                  Нет изображения
+                  {t("Нет изображения")}
                 </div>
               )}
             </div>
@@ -166,12 +170,12 @@ export default function HomePage() {
             <div className="absolute inset-x-0 bottom-0 p-4">
               <div className="inline-block max-w-[90%] rounded-2xl bg-brand-pink/95 px-4 py-3 text-left text-white shadow-md shadow-brand-pink/40 backdrop-blur">
                 <p className="text-xs font-medium opacity-90">
-                  Курс который проходит прямо сейчас
+                  {t("Курс который проходит прямо сейчас")}
                 </p>
                 <p className="text-sm font-semibold">{featuredCourse.title}</p>
                 <p className="mt-1 text-xs font-medium uppercase tracking-wide text-white/90">
                   {featuredCourse.isFree
-                    ? "Бесплатно"
+                    ? t("Бесплатно")
                     : formatPrice(
                         featuredCourse.price.amount,
                         featuredCourse.price.currency,
@@ -189,23 +193,25 @@ export default function HomePage() {
           onClick={() => router.push("/courses")}
           className="w-fit max-w-[240px] rounded-r-[50px] bg-brand-pink px-8 py-3 text-left text-white shadow-md transition-transform active:scale-95"
         >
-          <span className="block text-2xl font-bold leading-tight">New</span>
           <span className="block text-2xl font-bold leading-tight">
-            To discover
+            {t("New")}
+          </span>
+          <span className="block text-2xl font-bold leading-tight">
+            {t("To discover")}
           </span>
         </button>
 
         <section>
           <div className="mb-4 flex items-baseline justify-between">
             <h2 className="text-xl font-semibold text-text-dark">
-              Популярные курсы
+              {t("Популярные курсы")}
             </h2>
             <button
               type="button"
               onClick={() => router.push("/courses")}
               className="text-xs font-medium text-brand-orange underline-offset-4 hover:underline"
             >
-              Смотреть все
+              {t("Смотреть все")}
             </button>
           </div>
           {isLoading ? (
@@ -237,7 +243,7 @@ export default function HomePage() {
                       />
                     ) : (
                       <div className="flex h-full w-full items-center justify-center text-xs text-text-dark/70">
-                        Без изображения
+                      {t("Без изображения")}
                       </div>
                     )}
                   </div>
@@ -246,7 +252,7 @@ export default function HomePage() {
                       {course.title}
                     </p>
                     <p className="overflow-hidden text-xs leading-snug opacity-80 text-ellipsis whitespace-nowrap">
-                      {course.shortDescription ?? "Описание скоро появится"}
+                    {course.shortDescription ?? t("Описание скоро появится")}
                     </p>
                   </div>
                 </button>
@@ -261,7 +267,7 @@ export default function HomePage() {
           </p>
         ) : (
           <p className="text-center text-sm text-text-light">
-            Исследуйте наши курсы и начните обучение уже сегодня!
+          {t("Исследуйте наши курсы и начните обучение уже сегодня!")}
           </p>
         )}
       </main>

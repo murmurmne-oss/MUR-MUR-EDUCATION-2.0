@@ -21,6 +21,8 @@ import {
 } from "@/lib/api-client";
 import { extractPlainText, parseLessonBlocks } from "@/lib/lesson-content";
 import { useTelegram } from "@/hooks/useTelegram";
+import { useUserProfile } from "@/hooks/useUserProfile";
+import { createTranslator } from "@/lib/i18n";
 
 const DEV_USER_ID =
   process.env.NEXT_PUBLIC_DEV_USER_ID ?? "555666777";
@@ -85,16 +87,22 @@ export default function CourseDetailsPage({
         : DEV_USER_ID,
     [tgUser],
   );
+  const { profile } = useUserProfile(resolvedUserId);
+  const preferredLanguage = profile?.languageCode ?? "sr";
+  const { t } = useMemo(
+    () => createTranslator(preferredLanguage),
+    [preferredLanguage],
+  );
   const userProfilePayload = useMemo<StartTestPayload>(
     () => ({
       userId: resolvedUserId,
       firstName: tgUser?.first_name ?? null,
       lastName: tgUser?.last_name ?? null,
       username: tgUser?.username ?? null,
-      languageCode: tgUser?.language_code ?? null,
+      languageCode: profile?.languageCode ?? "sr",
       avatarUrl: tgUser?.photo_url ?? null,
     }),
-    [resolvedUserId, tgUser],
+    [profile?.languageCode, resolvedUserId, tgUser],
   );
   const [pendingTestId, setPendingTestId] = useState<string | null>(null);
   const [isTestLoading, setIsTestLoading] = useState(false);
@@ -129,7 +137,7 @@ export default function CourseDetailsPage({
         console.error("Failed to load course", courseError);
         if (!active) return;
         startTransition(() => {
-          setError("Мы не смогли найти этот курс. Попробуйте позже.");
+          setError(t("Мы не смогли найти этот курс. Попробуйте позже."));
         });
       })
       .finally(() => {
@@ -141,7 +149,7 @@ export default function CourseDetailsPage({
     return () => {
       active = false;
     };
-  }, [courseId]);
+  }, [courseId, t]);
 
   const lessonsCount = useMemo(() => {
     if (!course) return 0;
@@ -161,7 +169,7 @@ export default function CourseDetailsPage({
   const priceLabel = useMemo(() => {
     if (!course) return "";
     if (course.isFree) {
-      return "Бесплатно";
+      return t("Бесплатно");
     }
     const baseLabel = formatPrice(course.priceAmount, course.priceCurrency);
     if (
@@ -171,7 +179,7 @@ export default function CourseDetailsPage({
       return `${baseLabel} · ${priceAmountInStars} ⭐`;
     }
     return baseLabel;
-  }, [course, priceAmountInStars]);
+  }, [course, priceAmountInStars, t]);
 
   const isPaidCourse = useMemo(
     () => Boolean(course && !course.isFree),
@@ -212,19 +220,25 @@ export default function CourseDetailsPage({
 
     if (!priceAmountInStars) {
       if (course.priceCurrency === "EUR") {
-        return "Не удалось конвертировать стоимость курса в Telegram Stars. Проверьте настройку курса конвертации.";
+        return t(
+          "Не удалось конвертировать стоимость курса в Telegram Stars. Проверьте настройку курса конвертации.",
+        );
       }
-      return "Оплата для этого курса появится позже. Следите за обновлениями.";
+      return t("Оплата для этого курса появится позже. Следите за обновлениями.");
     }
 
     if (!isTelegramReady) {
       if (isTelegramInitializing) {
-        return "Готовим Telegram WebApp. Оплата появится через несколько секунд...";
+        return t(
+          "Готовим Telegram WebApp. Оплата появится через несколько секунд...",
+        );
       }
       if (isTelegramFallback || isTelegramUnavailable) {
         return (
-          telegramInitError ??
-          "Оплата доступна только внутри Telegram. Запустите мини‑приложение через бот и попробуйте снова."
+          (telegramInitError ? t(telegramInitError) : null) ??
+          t(
+            "Оплата доступна только внутри Telegram. Запустите мини‑приложение через бот и попробуйте снова.",
+          )
         );
       }
     }
@@ -232,19 +246,23 @@ export default function CourseDetailsPage({
     if (!supportsInlinePayment && !hasTelegramUser) {
       if (!isTelegramReady || isTelegramFallback || isTelegramUnavailable) {
         return (
-          telegramInitError ??
-          "Оплата доступна только внутри Telegram. Запустите мини‑приложение через бот и попробуйте снова."
+          (telegramInitError ? t(telegramInitError) : null) ??
+          t(
+            "Оплата доступна только внутри Telegram. Запустите мини‑приложение через бот и попробуйте снова.",
+          )
         );
       }
-      return "Не удалось определить ваш Telegram ID. Перезапустите мини‑приложение через бот.";
+      return t("Не удалось определить ваш Telegram ID. Перезапустите мини‑приложение через бот.");
     }
 
     if (!supportsInlinePayment && hasTelegramUser) {
-      return "Если окно оплаты не появится, мы отправим счёт в чат с ботом.";
+      return t("Если окно оплаты не появится, мы отправим счёт в чат с ботом.");
     }
 
     if (!canUseTelegramStars) {
-      return "Обновите приложение Telegram до последней версии, чтобы оплатить через Stars.";
+      return t(
+        "Обновите приложение Telegram до последней версии, чтобы оплатить через Stars.",
+      );
     }
 
     return null;
@@ -259,6 +277,7 @@ export default function CourseDetailsPage({
     supportsInlinePayment,
     hasTelegramUser,
     telegramInitError,
+    t,
   ]);
 
   const resetTestState = () => {
@@ -293,8 +312,8 @@ export default function CourseDetailsPage({
       console.error("Failed to start test", startError);
       setTestError(
         startError instanceof Error
-          ? startError.message
-          : "Не удалось начать тест. Попробуйте позже.",
+          ? t(startError.message)
+          : t("Не удалось начать тест. Попробуйте позже."),
       );
     } finally {
       setPendingTestId(null);
@@ -357,7 +376,7 @@ export default function CourseDetailsPage({
     });
 
     if (unanswered.length > 0) {
-      setTestError("Ответьте на все вопросы перед отправкой.");
+      setTestError(t("Ответьте на все вопросы перед отправкой."));
       return;
     }
 
@@ -393,8 +412,8 @@ export default function CourseDetailsPage({
       console.error("Failed to submit test", submitError);
       setTestError(
         submitError instanceof Error
-          ? submitError.message
-          : "Не удалось отправить ответы. Попробуйте позже.",
+          ? t(submitError.message)
+          : t("Не удалось отправить ответы. Попробуйте позже."),
       );
     } finally {
       setIsTestSubmitting(false);
@@ -415,7 +434,9 @@ export default function CourseDetailsPage({
     if (!course.isFree) {
       if (!priceAmountInStars) {
         setEnrollError(
-          "Не удалось рассчитать стоимость курса в Telegram Stars. Напишите в поддержку, если нужна помощь.",
+          t(
+            "Не удалось рассчитать стоимость курса в Telegram Stars. Напишите в поддержку, если нужна помощь.",
+          ),
         );
         return;
       }
@@ -432,7 +453,7 @@ export default function CourseDetailsPage({
       if (supportsInlinePayment && webApp?.initStarPayment) {
         setIsEnrolling(true);
         try {
-          setPaymentStatus("Открываем оплату в Telegram...");
+          setPaymentStatus(t("Открываем оплату в Telegram..."));
           await webApp.initStarPayment({
             slug: course.slug,
             payload: JSON.stringify(paymentPayload),
@@ -441,15 +462,21 @@ export default function CourseDetailsPage({
           });
           const euroLabel = formatPrice(course.priceAmount, course.priceCurrency);
           setPaymentStatus(
-            `Телеграм открыл окно оплаты на ${priceAmountInStars} ⭐ (${euroLabel}). После подтверждения доступ к курсу откроется автоматически.`,
+            t(
+              "Телеграм открыл окно оплаты на {amount} ⭐ ({price}). После подтверждения доступ к курсу откроется автоматически.",
+              {
+                amount: priceAmountInStars,
+                price: euroLabel,
+              },
+            ),
           );
         } catch (paymentError) {
           console.error("Failed to init Telegram Stars payment", paymentError);
           setPaymentStatus(null);
           setEnrollError(
             paymentError instanceof Error
-              ? paymentError.message
-              : "Не удалось запустить оплату. Попробуйте позже.",
+              ? t(paymentError.message)
+              : t("Не удалось запустить оплату. Попробуйте позже."),
           );
         } finally {
           setIsEnrolling(false);
@@ -459,7 +486,9 @@ export default function CourseDetailsPage({
 
       if (!hasTelegramUser || !tgUser) {
         setEnrollError(
-          "Оплата доступна только внутри Telegram. Откройте мини‑приложение через бот и попробуйте снова.",
+          t(
+            "Оплата доступна только внутри Telegram. Откройте мини‑приложение через бот и попробуйте снова.",
+          ),
         );
         return;
       }
@@ -467,7 +496,7 @@ export default function CourseDetailsPage({
       setIsEnrolling(true);
       try {
         setPaymentStatus(
-          "Создаём счёт. Откройте чат с ботом и подтвердите оплату звёздами.",
+          t("Создаём счёт. Откройте чат с ботом и подтвердите оплату звёздами."),
         );
         await apiClient.sendTelegramStarsInvoice({
           courseSlug: course.slug,
@@ -482,15 +511,15 @@ export default function CourseDetailsPage({
         });
         setEnrollError(null);
         setPaymentStatus(
-          "Мы отправили счёт в чат Telegram. Откройте диалог с ботом и подтвердите оплату.",
+          t("Мы отправили счёт в чат Telegram. Откройте диалог с ботом и подтвердите оплату."),
         );
       } catch (invoiceError) {
         console.error("Failed to send Telegram invoice", invoiceError);
         setPaymentStatus(null);
         setEnrollError(
           invoiceError instanceof Error
-            ? invoiceError.message
-            : "Не удалось отправить счёт. Попробуйте снова.",
+            ? t(invoiceError.message)
+            : t("Не удалось отправить счёт. Попробуйте снова."),
         );
       } finally {
         setIsEnrolling(false);
@@ -508,8 +537,8 @@ export default function CourseDetailsPage({
       console.error("Failed to enroll", enrollErr);
       setEnrollError(
         enrollErr instanceof Error
-          ? enrollErr.message
-          : "Не удалось начать курс. Попробуйте позже.",
+          ? t(enrollErr.message)
+          : t("Не удалось начать курс. Попробуйте позже."),
       );
     } finally {
       setIsEnrolling(false);
@@ -524,7 +553,7 @@ export default function CourseDetailsPage({
           onClick={() => router.back()}
           className="text-xs font-medium text-brand-orange underline-offset-4 hover:underline"
         >
-          Назад ко всем курсам
+          {t("Назад ко всем курсам")}
         </button>
         {isLoading ? (
           <div className="space-y-3">
@@ -539,10 +568,13 @@ export default function CourseDetailsPage({
           <>
             <h1 className="text-2xl font-semibold">{course?.title}</h1>
             <p className="text-sm text-text-light">
-              {course?.category ?? "Категория"}
+              {course?.category ?? t("Категория")}
             </p>
             <p className="text-xs text-text-light/70">
-              {course?._count.enrollments ?? 0} учеников · {lessonsCount} уроков
+              {t("{count} учеников · {lessons} уроков", {
+                count: course?._count.enrollments ?? 0,
+                lessons: lessonsCount,
+              })}
             </p>
           </>
         )}
@@ -561,15 +593,17 @@ export default function CourseDetailsPage({
         ) : null}
 
         <section className="rounded-3xl bg-card p-5 text-sm text-text-medium shadow-sm">
-          <h2 className="text-lg font-semibold text-text-dark">О курсе</h2>
+          <h2 className="text-lg font-semibold text-text-dark">{t("О курсе")}</h2>
           <p className="mt-3 leading-relaxed text-text-medium">
             {course?.description ??
-              "Описание появится в ближайшее время. Если у вас есть вопросы, напишите в поддержку."}
+              t(
+                "Описание появится в ближайшее время. Если у вас есть вопросы, напишите в поддержку.",
+              )}
           </p>
         </section>
 
         <section className="space-y-3">
-          <h2 className="text-lg font-semibold text-text-dark">Программа</h2>
+          <h2 className="text-lg font-semibold text-text-dark">{t("Программа")}</h2>
           {isLoading ? (
             <div className="space-y-2">
               {Array.from({ length: 3 }).map((_, index) => (
@@ -589,7 +623,7 @@ export default function CourseDetailsPage({
                   <div>
                     <p className="font-medium text-text-dark">{module.title}</p>
                     <p className="text-xs text-text-light">
-                      {module.lessons.length} уроков
+                      {t("{count} уроков", { count: module.lessons.length })}
                     </p>
                     {module.description ? (
                       <p className="mt-1 text-xs text-text-light">
@@ -636,16 +670,24 @@ export default function CourseDetailsPage({
                           ) : null}
                           {lesson.videoUrl ? (
                             <p className="mt-2 text-xs text-brand-orange">
-                              Видео: {lesson.videoUrl}
+                              {t("Видео: {url}", { url: lesson.videoUrl })}
                             </p>
                           ) : null}
                           <div className="mt-2 flex items-center gap-3 text-[11px] text-text-light">
-                            <span>Тип: {lesson.contentType}</span>
+                            <span>
+                              {t("Тип: {type}", { type: lesson.contentType })}
+                            </span>
                             {lesson.durationMinutes ? (
-                              <span>{lesson.durationMinutes} мин</span>
+                              <span>
+                                {t("{minutes} мин", {
+                                  minutes: lesson.durationMinutes,
+                                })}
+                              </span>
                             ) : null}
                             {lesson.isPreview ? (
-                              <span className="text-brand-pink">Превью</span>
+                              <span className="text-brand-pink">
+                                {t("Превью")}
+                              </span>
                             ) : null}
                           </div>
                         </div>
@@ -661,7 +703,7 @@ export default function CourseDetailsPage({
         {course?.tests.length ? (
           <section className="space-y-3 rounded-3xl bg-card p-5 text-sm text-text-medium shadow-sm">
             <h2 className="text-lg font-semibold text-text-dark">
-              Тесты
+              {t("Тесты")}
             </h2>
             <ul className="space-y-3">
               {course.tests.map((test) => {
@@ -679,19 +721,25 @@ export default function CourseDetailsPage({
                         </p>
                       ) : null}
                       <p className="mt-2 text-xs text-text-light">
-                        Вопросов:{" "}
+                        {t("Вопросов: ")}
                         {Array.isArray(test.questions)
                           ? test.questions.length
-                          : "несколько"}
+                          : t("несколько")}
                       </p>
                       {test.unlockModuleId ? (
                         <p className="text-[11px] text-brand-orange/80">
-                          Доступ после модуля: {test.unlockModule?.title ?? "указанный модуль"}
+                          {t("Доступ после модуля: {module}", {
+                            module:
+                              test.unlockModule?.title ?? t("указанный модуль"),
+                          })}
                         </p>
                       ) : null}
                       {test.unlockLessonId ? (
                         <p className="text-[11px] text-brand-orange/80">
-                          Доступ после урока: {test.unlockLesson?.title ?? "указанный урок"}
+                          {t("Доступ после урока: {lesson}", {
+                            lesson:
+                              test.unlockLesson?.title ?? t("указанный урок"),
+                          })}
                         </p>
                       ) : null}
                     </div>
@@ -701,7 +749,7 @@ export default function CourseDetailsPage({
                       disabled={isStarting || isTestSubmitting}
                       className="w-full rounded-full border border-brand-pink px-3 py-2 text-xs font-semibold text-brand-pink transition-colors hover:bg-brand-pink hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
                     >
-                      {isStarting ? "Готовим тест..." : "Пройти тест"}
+                      {isStarting ? t("Готовим тест...") : t("Пройти тест")}
                     </button>
                   </li>
                 );
@@ -731,23 +779,29 @@ export default function CourseDetailsPage({
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="text-[11px] uppercase tracking-wide text-text-light">
-                    Тест
+                    {t("Тест")}
                   </p>
                   <h3 className="text-lg font-semibold text-text-dark">
                     {testSession.test.title}
                   </h3>
                   <p className="text-xs text-text-light">
-                    {testSession.test.questionCount} вопросов · максимум{" "}
-                    {testSession.test.maxScore} баллов
+                    {t("{questionCount} вопросов · максимум {maxScore} баллов", {
+                      questionCount: testSession.test.questionCount,
+                      maxScore: testSession.test.maxScore,
+                    })}
                   </p>
                   {testSession.test.unlockModule ? (
                     <p className="text-[11px] text-brand-orange/80">
-                      Требуется пройти модуль: {testSession.test.unlockModule.title}
+                      {t("Требуется пройти модуль: {module}", {
+                        module: testSession.test.unlockModule.title,
+                      })}
                     </p>
                   ) : null}
                   {testSession.test.unlockLesson ? (
                     <p className="text-[11px] text-brand-orange/80">
-                      Требуется пройти урок: {testSession.test.unlockLesson.title}
+                      {t("Требуется пройти урок: {lesson}", {
+                        lesson: testSession.test.unlockLesson.title,
+                      })}
                     </p>
                   ) : null}
                 </div>
@@ -757,14 +811,17 @@ export default function CourseDetailsPage({
                   disabled={isTestSubmitting}
                   className="text-xs font-semibold text-brand-orange underline-offset-4 hover:underline disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  Закрыть
+                  {t("Закрыть")}
                 </button>
               </div>
 
               {testResult ? (
                 <div className="rounded-2xl bg-brand-pink/10 px-4 py-3 text-sm text-brand-pink">
-                  Результат: {testResult.score}/{testResult.maxScore} •{" "}
-                  {testResult.percent}%
+                  {t("Результат: {score}/{maxScore} • {percent}", {
+                    score: testResult.score,
+                    maxScore: testResult.maxScore,
+                    percent: `${testResult.percent}%`,
+                  })}
                 </div>
               ) : null}
 
@@ -795,10 +852,10 @@ export default function CourseDetailsPage({
                         <div>
                           <p className="text-xs uppercase tracking-wide text-text-light">
                             {question.type === "open"
-                              ? "Свободный ответ"
+                              ? t("Свободный ответ")
                               : question.type === "multiple"
-                                ? "Несколько вариантов"
-                                : "Один вариант"}
+                                ? t("Несколько вариантов")
+                                : t("Один вариант")}
                           </p>
                           <p className="font-semibold text-text-dark">
                             {question.prompt}
@@ -812,7 +869,7 @@ export default function CourseDetailsPage({
                                 : "bg-brand-orange/10 text-brand-orange"
                             }`}
                           >
-                            {isCorrect ? "Верно" : "Неверно"}
+                            {isCorrect ? t("Верно") : t("Неверно")}
                           </span>
                         )}
                       </div>
@@ -828,13 +885,13 @@ export default function CourseDetailsPage({
                               )
                             }
                             rows={3}
-                            placeholder="Запишите свой ответ"
+                            placeholder={t("Запишите свой ответ")}
                             disabled={Boolean(testResult)}
                             className="w-full rounded-2xl border border-border bg-white px-3 py-2 text-sm text-text-dark outline-none focus:border-brand-pink disabled:cursor-not-allowed disabled:opacity-60"
                           />
                           {evaluation?.expectedAnswer ? (
                             <p className="text-xs text-text-light">
-                              Ожидаемый ответ:{" "}
+                              {t("Ожидаемый ответ: ")}
                               <span className="font-medium text-text-dark">
                                 {evaluation.expectedAnswer}
                               </span>
@@ -887,11 +944,13 @@ export default function CourseDetailsPage({
                         </div>
                       )}
 
-                      {evaluation?.explanation ? (
-                        <p className="text-xs text-text-light">
-                          Пояснение: {evaluation.explanation}
-                        </p>
-                      ) : null}
+                          {evaluation?.explanation ? (
+                            <p className="text-xs text-text-light">
+                              {t("Пояснение: {text}", {
+                                text: evaluation.explanation,
+                              })}
+                            </p>
+                          ) : null}
                     </div>
                   );
                 })}
@@ -905,7 +964,7 @@ export default function CourseDetailsPage({
                     disabled={isTestSubmitting}
                     className="w-full rounded-full bg-brand-pink px-4 py-3 text-sm font-semibold text-white shadow-sm transition-transform active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
                   >
-                    {isTestSubmitting ? "Отправляем..." : "Отправить ответы"}
+                    {isTestSubmitting ? t("Отправляем...") : t("Отправить ответы")}
                   </button>
                 ) : (
                   <button
@@ -913,7 +972,7 @@ export default function CourseDetailsPage({
                     onClick={handleCloseTest}
                     className="w-full rounded-full bg-brand-pink px-4 py-3 text-sm font-semibold text-white shadow-sm transition-transform active:scale-95"
                   >
-                    Закрыть
+                    {t("Закрыть")}
                   </button>
                 )}
               </div>
@@ -928,10 +987,10 @@ export default function CourseDetailsPage({
             <div>
               <p className="text-xs uppercase tracking-wide">
                 {course?.isFree
-                  ? "Бесплатно"
+                  ? t("Бесплатно")
                   : course?.priceCurrency === "TELEGRAM_STAR"
-                    ? "Стоимость в звёздах"
-                    : "Стоимость"}
+                    ? t("Стоимость в звёздах")
+                    : t("Стоимость")}
               </p>
               <p className="text-lg font-semibold">
                 {course ? priceLabel : "—"}
@@ -944,10 +1003,10 @@ export default function CourseDetailsPage({
               className="rounded-full bg-white px-4 py-2 text-sm font-semibold text-brand-orange transition-transform active:scale-95"
             >
               {isEnrolling
-                ? "Подождите..."
+                ? t("Подождите...")
                 : course?.isFree
-                  ? "Начать"
-                  : "Оформить доступ"}
+                  ? t("Начать")
+                  : t("Оформить доступ")}
             </button>
           </div>
           {paymentDisabledReason ? (

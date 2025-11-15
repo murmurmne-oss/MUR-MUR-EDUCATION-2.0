@@ -10,6 +10,7 @@ import {
 } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTelegram } from '@/hooks/useTelegram';
+import { useUserProfile } from '@/hooks/useUserProfile';
 import {
   apiClient,
   CourseDetails,
@@ -21,6 +22,7 @@ import {
   parseLessonBlocks,
 } from '@/lib/lesson-content';
 import { ParsedCourseTest, parseCourseTest } from '@/lib/tests';
+import { createTranslator, type TranslateFn } from '@/lib/i18n';
 
 const DEV_USER_ID =
   process.env.NEXT_PUBLIC_DEV_USER_ID ?? '555666777';
@@ -103,14 +105,16 @@ function clampPercent(status: LessonStatus) {
 function TestRunnerModal({
   test,
   onClose,
+  t,
 }: {
   test: ParsedCourseTest;
   onClose: () => void;
+  t: TranslateFn;
 }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 py-6">
       <div className="w-full max-w-md rounded-3xl bg-white p-5 shadow-lg">
-        <TestRunner test={test} onClose={onClose} />
+        <TestRunner test={test} onClose={onClose} t={t} />
       </div>
     </div>
   );
@@ -136,9 +140,11 @@ function normalizeArray(value: unknown): string[] {
 function TestRunner({
   test,
   onClose,
+  t,
 }: {
   test: ParsedCourseTest;
   onClose: () => void;
+  t: TranslateFn;
 }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string | string[]>>({});
@@ -161,14 +167,16 @@ function TestRunner({
   if (totalQuestions === 0) {
     return (
       <div className="space-y-4">
-        <p className="text-sm text-text-medium">Этот тест ещё не содержит вопросов.</p>
+        <p className="text-sm text-text-medium">
+          {t("Этот тест ещё не содержит вопросов.")}
+        </p>
         <div className="flex justify-end">
           <button
             type="button"
             onClick={onClose}
             className="rounded-full bg-brand-pink px-4 py-2 text-xs font-semibold text-white transition-transform active:scale-95"
           >
-            Закрыть
+            {t("Закрыть")}
           </button>
         </div>
       </div>
@@ -312,7 +320,11 @@ function TestRunner({
               {test.title}
             </h3>
             <p className="text-xs text-text-light">
-              Результат: {correctCount} из {totalQuestions} ({percent}%)
+              {t("Результат: {correct} из {total} ({percent}%)", {
+                correct: correctCount,
+                total: totalQuestions,
+                percent,
+              })}
             </p>
           </div>
           <button
@@ -320,7 +332,7 @@ function TestRunner({
             onClick={onClose}
             className="rounded-full border border-card px-3 py-1 text-xs font-semibold text-text-medium transition-colors hover:border-brand-pink hover:text-text-dark"
           >
-            Закрыть
+            {t("Закрыть")}
           </button>
         </div>
 
@@ -339,31 +351,37 @@ function TestRunner({
               </p>
               {Array.isArray(item.userAnswer) ? (
                 <p className="text-xs text-text-light">
-                  Ваш ответ:{' '}
+                  {t("Ваш ответ: ")}
                   {item.userAnswer.length > 0
                     ? item.userAnswer.join(', ')
                     : '—'}
                 </p>
               ) : (
                 <p className="text-xs text-text-light">
-                  Ваш ответ: {item.userAnswer || '—'}
+                  {t("Ваш ответ: {answer}", {
+                    answer: item.userAnswer || '—',
+                  })}
                 </p>
               )}
               {Array.isArray(item.correctAnswer) ? (
                 <p className="text-xs text-text-light">
-                  Правильный ответ:{' '}
+                  {t("Правильный ответ: ")}
                   {item.correctAnswer.length > 0
                     ? item.correctAnswer.join(', ')
                     : '—'}
                 </p>
               ) : item.correctAnswer ? (
                 <p className="text-xs text-text-light">
-                  Правильный ответ: {item.correctAnswer}
+                  {t("Правильный ответ: {answer}", {
+                    answer: item.correctAnswer,
+                  })}
                 </p>
               ) : null}
               {item.question.explanation ? (
                 <p className="text-xs text-text-light">
-                  Пояснение: {item.question.explanation}
+                  {t("Пояснение: {text}", {
+                    text: item.question.explanation,
+                  })}
                 </p>
               ) : null}
             </div>
@@ -376,14 +394,14 @@ function TestRunner({
             onClick={handleRestart}
             className="rounded-full border border-brand-pink px-3 py-1 text-xs font-semibold text-brand-pink transition-colors hover:bg-brand-pink hover:text-white"
           >
-            Пройти снова
+            {t("Пройти снова")}
           </button>
           <button
             type="button"
             onClick={onClose}
             className="rounded-full bg-brand-pink px-4 py-2 text-xs font-semibold text-white transition-transform active:scale-95"
           >
-            Закрыть
+            {t("Закрыть")}
           </button>
         </div>
       </div>
@@ -402,15 +420,18 @@ function TestRunner({
             {test.title}
           </h3>
           <p className="text-xs text-text-light">
-            Вопрос {currentIndex + 1} из {totalQuestions}
+            {t("Вопрос {index} из {total}", {
+              index: currentIndex + 1,
+              total: totalQuestions,
+            })}
           </p>
         </div>
         <button
           type="button"
           onClick={onClose}
           className="rounded-full border border-card px-3 py-1 text-xs font-semibold text-text-medium transition-colors hover:border-brand-pink hover:text-text-dark"
-        >
-          Закрыть
+          >
+            {t("Закрыть")}
         </button>
       </div>
 
@@ -479,7 +500,7 @@ function TestRunner({
               handleOpenAnswerChange(currentQuestion.id, event.target.value)
             }
             rows={3}
-            placeholder="Введите ваш ответ"
+            placeholder={t("Введите ваш ответ")}
             className="w-full rounded-2xl border border-border bg-surface px-3 py-2 text-sm text-text-dark outline-none focus:border-brand-pink"
           />
         )}
@@ -492,7 +513,7 @@ function TestRunner({
           disabled={currentIndex === 0}
           className="rounded-full border border-card px-3 py-1 text-xs font-semibold text-text-medium transition-colors hover:border-brand-pink hover:text-text-dark disabled:cursor-not-allowed disabled:opacity-40"
         >
-          Назад
+          {t("Назад")}
         </button>
         <button
           type="button"
@@ -506,13 +527,13 @@ function TestRunner({
           }
           className="rounded-full bg-brand-pink px-4 py-2 text-xs font-semibold text-white transition-transform active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {isLastQuestion ? 'Завершить' : 'Следующий'}
+          {isLastQuestion ? t("Завершить") : t("Следующий")}
         </button>
       </div>
 
       {!isLastQuestion && !allAnswered ? (
         <p className="text-[10px] text-text-light">
-          Чтобы завершить тест, ответьте на все вопросы.
+          {t("Чтобы завершить тест, ответьте на все вопросы.")}
         </p>
       ) : null}
     </div>
@@ -531,6 +552,12 @@ export default function MyCourseDetailsPage({
   const userId = useMemo(
     () => user?.id?.toString() ?? DEV_USER_ID,
     [user?.id],
+  );
+  const { profile } = useUserProfile(userId);
+  const preferredLanguage = profile?.languageCode ?? 'sr';
+  const { t } = useMemo(
+    () => createTranslator(preferredLanguage),
+    [preferredLanguage],
   );
   const [course, setCourse] = useState<CourseDetails | null>(null);
   const [enrollment, setEnrollment] = useState<UserEnrollment | null>(null);
@@ -595,8 +622,8 @@ export default function MyCourseDetailsPage({
         startTransition(() => {
           setError(
             loadError instanceof Error
-              ? loadError.message
-              : 'Не удалось загрузить курс. Попробуйте позже.',
+              ? t(loadError.message)
+              : t('Не удалось загрузить курс. Попробуйте позже.'),
           );
         });
       })
@@ -609,7 +636,7 @@ export default function MyCourseDetailsPage({
     return () => {
       active = false;
     };
-  }, [courseSlug, userId]);
+  }, [courseSlug, t, userId]);
 
   const lessonProgressMap = useMemo(() => {
     const map = new Map<string, LessonProgressState>();
@@ -645,14 +672,17 @@ export default function MyCourseDetailsPage({
   }, [selectedLesson]);
 
   const progressLabel = useMemo(() => {
-    if (!enrollment) return 'Прогресс недоступен';
+    if (!enrollment) return t('Прогресс недоступен');
 
-    return `Прогресс: ${enrollment.progress.percent}% · ${
-      enrollment.progress.nextLessonTitle
-        ? `Следующий урок: ${enrollment.progress.nextLessonTitle}`
-        : 'Все уроки завершены'
-    }`;
-  }, [enrollment]);
+    return t('Прогресс: {percent}% · {next}', {
+      percent: enrollment.progress.percent,
+      next: enrollment.progress.nextLessonTitle
+        ? t('Следующий урок: {title}', {
+            title: enrollment.progress.nextLessonTitle,
+          })
+        : t('Все уроки завершены'),
+    });
+  }, [enrollment, t]);
 
   const progressPercent = useMemo(() => {
     if (!enrollment) return 0;
@@ -804,7 +834,7 @@ export default function MyCourseDetailsPage({
           onClick={() => router.push('/my-courses')}
           className="text-xs font-medium text-brand-orange underline-offset-4 hover:underline"
         >
-          Назад к моим курсам
+          {t('Назад к моим курсам')}
         </button>
         {isLoading ? (
           <div className="space-y-3">
@@ -818,7 +848,7 @@ export default function MyCourseDetailsPage({
         ) : (
           <>
             <h1 className="text-2xl font-semibold">
-              {course?.title ?? 'Курс'}
+              {course?.title ?? t('Курс')}
             </h1>
             <p className="text-sm text-text-light">{progressLabel}</p>
           </>
@@ -841,20 +871,21 @@ export default function MyCourseDetailsPage({
           </div>
         ) : !course ? (
           <div className="rounded-3xl bg-card p-5 text-sm text-brand-orange">
-            Курс не найден.
+            {t('Курс не найден.')}
           </div>
         ) : !enrollment ? (
           <div className="space-y-4">
             <div className="rounded-3xl bg-card p-5 text-sm text-brand-orange">
-              У вас нет доступа к этому курсу. Возможно, подписка ещё не
-              активирована.
+              {t(
+                'У вас нет доступа к этому курсу. Возможно, подписка ещё не активирована.',
+              )}
             </div>
             <button
               type="button"
               onClick={() => router.push(`/courses/${course.slug}`)}
               className="w-full rounded-full bg-brand-orange px-4 py-3 text-sm font-semibold text-white shadow-sm transition-transform active:scale-95"
             >
-              Перейти к описанию курса
+              {t('Перейти к описанию курса')}
             </button>
           </div>
         ) : (
@@ -863,10 +894,10 @@ export default function MyCourseDetailsPage({
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <p className="text-xs uppercase tracking-wide text-brand-pink">
-                    Ваш прогресс
+                    {t('Ваш прогресс')}
                   </p>
                   <p className="mt-1 text-lg font-semibold text-text-dark">
-                    {progressPercent}% завершено
+                    {t('{percent}% завершено', { percent: progressPercent })}
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
@@ -892,12 +923,15 @@ export default function MyCourseDetailsPage({
               </div>
               {enrollment.progress.nextLessonTitle ? (
                 <p className="mt-3 text-xs text-text-light">
-                  Следующий урок: {enrollment.progress.nextLessonTitle}
+                  {t('Следующий урок: {title}', {
+                    title: enrollment.progress.nextLessonTitle,
+                  })}
                 </p>
               ) : (
                 <p className="mt-3 text-xs text-text-light">
-                  Вы завершили все уроки курса! Возвращайтесь, чтобы освежить
-                  знания.
+                  {t(
+                    'Вы завершили все уроки курса! Возвращайтесь, чтобы освежить знания.',
+                  )}
                 </p>
               )}
             </section>
@@ -917,7 +951,7 @@ export default function MyCourseDetailsPage({
                         <span
                           className={`rounded-full px-3 py-1 text-[11px] font-semibold ${STATUS_BADGES[selectedLessonProgress.status]}`}
                         >
-                          {STATUS_LABELS[selectedLessonProgress.status]}
+                          {t(STATUS_LABELS[selectedLessonProgress.status])}
                         </span>
                       ) : null}
                     </div>
@@ -932,11 +966,13 @@ export default function MyCourseDetailsPage({
                     {selectedLessonBlocks.length === 0 ? (
                       selectedLesson.lesson.contentType === 'VIDEO' ? (
                         <p className="rounded-2xl bg-card px-4 py-3 text-sm text-text-medium">
-                          Откройте ссылку на видео, чтобы изучить урок.
+                            {t(
+                              'Откройте ссылку на видео, чтобы изучить урок.',
+                            )}
                         </p>
                       ) : (
                         <p className="rounded-2xl bg-card px-4 py-3 text-sm text-text-medium">
-                          Контент урока появится совсем скоро.
+                            {t('Контент урока появится совсем скоро.')}
                         </p>
                       )
                     ) : (
@@ -959,7 +995,7 @@ export default function MyCourseDetailsPage({
                             >
                               <img
                                 src={block.url}
-                                alt={block.caption ?? 'Изображение урока'}
+                                alt={block.caption ?? t('Изображение урока')}
                                 className={`h-auto w-full object-cover ${
                                   block.width === 'full'
                                     ? 'max-h-[360px]'
@@ -1007,7 +1043,7 @@ export default function MyCourseDetailsPage({
                               className="rounded-3xl border border-border/40 bg-white px-4 py-3"
                             >
                               <audio controls className="w-full" src={block.url}>
-                                Ваш браузер не поддерживает элемент audio.
+                                {t('Ваш браузер не поддерживает элемент audio.')}
                               </audio>
                               {block.caption ? (
                                 <p className="mt-2 text-xs text-text-light">
@@ -1091,7 +1127,7 @@ export default function MyCourseDetailsPage({
 
                   {selectedLesson.lesson.videoUrl ? (
                     <div className="rounded-2xl bg-brand-pink/10 p-4 text-sm text-brand-pink">
-                      Видео урок:{' '}
+                      {t('Видео урок: ')}
                       <a
                         href={selectedLesson.lesson.videoUrl}
                         target="_blank"
@@ -1104,15 +1140,23 @@ export default function MyCourseDetailsPage({
                   ) : null}
 
                   <div className="flex flex-wrap gap-3 text-xs text-text-light">
-                    <span>Тип: {selectedLesson.lesson.contentType}</span>
+                    <span>
+                      {t('Тип: {value}', {
+                        value: selectedLesson.lesson.contentType,
+                      })}
+                    </span>
                     {selectedLesson.lesson.durationMinutes ? (
                       <span>
-                        Длительность:{' '}
-                        {selectedLesson.lesson.durationMinutes} мин
+                        {t('Длительность: ')}
+                        {t('{minutes} мин', {
+                          minutes: selectedLesson.lesson.durationMinutes,
+                        })}
                       </span>
                     ) : null}
                     {selectedLesson.lesson.isPreview ? (
-                      <span className="text-brand-pink">Доступен в превью</span>
+                      <span className="text-brand-pink">
+                        {t('Доступен в превью')}
+                      </span>
                     ) : null}
                   </div>
 
@@ -1125,12 +1169,12 @@ export default function MyCourseDetailsPage({
                         className="rounded-full bg-brand-orange px-5 py-2 text-sm font-semibold text-white transition-transform active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
                       >
                         {isProgressUpdating
-                          ? 'Сохраняем...'
-                          : 'Отметить завершённым'}
+                          ? t('Сохраняем...')
+                          : t('Отметить завершённым')}
                       </button>
                     ) : (
                       <span className="text-sm font-medium text-brand-pink">
-                        Урок завершён{' '}
+                        {t('Урок завершён ')}
                         {selectedLessonProgress.completedAt
                           ? new Date(
                               selectedLessonProgress.completedAt,
@@ -1146,21 +1190,23 @@ export default function MyCourseDetailsPage({
                         disabled={isProgressUpdating}
                         className="rounded-full border border-card px-5 py-2 text-sm font-semibold text-text-medium transition-transform hover:border-brand-pink hover:text-text-dark active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
                       >
-                        Сбросить прогресс
+                        {t('Сбросить прогресс')}
                       </button>
                     )}
                   </div>
                 </>
               ) : (
                 <div className="text-sm text-text-medium">
-                  В этом курсе пока нет уроков. Загляните позже!
+                  {t('В этом курсе пока нет уроков. Загляните позже!')}
                 </div>
               )}
             </section>
 
             {parsedTests.length > 0 ? (
               <section className="space-y-3 rounded-3xl bg-white p-5 shadow-sm">
-                <h2 className="text-lg font-semibold text-text-dark">Тесты</h2>
+                <h2 className="text-lg font-semibold text-text-dark">
+                  {t('Тесты')}
+                </h2>
                 <ul className="space-y-3">
                   {parsedTests.map((test) => (
                     <li
@@ -1174,7 +1220,9 @@ export default function MyCourseDetailsPage({
                             <p className="text-xs text-text-light">{test.description}</p>
                           ) : null}
                           <p className="text-xs text-text-light">
-                            Вопросов: {test.questions.length}
+                            {t('Вопросов: {count}', {
+                              count: test.questions.length,
+                            })}
                           </p>
                         </div>
                         <button
@@ -1183,7 +1231,7 @@ export default function MyCourseDetailsPage({
                           disabled={test.questions.length === 0}
                           className="rounded-full bg-brand-pink px-4 py-2 text-xs font-semibold text-white transition-transform active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
                         >
-                          Пройти тест
+                          {t('Пройти тест')}
                         </button>
                       </div>
                     </li>
@@ -1194,7 +1242,7 @@ export default function MyCourseDetailsPage({
 
             <section className="space-y-3">
               <h2 className="text-lg font-semibold text-text-dark">
-                Программа курса
+                {t('Программа курса')}
               </h2>
               <div className="space-y-3">
                 {course.modules.map((module) => (
@@ -1207,7 +1255,7 @@ export default function MyCourseDetailsPage({
                         {module.title}
                       </p>
                       <p className="text-xs text-text-light">
-                        {module.lessons.length} уроков
+                        {t('{count} уроков', { count: module.lessons.length })}
                       </p>
                       {module.description ? (
                         <p className="mt-1 text-xs text-text-light">
@@ -1255,7 +1303,7 @@ export default function MyCourseDetailsPage({
                               <span
                                 className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${STATUS_BADGES[status]}`}
                               >
-                                {STATUS_LABELS[status]}
+                                {t(STATUS_LABELS[status])}
                               </span>
                             </div>
                             {lesson.summary ? (
@@ -1287,6 +1335,7 @@ export default function MyCourseDetailsPage({
         <TestRunnerModal
           test={selectedTest}
           onClose={() => setSelectedTest(null)}
+          t={t}
         />
       ) : null}
     </div>

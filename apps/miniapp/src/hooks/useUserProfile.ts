@@ -46,7 +46,5 @@ export function useUserProfile(userId: string | null | undefined) {
     };
   }, [userId]);
 
-  return { profile, isLoading, error };
+  return { profile, isLoading, error, setProfile };
 }
-
-

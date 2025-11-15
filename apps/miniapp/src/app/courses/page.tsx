@@ -7,9 +7,32 @@ import {
   CatalogCategory,
   formatPrice,
 } from "@/lib/api-client";
+import { useTelegram } from "@/hooks/useTelegram";
+import { useUserProfile } from "@/hooks/useUserProfile";
+import { createTranslator } from "@/lib/i18n";
+
+const DEV_USER_ID = process.env.NEXT_PUBLIC_DEV_USER_ID ?? "555666777";
 
 export default function CoursesPage() {
   const router = useRouter();
+  const { user } = useTelegram();
+  const resolvedUserId = useMemo(() => {
+    if (user?.id && Number.isFinite(Number(user.id))) {
+      return user.id.toString();
+    }
+
+    if (process.env.NODE_ENV !== "production") {
+      return DEV_USER_ID;
+    }
+
+    return null;
+  }, [user?.id]);
+  const { profile } = useUserProfile(resolvedUserId);
+  const preferredLanguage = profile?.languageCode ?? "sr";
+  const { t } = useMemo(
+    () => createTranslator(preferredLanguage),
+    [preferredLanguage],
+  );
   const [catalog, setCatalog] = useState<CatalogCategory[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -28,7 +51,7 @@ export default function CoursesPage() {
       .catch((catalogError: unknown) => {
         console.error("Failed to load catalog", catalogError);
         if (!active) return;
-        setError("Не удалось загрузить курсы. Попробуйте позже.");
+        setError(t("Не удалось загрузить курсы. Попробуйте позже."));
       })
       .finally(() => {
         if (active) setIsLoading(false);
@@ -37,7 +60,7 @@ export default function CoursesPage() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [t]);
 
   const categories = useMemo(
     () =>
@@ -60,9 +83,9 @@ export default function CoursesPage() {
   return (
     <div className="flex flex-1 flex-col bg-background text-text-dark">
       <header className="px-4 pt-6">
-        <h1 className="text-2xl font-semibold">Все курсы</h1>
+        <h1 className="text-2xl font-semibold">{t("Все курсы")}</h1>
         <p className="mt-1 text-sm text-text-light">
-          Откройте курс, чтобы узнать подробности и оформить доступ.
+          {t("Откройте курс, чтобы узнать подробности и оформить доступ.")}
         </p>
       </header>
 
@@ -113,8 +136,10 @@ export default function CoursesPage() {
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <p className="text-xs uppercase tracking-wide text-brand-pink">
-                      {course.stats.moduleCount} модулей ·{" "}
-                      {course.stats.lessonCount} уроков
+                      {t("{modules} модулей · {lessons} уроков", {
+                        modules: course.stats.moduleCount,
+                        lessons: course.stats.lessonCount,
+                      })}
                     </p>
                     <h2 className="mt-1 text-lg font-semibold text-text-dark">
                       {course.title}
@@ -122,7 +147,7 @@ export default function CoursesPage() {
                   </div>
                   <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-brand-orange">
                     {course.isFree
-                      ? "Бесплатно"
+                      ? t("Бесплатно")
                       : formatPrice(
                           course.price.amount,
                           course.price.currency,
@@ -131,10 +156,12 @@ export default function CoursesPage() {
                 </div>
                 <p className="mt-3 text-sm text-text-medium">
                   {course.shortDescription ??
-                    "Описание курса появится в ближайшее время."}
+                    t("Описание курса появится в ближайшее время.")}
                 </p>
                 <div className="mt-4 text-xs font-medium text-text-light">
-                  {course.stats.enrollmentCount} участников уже учатся
+                  {t("{count} участников уже учатся", {
+                    count: course.stats.enrollmentCount,
+                  })}
                 </div>
               </button>
             ))}
