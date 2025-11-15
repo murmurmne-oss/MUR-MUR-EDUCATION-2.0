@@ -28,7 +28,7 @@ import { createTranslator } from "@/lib/i18n";
 const DEV_USER_ID =
   process.env.NEXT_PUBLIC_DEV_USER_ID ?? "555666777";
 const MANAGER_CHAT_URL =
-  process.env.NEXT_PUBLIC_MANAGER_CHAT_URL ?? "https://t.me/murmurmne_bot";
+  process.env.NEXT_PUBLIC_MANAGER_CHAT_URL ?? "https://t.me/mur_mur_manager_bot";
 
 
 
