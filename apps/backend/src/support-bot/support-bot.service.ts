@@ -98,15 +98,15 @@ export class SupportBotService {
       });
       const courseLabel = course?.title ?? slug;
 
-      await this.safeSendMessage(this.managerChatId, {
-        text: [
+      await this.safeNotifyManagers(
+        [
           '🛒 Новый запрос на покупку курса',
           this.formatUserLine(message),
           `#uid:${userId}`,
           '',
           `Курс: ${courseLabel}`,
         ].join('\n'),
-      });
+      );
 
       await this.safeSendMessage(userId, {
         text: `Добрый день! Мы сообщили менеджеру, что вы хотите купить курс «${courseLabel}». Пожалуйста, дождитесь ответа в этом чате.`,
@@ -132,9 +132,7 @@ export class SupportBotService {
       body && body.length > 0 ? body : '(без текста)',
     ];
 
-    await this.safeSendMessage(this.managerChatId, {
-      text: lines.join('\n'),
-    });
+    await this.safeNotifyManagers(lines.join('\n'));
   }
 
   private async handleManagerReply(message: TelegramMessage) {
@@ -160,10 +158,10 @@ export class SupportBotService {
     }
 
     await this.safeSendMessage(targetId, { text: answer });
-    await this.safeSendMessage(this.managerChatId, {
-      text: '✅ Сообщение отправлено пользователю.',
-      reply_to_message_id: message.message_id,
-    });
+    await this.safeNotifyManagers(
+      '✅ Сообщение отправлено пользователю.',
+      message.message_id,
+    );
   }
 
   private formatUserLine(message: TelegramMessage) {
@@ -221,6 +219,19 @@ export class SupportBotService {
     }
 
     return response.json();
+  }
+
+  private async safeNotifyManagers(text: string, replyId?: number) {
+    if (!this.managerChatId) {
+      this.logger.warn(
+        'Manager chat is not configured; notification skipped.',
+      );
+      return;
+    }
+    await this.safeSendMessage(this.managerChatId, {
+      text,
+      reply_to_message_id: replyId,
+    });
   }
 }
 
