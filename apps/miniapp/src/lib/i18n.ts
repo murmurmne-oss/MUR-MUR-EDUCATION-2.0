@@ -176,7 +176,8 @@ const TRANSLATIONS: Record<Locale, Record<string, string>> = {
     "Пройти снова": "Pokušaj ponovo",
     "Вопрос {index} из {total}": "Pitanje {index} od {total}",
     "Введите ваш ответ": "Unesite svoj odgovor",
-    Назад: "Nazad",
+    "placeholder::Введите ваш ответ": "placeholder::Unesite svoj odgovor",
+    "Назад": "Nazad",
     "Завершить": "Završi",
     "Следующий": "Sledeće",
     "Чтобы завершить тест, ответьте на все вопросы.":
@@ -217,26 +218,9 @@ const TRANSLATIONS: Record<Locale, Record<string, string>> = {
     // My courses list
     "Не удалось загрузить ваши курсы. Обновите страницу позже.":
       "Ne možemo da učitamo vaše kurseve. Osvežite stranicu kasnije.",
-    "Прогресс {percent}%": "Napredak {percent}%",
     "Еще нет приобретённых курсов. Перейдите в раздел «Все курсы», чтобы начать обучение.":
       "Još nema kupljenih kurseva. Pređite u odeljak „Svi kursevi” da biste počeli da učite.",
 
-    // My course details & tests
-    "Не начат": "Nije počeo",
-    "В процессе": "U toku",
-    "Завершён": "Završeno",
-    "Этот тест ещё не содержит вопросов.":
-      "Ovaj test još nema pitanja.",
-    "Ваш ответ: ": "Vaš odgovor: ",
-    "Ваш ответ: {answer}": "Vaš odgovor: {answer}",
-    "Правильный ответ: ": "Tačan odgovor: ",
-    "Пояснение: ": "Objašnjenje: ",
-    "Пройти снова": "Pokušaj ponovo",
-    "Вопрос {index} из {total}": "Pitanje {index} od {total}",
-    "placeholder::Введите ваш ответ": "placeholder::Unesite svoj odgovor",
-    "Введите ваш ответ": "Unesite svoj odgovor",
-    "Назад": "Nazad",
-    "Назад к моим курсам": "Nazad na moje kurseve",
     "Завершить": "Završi",
     "Следующий": "Sledeće",
     "Чтобы завершить тест, ответьте на все вопросы.":
