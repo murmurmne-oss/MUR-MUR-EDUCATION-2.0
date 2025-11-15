@@ -175,8 +175,6 @@ const TRANSLATIONS: Record<Locale, Record<string, string>> = {
     "Введите ваш ответ": "Unesite svoj odgovor",
     "placeholder::Введите ваш ответ": "placeholder::Unesite svoj odgovor",
     "Назад": "Nazad",
-    "Завершить": "Završi",
-    "Следующий": "Sledeće",
     "Чтобы завершить тест, ответьте на все вопросы.":
       "Da biste završili test, odgovorite na sva pitanja.",
     "Результат: {score}/{maxScore} • {percent}":
@@ -184,30 +182,6 @@ const TRANSLATIONS: Record<Locale, Record<string, string>> = {
     "Прогресс {percent}%": "Napredak {percent}%",
     "Прогресс: {percent}% · {next}":
       "Napredak: {percent}% · {next}",
-    "Все уроки завершены": "Sve lekcije su završene",
-    "Перейти к описанию курса": "Idi na opis kursa",
-    "Курс": "Kurs",
-    "Курс не найден.": "Kurs nije pronađen.",
-    "{percent}% завершено": "{percent}% završeno",
-    "Вы завершили все уроки курса! Возвращайтесь, чтобы освежить знания.":
-      "Završili ste sve lekcije kursa! Vratite se da osvežite znanje.",
-    "Откройте ссылку на видео, чтобы изучить урок.":
-      "Otvorite link ka videu da biste pogledali lekciju.",
-    "Контент урока появится совсем скоро.":
-      "Sadržaj lekcije će se uskoro pojaviti.",
-    "Изображение урока": "Slika lekcije",
-    "Видео урок: ": "Video lekcija: ",
-    "Тип: {value}": "Tip: {value}",
-    "Длительность: ": "Trajanje: ",
-    "Сохраняем...": "Čuvamo...",
-    "Отметить завершённым": "Označi kao završeno",
-    "Урок завершён ": "Lekcija je završena ",
-    "Сбросить прогресс": "Resetuj napredak",
-    "В этом курсе пока нет уроков. Загляните позже!":
-      "U ovom kursu još nema lekcija. Svratite kasnije!",
-    "Вопросов: ": "Pitanja: ",
-    "Вопросов: {count}": "Pitanja: {count}",
-    "Программа курса": "Program kursa",
 
     // My courses list
     "Не удалось загрузить ваши курсы. Обновите страницу позже.":
