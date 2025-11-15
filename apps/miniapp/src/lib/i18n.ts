@@ -184,8 +184,6 @@ const TRANSLATIONS: Record<Locale, Record<string, string>> = {
     "Прогресс {percent}%": "Napredak {percent}%",
     "Прогресс: {percent}% · {next}":
       "Napredak: {percent}% · {next}",
-    "Следующий урок: ": "Sledeća lekcija: ",
-    "Следующий урок: {title}": "Sledeća lekcija: {title}",
     "Все уроки завершены": "Sve lekcije su završene",
     "Перейти к описанию курса": "Idi na opis kursa",
     "Курс": "Kurs",
