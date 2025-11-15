@@ -441,6 +441,10 @@ export default function CourseDetailsPage({
             <h2 className="text-lg font-semibold text-text-dark">
               {t("Как получить доступ")}
             </h2>
+            <p className="text-xs uppercase tracking-wide text-text-light">
+              {t("Стоимость")}:{" "}
+              <span className="font-semibold text-text-dark">{priceLabel}</span>
+            </p>
             <p>
               {t(
                 "Чтобы купить курс, напишите нашему менеджеру. Он пришлёт индивидуальный код после оплаты.",
@@ -911,18 +915,16 @@ export default function CourseDetailsPage({
         </div>
       ) : null}
 
-      <footer className="fixed bottom-[76px] left-1/2 z-40 w-full max-w-md -translate-x-1/2 px-4">
-        <div className="rounded-3xl bg-brand-pink px-5 py-4 text-white shadow-lg">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="text-xs uppercase tracking-wide">
-                {course?.isFree ? t("Бесплатно") : t("Стоимость")}
-              </p>
-              <p className="text-lg font-semibold">
-                {course ? priceLabel : "—"}
-              </p>
-            </div>
-            {course?.isFree ? (
+      {course?.isFree ? (
+        <footer className="fixed bottom-[76px] left-1/2 z-40 w-full max-w-md -translate-x-1/2 px-4">
+          <div className="rounded-3xl bg-brand-pink px-5 py-4 text-white shadow-lg">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-xs uppercase tracking-wide">{t("Бесплатно")}</p>
+                <p className="text-lg font-semibold">
+                  {course ? priceLabel : "—"}
+                </p>
+              </div>
               <button
                 type="button"
                 onClick={handleEnroll}
@@ -931,36 +933,10 @@ export default function CourseDetailsPage({
               >
                 {isEnrolling ? t("Подождите...") : t("Начать")}
               </button>
-            ) : (
-              <div className="flex flex-col gap-2 sm:flex-row">
-                <button
-                  type="button"
-                  onClick={handleContactManager}
-                  className="rounded-full bg-white px-4 py-2 text-sm font-semibold text-brand-orange transition-transform active:scale-95"
-                >
-                  {t("Купить")}
-                </button>
-                <button
-                  type="button"
-                  onClick={handleOpenRedeemModal}
-                  className="rounded-full border border-white px-4 py-2 text-sm font-semibold text-white transition-transform active:scale-95"
-                >
-                  {t("Активировать код")}
-                </button>
-              </div>
-            )}
+            </div>
           </div>
-          {course?.isFree
-            ? null
-            : (
-              <p className="mt-2 text-center text-[11px] text-white/80">
-                {t(
-                  "Получите уникальный код у менеджера и активируйте его, чтобы начать обучение.",
-                )}
-              </p>
-            )}
-        </div>
-      </footer>
+        </footer>
+      ) : null}
     </div>
   );
 }
