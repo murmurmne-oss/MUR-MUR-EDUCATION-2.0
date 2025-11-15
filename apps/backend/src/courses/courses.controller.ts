@@ -3,6 +3,8 @@ import { CoursesService } from './courses.service';
 import type {
   CourseInput,
   EnrollCourseInput,
+  GenerateAccessCodeInput,
+  RedeemAccessCodeInput,
   StartTestInput,
   SubmitTestInput,
 } from './courses.service';
@@ -37,6 +39,27 @@ export class CoursesController {
     @Body() body: EnrollCourseInput,
   ) {
     return this.coursesService.enrollUser(idOrSlug, body);
+  }
+
+  @Get(':idOrSlug/access-codes')
+  listAccessCodes(@Param('idOrSlug') idOrSlug: string) {
+    return this.coursesService.listAccessCodes(idOrSlug);
+  }
+
+  @Post(':idOrSlug/access-codes')
+  generateAccessCode(
+    @Param('idOrSlug') idOrSlug: string,
+    @Body() body: GenerateAccessCodeInput,
+  ) {
+    return this.coursesService.generateAccessCode(idOrSlug, body);
+  }
+
+  @Post(':idOrSlug/redeem-code')
+  redeemAccessCode(
+    @Param('idOrSlug') idOrSlug: string,
+    @Body() body: RedeemAccessCodeInput,
+  ) {
+    return this.coursesService.redeemAccessCode(idOrSlug, body);
   }
 
   @Post(':idOrSlug/tests/:testId/start')

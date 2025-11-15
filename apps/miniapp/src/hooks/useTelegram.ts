@@ -25,6 +25,7 @@ interface TelegramWebApp {
   ready: () => void;
   expand: () => void;
   initStarPayment?: (params: unknown) => Promise<unknown>;
+  openTelegramLink?: (url: string) => void;
 }
 
 declare global {

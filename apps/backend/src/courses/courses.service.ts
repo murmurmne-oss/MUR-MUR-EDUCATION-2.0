@@ -3,8 +3,10 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { randomBytes } from 'node:crypto';
 import {
   ActivityActorType,
+  CourseAccessCodeStatus,
   CourseAccessStatus,
   CourseAccessType,
   CourseCategory,
@@ -69,6 +71,15 @@ export type EnrollCourseInput = {
   username?: string | null;
   languageCode?: string | null;
   avatarUrl?: string | null;
+};
+
+export type GenerateAccessCodeInput = {
+  note?: string | null;
+  createdBy?: string | null;
+};
+
+export type RedeemAccessCodeInput = EnrollCourseInput & {
+  code: string;
 };
 
 type StoredTestQuestion =
@@ -443,6 +454,226 @@ export class CoursesService {
     return { status: 'enrolled' };
   }
 
+  async listAccessCodes(idOrSlug: string) {
+    const course = await this.prisma.course.findFirst({
+      where: {
+        OR: [{ id: idOrSlug }, { slug: idOrSlug }],
+      },
+      select: { id: true },
+    });
+
+    if (!course) {
+      throw new NotFoundException(`Course ${idOrSlug} not found`);
+    }
+
+    return this.prisma.courseAccessCode.findMany({
+      where: { courseId: course.id },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        activatedBy: {
+          select: {
+            id: true,
+            username: true,
+            firstName: true,
+            lastName: true,
+          },
+        },
+      },
+    });
+  }
+
+  async generateAccessCode(
+    idOrSlug: string,
+    payload: GenerateAccessCodeInput,
+  ) {
+    const course = await this.prisma.course.findFirst({
+      where: {
+        OR: [{ id: idOrSlug }, { slug: idOrSlug }],
+      },
+      select: { id: true, title: true, slug: true },
+    });
+
+    if (!course) {
+      throw new NotFoundException(`Course ${idOrSlug} not found`);
+    }
+
+    const note = payload.note?.trim() ?? null;
+    const createdBy = payload.createdBy?.trim() ?? null;
+    let lastError: unknown = null;
+
+    for (let attempt = 0; attempt < 6; attempt += 1) {
+      const code = this.buildAccessCode();
+      try {
+        const record = await this.prisma.courseAccessCode.create({
+          data: {
+            courseId: course.id,
+            code,
+            note,
+            createdBy,
+          },
+          include: {
+            activatedBy: {
+              select: {
+                id: true,
+                username: true,
+                firstName: true,
+                lastName: true,
+              },
+            },
+          },
+        });
+
+        await this.prisma.activityLog.create({
+          data: {
+            actorType: ActivityActorType.ADMIN,
+            action: 'course.access_code.generated',
+            metadata: {
+              courseId: course.id,
+              courseSlug: course.slug,
+              codeId: record.id,
+              note,
+            },
+            courseId: course.id,
+          },
+        });
+
+        return record;
+      } catch (error) {
+        lastError = error;
+        if (
+          error instanceof Prisma.PrismaClientKnownRequestError &&
+          error.code === 'P2002'
+        ) {
+          continue;
+        }
+        throw error;
+      }
+    }
+
+    console.error('[courses] failed to generate unique code', lastError);
+    throw new BadRequestException(
+      'Не удалось сгенерировать код доступа. Попробуйте ещё раз.',
+    );
+  }
+
+  async redeemAccessCode(
+    idOrSlug: string,
+    payload: RedeemAccessCodeInput,
+  ): Promise<{ status: string }> {
+    const course = await this.prisma.course.findFirst({
+      where: {
+        OR: [{ id: idOrSlug }, { slug: idOrSlug }],
+      },
+      select: {
+        id: true,
+        slug: true,
+        title: true,
+        priceAmount: true,
+        priceCurrency: true,
+      },
+    });
+
+    if (!course) {
+      throw new NotFoundException(`Course ${idOrSlug} not found`);
+    }
+
+    const codeValue = payload.code?.trim().toUpperCase();
+    if (!codeValue) {
+      throw new BadRequestException('Введите код доступа');
+    }
+
+    const codeRecord = await this.prisma.courseAccessCode.findUnique({
+      where: { code: codeValue },
+    });
+
+    if (!codeRecord || codeRecord.courseId !== course.id) {
+      throw new BadRequestException('Код не найден или относится к другому курсу.');
+    }
+
+    if (codeRecord.status === CourseAccessCodeStatus.REDEEMED) {
+      throw new BadRequestException('Этот код уже был активирован.');
+    }
+
+    if (codeRecord.status === CourseAccessCodeStatus.REVOKED) {
+      throw new BadRequestException('Этот код аннулирован. Свяжитесь с поддержкой.');
+    }
+
+    const userId = payload.userId;
+    const now = new Date();
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.user.upsert({
+        where: { id: userId },
+        update: {
+          firstName: payload.firstName ?? null,
+          lastName: payload.lastName ?? null,
+          username: payload.username ?? null,
+          languageCode: payload.languageCode ?? null,
+          avatarUrl: payload.avatarUrl ?? null,
+        },
+        create: {
+          id: userId,
+          firstName: payload.firstName ?? null,
+          lastName: payload.lastName ?? null,
+          username: payload.username ?? null,
+          languageCode: payload.languageCode ?? null,
+          avatarUrl: payload.avatarUrl ?? null,
+        },
+      });
+
+      await tx.courseEnrollment.upsert({
+        where: {
+          userId_courseId: {
+            userId,
+            courseId: course.id,
+          },
+        },
+        update: {
+          status: CourseAccessStatus.ACTIVE,
+          accessType: CourseAccessType.GRANTED,
+          activatedAt: now,
+          pricePaid: course.priceAmount,
+          priceCurrency: course.priceCurrency,
+        },
+        create: {
+          userId,
+          courseId: course.id,
+          status: CourseAccessStatus.ACTIVE,
+          accessType: CourseAccessType.GRANTED,
+          activatedAt: now,
+          pricePaid: course.priceAmount,
+          priceCurrency: course.priceCurrency,
+        },
+      });
+
+      await tx.courseAccessCode.update({
+        where: { id: codeRecord.id },
+        data: {
+          status: CourseAccessCodeStatus.REDEEMED,
+          activatedById: userId,
+          activatedAt: now,
+        },
+      });
+
+      await tx.activityLog.create({
+        data: {
+          actorId: userId,
+          actorType: ActivityActorType.USER,
+          action: 'course.access_code.redeemed',
+          metadata: {
+            courseId: course.id,
+            courseSlug: course.slug,
+            codeId: codeRecord.id,
+            code: codeRecord.code,
+          },
+          courseId: course.id,
+        },
+      });
+    });
+
+    return { status: 'redeemed' };
+  }
+
   async startTest(
     idOrSlug: string,
     testId: string,
@@ -690,6 +921,26 @@ export class CoursesService {
       percent,
       answers: evaluations,
     };
+  }
+
+  private buildAccessCode() {
+    const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    const desiredLength = 12;
+    let value = '';
+
+    while (value.length < desiredLength) {
+      const bytes = randomBytes(desiredLength);
+      for (const byte of bytes) {
+        if (value.length >= desiredLength) {
+          break;
+        }
+        const index = byte % alphabet.length;
+        value += alphabet[index];
+      }
+    }
+
+    const chunks = value.match(/.{1,4}/g);
+    return chunks ? chunks.join('-') : value;
   }
 
   private parseStoredQuestions(raw: Prisma.JsonValue): StoredTestQuestion[] {

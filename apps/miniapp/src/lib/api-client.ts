@@ -324,6 +324,17 @@ export type SendTelegramStarsInvoicePayload = {
   user: TelegramStarsInvoiceUser;
 };
 
+export type RedeemCourseCodePayload = {
+  courseSlug: string;
+  code: string;
+  userId: string;
+  firstName?: string | null;
+  lastName?: string | null;
+  username?: string | null;
+  languageCode?: string | null;
+  avatarUrl?: string | null;
+};
+
 export type UserProfile = {
   id: string;
   firstName: string | null;
@@ -388,6 +399,11 @@ export const apiClient = {
     }),
   sendTelegramStarsInvoice: (payload: SendTelegramStarsInvoicePayload) =>
     request<{ status: string }>(`/payments/telegram-stars/send-invoice`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  redeemCourseCode: (idOrSlug: string, payload: RedeemCourseCodePayload) =>
+    request<{ status: string }>(`/courses/${idOrSlug}/redeem-code`, {
       method: "POST",
       body: JSON.stringify(payload),
     }),

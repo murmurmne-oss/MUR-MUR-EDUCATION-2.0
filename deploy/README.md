@@ -38,6 +38,7 @@ Mandatory admin security variables:
 Frontend variables for the mini app:
 
 * `NEXT_PUBLIC_API_BASE_URL` – points to the backend API (`https://api.murmurmne.com`).
+* `NEXT_PUBLIC_MANAGER_CHAT_URL` – Telegram link to your manager or bot for offline sales (e.g. `https://t.me/your_manager_bot`).
 * `NEXT_PUBLIC_TELEGRAM_STARS_PER_EURO` – number of Telegram Stars that correspond to 1 EUR (used to convert Euro prices to Stars inside the mini app; defaults to 60).
 * `NEXT_PUBLIC_TELEGRAM_SDK_URL` – path or URL to the Telegram WebApp SDK (by default `/telegram-web-app.js`). Place the SDK file under `apps/miniapp/public` if you want to serve it from your own domain.
 * `TELEGRAM_STARS_PER_EURO` – backend-side conversion ratio (set the same value you use on the frontend).

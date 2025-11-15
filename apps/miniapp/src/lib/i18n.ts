@@ -110,11 +110,26 @@ const TRANSLATIONS: Record<Locale, Record<string, string>> = {
     "Пояснение: {text}": "Objašnjenje: {text}",
     "Отправляем...": "Šaljemo...",
     "Отправить ответы": "Pošalji odgovore",
+    "Как получить доступ": "Kako dobiti pristup",
+    "Чтобы купить курс, напишите нашему менеджеру. Он пришлёт индивидуальный код после оплаты.":
+      "Da biste kupili kurs, pišite našem menadžeru. Poslaće vam jedinstveni kod posle plaćanja.",
+    "У вас уже есть код? Активируйте его, и мы сразу добавим курс в раздел «Мои курсы».":
+      "Već imate kod? Aktivirajte ga i odmah ćemo dodati kurs u „Moji kursevi”.",
+    "Написать менеджеру": "Piši menadžeru",
+    "Активировать код": "Aktiviraj kod",
     "Стоимость в звёздах": "Cena u zvezdama",
     "Стоимость": "Cena",
+    "Купить": "Kupi",
     "Подождите...": "Sačekajte...",
     "Начать": "Započni",
-    "Оформить доступ": "Dobij pristup",
+    "Получите уникальный код у менеджера и активируйте его, чтобы начать обучение.":
+      "Dobijte jedinstveni kod od menadžera i aktivirajte ga da biste počeli sa učenjem.",
+    "Код доступа": "Kod za pristup",
+    "Активировать код доступа": "Aktiviraj kod za pristup",
+    "Введите код, который прислал менеджер после оплаты.":
+      "Unesite kod koji vam je poslao menadžer nakon plaćanja.",
+    "Код доступа из сообщения менеджера":
+      "Kod iz poruke menadžera",
     "Назад ко всем курсам": "Nazad na sve kurseve",
     "Не удалось рассчитать стоимость курса в Telegram Stars. Напишите в поддержку, если нужна помощь.":
       "Ne možemo da izračunamo cenu u Telegram zvezdama. Pišite podršci ako vam treba pomoć.",
@@ -153,6 +168,14 @@ const TRANSLATIONS: Record<Locale, Record<string, string>> = {
       "Nije uspelo slanje računa. Pokušajte ponovo.",
     "Не удалось начать курс. Попробуйте позже.":
       "Nije uspelo pokretanje kursa. Pokušajte kasnije.",
+    "Код активирован! Мы добавили курс в раздел «Мои курсы».":
+      "Kod je aktiviran! Kurs smo dodali u odeljak „Moji kursevi”.",
+    "Не удалось активировать код. Попробуйте снова.":
+      "Nije uspelo aktiviranje koda. Pokušajte ponovo.",
+    "Введите код доступа": "Unesite kod za pristup",
+    "Активируем...": "Aktiviramo...",
+    "У вас ещё нет кода? Напишите менеджеру.":
+      "Još nemate kod? Pišite menadžeru.",
     "Не удалось загрузить каталог. Попробуйте обновить.":
       "Neuspešno učitavanje kataloga. Pokušajte da osvežite stranicu.",
     "Не удалось обновить язык. Попробуйте позже.":

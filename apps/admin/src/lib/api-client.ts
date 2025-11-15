@@ -155,6 +155,27 @@ export type CourseDetails = {
   }>;
 };
 
+export type CourseAccessCode = {
+  id: string;
+  code: string;
+  status: string;
+  note: string | null;
+  createdBy: string | null;
+  createdAt: string;
+  activatedAt: string | null;
+  activatedBy?: {
+    id: string;
+    username: string | null;
+    firstName: string | null;
+    lastName: string | null;
+  } | null;
+};
+
+export type CreateAccessCodePayload = {
+  note?: string | null;
+  createdBy?: string | null;
+};
+
 export type CoursePayload = {
   title: string;
   slug: string;
@@ -347,6 +368,16 @@ export const apiClient = {
     request<CourseDetails>(`/courses/${idOrSlug}`, {
       method: "PUT",
       body: JSON.stringify(payload),
+    }),
+  getCourseAccessCodes: (idOrSlug: string) =>
+    request<CourseAccessCode[]>(`/courses/${idOrSlug}/access-codes`),
+  createCourseAccessCode: (
+    idOrSlug: string,
+    payload: CreateAccessCodePayload,
+  ) =>
+    request<CourseAccessCode>(`/courses/${idOrSlug}/access-codes`, {
+      method: "POST",
+      body: JSON.stringify(payload ?? {}),
     }),
   uploadImage,
   getUsers: () => request<UserSummary[]>("/users"),

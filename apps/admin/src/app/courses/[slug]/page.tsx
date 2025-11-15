@@ -3,6 +3,7 @@
 import { useEffect, useState, startTransition } from "react";
 import { useParams } from "next/navigation";
 import { CourseForm } from "@/components/courses/course-form";
+import { AccessCodesPanel } from "@/components/courses/access-codes-panel";
 import { apiClient, CourseDetails } from "@/lib/api-client";
 
 export default function EditCoursePage() {
@@ -61,7 +62,12 @@ export default function EditCoursePage() {
       ) : isLoading ? (
         <div className="h-64 animate-pulse rounded-3xl bg-card" />
       ) : (
-        <CourseForm initialCourse={course} />
+        <>
+          <CourseForm initialCourse={course} />
+          {course ? (
+            <AccessCodesPanel courseSlug={course.slug} />
+          ) : null}
+        </>
       )}
     </div>
   );

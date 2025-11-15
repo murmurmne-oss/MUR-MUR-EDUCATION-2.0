@@ -13,6 +13,7 @@ import {
   apiClient,
   CourseDetails,
   EnrollCoursePayload,
+  RedeemCourseCodePayload,
   StartTestPayload,
   StartTestResponse,
   SubmitTestPayload,
@@ -26,38 +27,10 @@ import { createTranslator } from "@/lib/i18n";
 
 const DEV_USER_ID =
   process.env.NEXT_PUBLIC_DEV_USER_ID ?? "555666777";
+const MANAGER_CHAT_URL =
+  process.env.NEXT_PUBLIC_MANAGER_CHAT_URL ?? "https://t.me/murmurmne_bot";
 
-const RAW_STARS_PER_EURO = Number(
-  process.env.NEXT_PUBLIC_TELEGRAM_STARS_PER_EURO ?? "60",
-);
-const STARS_PER_EURO =
-  Number.isFinite(RAW_STARS_PER_EURO) && RAW_STARS_PER_EURO > 0
-    ? RAW_STARS_PER_EURO
-    : null;
-const MIN_STARS_AMOUNT = 1;
 
-function calculateStarsAmount(course: CourseDetails): number | null {
-  if (course.isFree) {
-    return null;
-  }
-
-  if (course.priceCurrency === "TELEGRAM_STAR") {
-    return Math.max(MIN_STARS_AMOUNT, course.priceAmount);
-  }
-
-  if (course.priceCurrency === "EUR") {
-    if (!STARS_PER_EURO) {
-      console.warn(
-        "[payments] NEXT_PUBLIC_TELEGRAM_STARS_PER_EURO is not configured; unable to convert EUR to Stars.",
-      );
-      return null;
-    }
-    const euroValue = course.priceAmount / 100;
-    return Math.max(MIN_STARS_AMOUNT, Math.round(euroValue * STARS_PER_EURO));
-  }
-
-  return null;
-}
 
 export default function CourseDetailsPage({
   params,
@@ -72,14 +45,7 @@ export default function CourseDetailsPage({
   const [error, setError] = useState<string | null>(null);
   const [isEnrolling, setIsEnrolling] = useState(false);
   const [enrollError, setEnrollError] = useState<string | null>(null);
-  const [paymentStatus, setPaymentStatus] = useState<string | null>(null);
-  const {
-    user: tgUser,
-    webApp,
-    supportsStarPayment,
-    status: telegramStatus,
-    initError: telegramInitError,
-  } = useTelegram();
+  const { user: tgUser, webApp } = useTelegram();
   const resolvedUserId = useMemo(
     () =>
       tgUser?.id && Number.isFinite(Number(tgUser.id))
@@ -116,10 +82,11 @@ export default function CourseDetailsPage({
   const [testResult, setTestResult] = useState<SubmitTestResult | null>(null);
   const [testError, setTestError] = useState<string | null>(null);
   const [isTestSubmitting, setIsTestSubmitting] = useState(false);
-  const isTelegramReady = telegramStatus === "ready" && Boolean(webApp);
-  const isTelegramInitializing = telegramStatus === "checking";
-  const isTelegramFallback = telegramStatus === "fallback";
-  const isTelegramUnavailable = telegramStatus === "unsupported";
+  const [isRedeemModalOpen, setIsRedeemModalOpen] = useState(false);
+  const [redeemCode, setRedeemCode] = useState("");
+  const [redeemError, setRedeemError] = useState<string | null>(null);
+  const [redeemSuccess, setRedeemSuccess] = useState<string | null>(null);
+  const [isRedeeming, setIsRedeeming] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -159,126 +126,20 @@ export default function CourseDetailsPage({
     );
   }, [course]);
 
-  const priceAmountInStars = useMemo(() => {
-    if (!course) {
-      return null;
-    }
-    return calculateStarsAmount(course);
-  }, [course]);
-
   const priceLabel = useMemo(() => {
     if (!course) return "";
     if (course.isFree) {
       return t("Бесплатно");
     }
-    const baseLabel = formatPrice(course.priceAmount, course.priceCurrency);
-    if (
-      priceAmountInStars &&
-      course.priceCurrency !== "TELEGRAM_STAR"
-    ) {
-      return `${baseLabel} · ${priceAmountInStars} ⭐`;
-    }
-    return baseLabel;
-  }, [course, priceAmountInStars, t]);
+    return formatPrice(course.priceAmount, course.priceCurrency);
+  }, [course, t]);
 
   const isPaidCourse = useMemo(
     () => Boolean(course && !course.isFree),
     [course],
   );
 
-  const supportsInlinePayment =
-    isTelegramReady &&
-    supportsStarPayment &&
-    typeof webApp?.initStarPayment === "function";
-  const hasTelegramUser = Boolean(tgUser?.id);
-
-  const canUseTelegramStars = useMemo(() => {
-    if (!isPaidCourse) {
-      return true;
-    }
-    if (!priceAmountInStars) {
-      return false;
-    }
-    if (supportsInlinePayment) {
-      return true;
-    }
-    return hasTelegramUser;
-  }, [
-    isPaidCourse,
-    priceAmountInStars,
-    supportsInlinePayment,
-    hasTelegramUser,
-  ]);
-
-  const actionDisabled =
-    isLoading || isEnrolling || (isPaidCourse && !canUseTelegramStars);
-
-  const paymentDisabledReason = useMemo(() => {
-    if (!course || course.isFree) {
-      return null;
-    }
-
-    if (!priceAmountInStars) {
-      if (course.priceCurrency === "EUR") {
-        return t(
-          "Не удалось конвертировать стоимость курса в Telegram Stars. Проверьте настройку курса конвертации.",
-        );
-      }
-      return t("Оплата для этого курса появится позже. Следите за обновлениями.");
-    }
-
-    if (!isTelegramReady) {
-      if (isTelegramInitializing) {
-        return t(
-          "Готовим Telegram WebApp. Оплата появится через несколько секунд...",
-        );
-      }
-      if (isTelegramFallback || isTelegramUnavailable) {
-        return (
-          (telegramInitError ? t(telegramInitError) : null) ??
-          t(
-            "Оплата доступна только внутри Telegram. Запустите мини‑приложение через бот и попробуйте снова.",
-          )
-        );
-      }
-    }
-
-    if (!supportsInlinePayment && !hasTelegramUser) {
-      if (!isTelegramReady || isTelegramFallback || isTelegramUnavailable) {
-        return (
-          (telegramInitError ? t(telegramInitError) : null) ??
-          t(
-            "Оплата доступна только внутри Telegram. Запустите мини‑приложение через бот и попробуйте снова.",
-          )
-        );
-      }
-      return t("Не удалось определить ваш Telegram ID. Перезапустите мини‑приложение через бот.");
-    }
-
-    if (!supportsInlinePayment && hasTelegramUser) {
-      return t("Если окно оплаты не появится, мы отправим счёт в чат с ботом.");
-    }
-
-    if (!canUseTelegramStars) {
-      return t(
-        "Обновите приложение Telegram до последней версии, чтобы оплатить через Stars.",
-      );
-    }
-
-    return null;
-  }, [
-    course,
-    priceAmountInStars,
-    canUseTelegramStars,
-    isTelegramReady,
-    isTelegramInitializing,
-    isTelegramFallback,
-    isTelegramUnavailable,
-    supportsInlinePayment,
-    hasTelegramUser,
-    telegramInitError,
-    t,
-  ]);
+  const actionDisabled = isLoading || isEnrolling;
 
   const resetTestState = () => {
     setTestSession(null);
@@ -426,110 +287,14 @@ export default function CourseDetailsPage({
   };
 
   const handleEnroll = async () => {
-    if (!course) return;
-
-    setEnrollError(null);
-    setPaymentStatus(null);
-
-    if (!course.isFree) {
-      if (!priceAmountInStars) {
-        setEnrollError(
-          t(
-            "Не удалось рассчитать стоимость курса в Telegram Stars. Напишите в поддержку, если нужна помощь.",
-          ),
-        );
-        return;
-      }
-
-      const paymentPayload = {
-        courseSlug: course.slug,
-        userId: resolvedUserId,
-        requestedAt: Date.now(),
-        priceCurrency: course.priceCurrency,
-        priceAmount: course.priceAmount,
-        amountInStars: priceAmountInStars,
-      };
-
-      if (supportsInlinePayment && webApp?.initStarPayment) {
-        setIsEnrolling(true);
-        try {
-          setPaymentStatus(t("Открываем оплату в Telegram..."));
-          await webApp.initStarPayment({
-            slug: course.slug,
-            payload: JSON.stringify(paymentPayload),
-            amount: priceAmountInStars,
-            currency: "XTR",
-          });
-          const euroLabel = formatPrice(course.priceAmount, course.priceCurrency);
-          setPaymentStatus(
-            t(
-              "Телеграм открыл окно оплаты на {amount} ⭐ ({price}). После подтверждения доступ к курсу откроется автоматически.",
-              {
-                amount: priceAmountInStars,
-                price: euroLabel,
-              },
-            ),
-          );
-        } catch (paymentError) {
-          console.error("Failed to init Telegram Stars payment", paymentError);
-          setPaymentStatus(null);
-          setEnrollError(
-            paymentError instanceof Error
-              ? t(paymentError.message)
-              : t("Не удалось запустить оплату. Попробуйте позже."),
-          );
-        } finally {
-          setIsEnrolling(false);
-        }
-        return;
-      }
-
-      if (!hasTelegramUser || !tgUser) {
-        setEnrollError(
-          t(
-            "Оплата доступна только внутри Telegram. Откройте мини‑приложение через бот и попробуйте снова.",
-          ),
-        );
-        return;
-      }
-
-      setIsEnrolling(true);
-      try {
-        setPaymentStatus(
-          t("Создаём счёт. Откройте чат с ботом и подтвердите оплату звёздами."),
-        );
-        await apiClient.sendTelegramStarsInvoice({
-          courseSlug: course.slug,
-          user: {
-            id: String(tgUser.id),
-            firstName: tgUser.first_name ?? null,
-            lastName: tgUser.last_name ?? null,
-            username: tgUser.username ?? null,
-            languageCode: tgUser.language_code ?? null,
-            avatarUrl: tgUser.photo_url ?? null,
-          },
-        });
-        setEnrollError(null);
-        setPaymentStatus(
-          t("Мы отправили счёт в чат Telegram. Откройте диалог с ботом и подтвердите оплату."),
-        );
-      } catch (invoiceError) {
-        console.error("Failed to send Telegram invoice", invoiceError);
-        setPaymentStatus(null);
-        setEnrollError(
-          invoiceError instanceof Error
-            ? t(invoiceError.message)
-            : t("Не удалось отправить счёт. Попробуйте снова."),
-        );
-      } finally {
-        setIsEnrolling(false);
-      }
+    if (!course || !course.isFree) {
       return;
     }
 
     const payload: EnrollCoursePayload = { ...userProfilePayload };
 
     setIsEnrolling(true);
+    setEnrollError(null);
     try {
       await apiClient.enrollCourse(course.slug, payload);
       router.push("/my-courses");
@@ -542,6 +307,75 @@ export default function CourseDetailsPage({
       );
     } finally {
       setIsEnrolling(false);
+    }
+  };
+
+  const handleContactManager = () => {
+    if (!MANAGER_CHAT_URL) {
+      return;
+    }
+    if (webApp?.openTelegramLink) {
+      webApp.openTelegramLink(MANAGER_CHAT_URL);
+      return;
+    }
+    if (typeof window !== "undefined") {
+      window.open(MANAGER_CHAT_URL, "_blank", "noopener,noreferrer");
+    }
+  };
+
+  const handleOpenRedeemModal = () => {
+    setRedeemCode("");
+    setRedeemError(null);
+    setRedeemSuccess(null);
+    setIsRedeemModalOpen(true);
+  };
+
+  const handleCloseRedeemModal = () => {
+    if (isRedeeming) return;
+    setIsRedeemModalOpen(false);
+  };
+
+  const handleRedeemCodeSubmit = async () => {
+    if (!course) return;
+    const normalizedCode = redeemCode.trim();
+    if (normalizedCode.length === 0) {
+      setRedeemError(t("Введите код доступа"));
+      return;
+    }
+
+    const payload: RedeemCourseCodePayload = {
+      courseSlug: course.slug,
+      code: normalizedCode,
+      userId: resolvedUserId,
+      firstName: tgUser?.first_name ?? null,
+      lastName: tgUser?.last_name ?? null,
+      username: tgUser?.username ?? null,
+      languageCode: profile?.languageCode ?? "sr",
+      avatarUrl: tgUser?.photo_url ?? null,
+    };
+
+    setIsRedeeming(true);
+    setRedeemError(null);
+    setRedeemSuccess(null);
+
+    try {
+      await apiClient.redeemCourseCode(course.slug, payload);
+      setRedeemSuccess(
+        t("Код активирован! Мы добавили курс в раздел «Мои курсы»."),
+      );
+      setTimeout(() => {
+        setIsRedeemModalOpen(false);
+        router.push("/my-courses");
+      }, 1200);
+    } catch (redeemErr) {
+      console.error("Failed to redeem code", redeemErr);
+      setRedeemError(
+        redeemErr instanceof Error
+          ? t(redeemErr.message)
+          : t("Не удалось активировать код. Попробуйте снова."),
+      );
+    } finally {
+      setIsRedeeming(false);
     }
   };
 
@@ -601,6 +435,40 @@ export default function CourseDetailsPage({
               )}
           </p>
         </section>
+
+        {isPaidCourse ? (
+          <section className="space-y-3 rounded-3xl border border-card bg-white p-5 text-sm text-text-medium shadow-sm">
+            <h2 className="text-lg font-semibold text-text-dark">
+              {t("Как получить доступ")}
+            </h2>
+            <p>
+              {t(
+                "Чтобы купить курс, напишите нашему менеджеру. Он пришлёт индивидуальный код после оплаты.",
+              )}
+            </p>
+            <p className="text-text-light">
+              {t(
+                "У вас уже есть код? Активируйте его, и мы сразу добавим курс в раздел «Мои курсы».",
+              )}
+            </p>
+            <div className="flex flex-col gap-3 text-sm font-semibold text-white sm:flex-row">
+              <button
+                type="button"
+                onClick={handleContactManager}
+                className="rounded-full bg-brand-pink px-4 py-3 shadow-sm transition-transform active:scale-95"
+              >
+                {t("Написать менеджеру")}
+              </button>
+              <button
+                type="button"
+                onClick={handleOpenRedeemModal}
+                className="rounded-full border border-brand-pink px-4 py-3 text-brand-pink transition-transform active:scale-95"
+              >
+                {t("Активировать код")}
+              </button>
+            </div>
+          </section>
+        ) : null}
 
         <section className="space-y-3">
           <h2 className="text-lg font-semibold text-text-dark">{t("Программа")}</h2>
@@ -763,11 +631,6 @@ export default function CourseDetailsPage({
           </section>
         ) : null}
 
-        {paymentStatus ? (
-          <p className="rounded-2xl bg-brand-pink/10 px-4 py-2 text-xs text-brand-pink">
-            {paymentStatus}
-          </p>
-        ) : null}
         {enrollError ? (
           <p className="rounded-2xl bg-brand-orange/10 px-4 py-2 text-xs text-brand-orange">
             {enrollError}
@@ -981,39 +844,121 @@ export default function CourseDetailsPage({
         ) : null}
       </main>
 
+      {isRedeemModalOpen ? (
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/50 px-4 py-8">
+          <div className="w-full max-w-sm rounded-3xl bg-white p-5 shadow-xl">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs uppercase tracking-wide text-text-light">
+                  {t("Код доступа")}
+                </p>
+                <h3 className="text-lg font-semibold text-text-dark">
+                  {t("Активировать код доступа")}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={handleCloseRedeemModal}
+                className="text-xs font-semibold text-brand-orange underline-offset-4 hover:underline disabled:cursor-not-allowed disabled:opacity-60"
+                disabled={isRedeeming}
+              >
+                {t("Закрыть")}
+              </button>
+            </div>
+            <p className="mt-2 text-sm text-text-light">
+              {t("Введите код, который прислал менеджер после оплаты.")}
+            </p>
+            <input
+              type="text"
+              value={redeemCode}
+              onChange={(event) => setRedeemCode(event.target.value)}
+              placeholder={t("Код доступа из сообщения менеджера")}
+              className="mt-4 w-full rounded-2xl border border-border px-3 py-2 text-sm text-text-dark outline-none focus:border-brand-pink"
+              disabled={isRedeeming}
+            />
+            {redeemError ? (
+              <p className="mt-3 rounded-2xl bg-brand-orange/10 px-3 py-2 text-xs text-brand-orange">
+                {redeemError}
+              </p>
+            ) : null}
+            {redeemSuccess ? (
+              <p className="mt-3 rounded-2xl bg-brand-pink/10 px-3 py-2 text-xs text-brand-pink">
+                {redeemSuccess}
+              </p>
+            ) : null}
+            <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+              <button
+                type="button"
+                onClick={handleRedeemCodeSubmit}
+                disabled={isRedeeming}
+                className="flex-1 rounded-full bg-brand-pink px-4 py-3 text-sm font-semibold text-white shadow-sm transition-transform active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isRedeeming ? t("Активируем...") : t("Активировать")}
+              </button>
+              <button
+                type="button"
+                onClick={handleCloseRedeemModal}
+                disabled={isRedeeming}
+                className="flex-1 rounded-full border border-border px-4 py-3 text-sm font-semibold text-text-dark transition-transform active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {t("Отмена")}
+              </button>
+            </div>
+            <p className="mt-3 text-center text-xs text-text-light">
+              {t("У вас ещё нет кода? Напишите менеджеру.")}
+            </p>
+          </div>
+        </div>
+      ) : null}
+
       <footer className="fixed bottom-[76px] left-1/2 z-40 w-full max-w-md -translate-x-1/2 px-4">
         <div className="rounded-3xl bg-brand-pink px-5 py-4 text-white shadow-lg">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="text-xs uppercase tracking-wide">
-                {course?.isFree
-                  ? t("Бесплатно")
-                  : course?.priceCurrency === "TELEGRAM_STAR"
-                    ? t("Стоимость в звёздах")
-                    : t("Стоимость")}
+                {course?.isFree ? t("Бесплатно") : t("Стоимость")}
               </p>
               <p className="text-lg font-semibold">
                 {course ? priceLabel : "—"}
               </p>
             </div>
-            <button
-              type="button"
-              onClick={handleEnroll}
-              disabled={actionDisabled}
-              className="rounded-full bg-white px-4 py-2 text-sm font-semibold text-brand-orange transition-transform active:scale-95"
-            >
-              {isEnrolling
-                ? t("Подождите...")
-                : course?.isFree
-                  ? t("Начать")
-                  : t("Оформить доступ")}
-            </button>
+            {course?.isFree ? (
+              <button
+                type="button"
+                onClick={handleEnroll}
+                disabled={actionDisabled}
+                className="rounded-full bg-white px-4 py-2 text-sm font-semibold text-brand-orange transition-transform active:scale-95"
+              >
+                {isEnrolling ? t("Подождите...") : t("Начать")}
+              </button>
+            ) : (
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <button
+                  type="button"
+                  onClick={handleContactManager}
+                  className="rounded-full bg-white px-4 py-2 text-sm font-semibold text-brand-orange transition-transform active:scale-95"
+                >
+                  {t("Купить")}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleOpenRedeemModal}
+                  className="rounded-full border border-white px-4 py-2 text-sm font-semibold text-white transition-transform active:scale-95"
+                >
+                  {t("Активировать код")}
+                </button>
+              </div>
+            )}
           </div>
-          {paymentDisabledReason ? (
-            <p className="mt-2 text-center text-[11px] text-white/80">
-              {paymentDisabledReason}
-            </p>
-          ) : null}
+          {course?.isFree
+            ? null
+            : (
+              <p className="mt-2 text-center text-[11px] text-white/80">
+                {t(
+                  "Получите уникальный код у менеджера и активируйте его, чтобы начать обучение.",
+                )}
+              </p>
+            )}
         </div>
       </footer>
     </div>
