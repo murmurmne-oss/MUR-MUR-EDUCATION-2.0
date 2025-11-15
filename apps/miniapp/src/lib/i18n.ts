@@ -191,8 +191,6 @@ const TRANSLATIONS: Record<Locale, Record<string, string>> = {
 
     "Завершить": "Završi",
     "Следующий": "Sledeće",
-    "Чтобы завершить тест, ответьте на все вопросы.":
-      "Da biste završili test, odgovorite na sva pitanja.",
 
     // Errors & system
     "Не удалось подключиться к серверу. Проверьте интернет и попробуйте ещё раз.":
