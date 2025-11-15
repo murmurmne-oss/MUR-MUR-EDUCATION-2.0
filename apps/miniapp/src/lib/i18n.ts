@@ -181,7 +181,6 @@ const TRANSLATIONS: Record<Locale, Record<string, string>> = {
       "Da biste završili test, odgovorite na sva pitanja.",
     "Результат: {score}/{maxScore} • {percent}":
       "Rezultat: {score}/{maxScore} • {percent}",
-    "Статус доступа: ": "Status pristupa: ",
     "Прогресс {percent}%": "Napredak {percent}%",
     "Прогресс: {percent}% · {next}":
       "Napredak: {percent}% · {next}",
