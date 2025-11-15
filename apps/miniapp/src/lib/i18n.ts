@@ -155,9 +155,6 @@ const TRANSLATIONS: Record<Locale, Record<string, string>> = {
       "Nije uspelo pokretanje kursa. Pokušajte kasnije.",
     "Не удалось загрузить каталог. Попробуйте обновить.":
       "Neuspešno učitavanje kataloga. Pokušajte da osvežite stranicu.",
-    "Курс который проходит прямо сейчас": "Kurs koji se upravo održava",
-    "Исследуйте наши курсы и начните обучение уже сегодня!":
-      "Istražite naše kurseve i počnite sa učenjem već danas!",
     "Не удалось обновить язык. Попробуйте позже.":
       "Nije uspelo ažuriranje jezika. Pokušajte kasnije.",
     "Язык интерфейса": "Jezik interfejsa",
