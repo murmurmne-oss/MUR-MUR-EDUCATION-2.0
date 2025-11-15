@@ -8,6 +8,7 @@ import { CatalogModule } from './catalog/catalog.module';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { PaymentsModule } from './payments/payments.module';
 import { UploadsModule } from './uploads/uploads.module';
+import { SupportBotModule } from './support-bot/support-bot.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { UploadsModule } from './uploads/uploads.module';
     AnalyticsModule,
     PaymentsModule,
     UploadsModule,
+    SupportBotModule,
   ],
   controllers: [AppController],
   providers: [AppService],

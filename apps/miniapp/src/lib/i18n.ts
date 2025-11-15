@@ -168,6 +168,8 @@ const TRANSLATIONS: Record<Locale, Record<string, string>> = {
       "Nije uspelo slanje računa. Pokušajte ponovo.",
     "Не удалось начать курс. Попробуйте позже.":
       "Nije uspelo pokretanje kursa. Pokušajte kasnije.",
+    "Ссылка на менеджера временно недоступна.":
+      "Link ka menadžeru privremeno nije dostupan.",
     "Код активирован! Мы добавили курс в раздел «Мои курсы».":
       "Kod je aktiviran! Kurs smo dodali u odeljak „Moji kursevi”.",
     "Не удалось активировать код. Попробуйте снова.":

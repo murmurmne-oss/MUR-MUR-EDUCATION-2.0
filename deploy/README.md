@@ -44,6 +44,12 @@ Frontend variables for the mini app:
 * `TELEGRAM_STARS_PER_EURO` – backend-side conversion ratio (set the same value you use on the frontend).
 * `TELEGRAM_WEBHOOK_SECRET_TOKEN` – optional shared secret for Telegram bot webhooks (recommended).
 
+Support bot variables (offline sales assistant):
+
+* `MANAGER_BOT_TOKEN` – token issued by @BotFather for the manager/support bot.
+* `MANAGER_BOT_SECRET_TOKEN` – optional secret used to protect the webhook (`x-telegram-bot-api-secret-token` header).
+* `MANAGER_CHAT_ID` – ID of the private group/channel where managers receive requests (can be obtained via `getUpdates` after inviting the bot). The bot forwards all user messages there and expects managers to reply directly in the thread.
+
 ## 4. Build and start
 
 ```bash
@@ -70,6 +76,14 @@ curl -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/setWebhook" \
 ```
 
 If you rotate the domain or secret token, call `setWebhook` again (optionally with `-d "drop_pending_updates=true"` to clear old queue).
+
+Configure the manager/support bot webhook as well:
+
+```bash
+curl -X POST "https://api.telegram.org/bot${MANAGER_BOT_TOKEN}/setWebhook" \
+  -d "url=https://api.murmurmne.com/support-bot/webhook" \
+  -d "secret_token=${MANAGER_BOT_SECRET_TOKEN}"
+```
 
 ## 7. Updating the stack
 

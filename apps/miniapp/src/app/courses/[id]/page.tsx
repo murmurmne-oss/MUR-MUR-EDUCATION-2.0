@@ -55,6 +55,20 @@ export default function CourseDetailsPage({
   );
   const { profile } = useUserProfile(resolvedUserId);
   const preferredLanguage = profile?.languageCode ?? "sr";
+  const managerLink = useMemo(() => {
+    if (!MANAGER_CHAT_URL) {
+      return null;
+    }
+    if (!course?.slug) {
+      return MANAGER_CHAT_URL;
+    }
+    const payload = encodeURIComponent(`buy_${course.slug}`);
+    const separator = MANAGER_CHAT_URL.includes("?") ? "&" : "?";
+    if (MANAGER_CHAT_URL.includes("start=")) {
+      return MANAGER_CHAT_URL;
+    }
+    return `${MANAGER_CHAT_URL}${separator}start=${payload}`;
+  }, [course?.slug]);
   const { t } = useMemo(
     () => createTranslator(preferredLanguage),
     [preferredLanguage],
@@ -311,15 +325,16 @@ export default function CourseDetailsPage({
   };
 
   const handleContactManager = () => {
-    if (!MANAGER_CHAT_URL) {
+    if (!managerLink) {
+      setEnrollError(t("Ссылка на менеджера временно недоступна."));
       return;
     }
     if (webApp?.openTelegramLink) {
-      webApp.openTelegramLink(MANAGER_CHAT_URL);
+      webApp.openTelegramLink(managerLink);
       return;
     }
     if (typeof window !== "undefined") {
-      window.open(MANAGER_CHAT_URL, "_blank", "noopener,noreferrer");
+      window.open(managerLink, "_blank", "noopener,noreferrer");
     }
   };
 
