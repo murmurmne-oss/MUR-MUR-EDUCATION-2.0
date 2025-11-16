@@ -71,6 +71,11 @@ export class CoursesController {
     return this.coursesService.generateAccessCode(idOrSlug, body);
   }
 
+  @Post('redeem-code')
+  redeemAccessCodeByCode(@Body() body: RedeemAccessCodeInput) {
+    return this.coursesService.redeemAccessCodeByCode(body);
+  }
+
   @Post(':idOrSlug/redeem-code')
   redeemAccessCode(
     @Param('idOrSlug') idOrSlug: string,

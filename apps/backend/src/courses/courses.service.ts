@@ -697,6 +697,118 @@ export class CoursesService {
     return { status: 'redeemed' };
   }
 
+  async redeemAccessCodeByCode(
+    payload: RedeemAccessCodeInput,
+  ): Promise<{ status: string; courseSlug: string }> {
+    const codeValue = payload.code?.trim().toUpperCase();
+    if (!codeValue) {
+      throw new BadRequestException('Введите код доступа');
+    }
+
+    const codeRecord = await this.prisma.courseAccessCode.findUnique({
+      where: { code: codeValue },
+      include: {
+        course: {
+          select: {
+            id: true,
+            slug: true,
+            title: true,
+            priceAmount: true,
+            priceCurrency: true,
+          },
+        },
+      },
+    });
+
+    if (!codeRecord) {
+      throw new BadRequestException('Код не найден.');
+    }
+
+    if (codeRecord.status === CourseAccessCodeStatus.REDEEMED) {
+      throw new BadRequestException('Этот код уже был активирован.');
+    }
+
+    if (codeRecord.status === CourseAccessCodeStatus.REVOKED) {
+      throw new BadRequestException('Этот код аннулирован. Свяжитесь с поддержкой.');
+    }
+
+    const course = codeRecord.course;
+    const userId = payload.userId;
+    const now = new Date();
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.user.upsert({
+        where: { id: userId },
+        update: {
+          firstName: payload.firstName ?? null,
+          lastName: payload.lastName ?? null,
+          username: payload.username ?? null,
+          languageCode: payload.languageCode ?? null,
+          avatarUrl: payload.avatarUrl ?? null,
+        },
+        create: {
+          id: userId,
+          firstName: payload.firstName ?? null,
+          lastName: payload.lastName ?? null,
+          username: payload.username ?? null,
+          languageCode: payload.languageCode ?? null,
+          avatarUrl: payload.avatarUrl ?? null,
+        },
+      });
+
+      await tx.courseEnrollment.upsert({
+        where: {
+          userId_courseId: {
+            userId,
+            courseId: course.id,
+          },
+        },
+        update: {
+          status: CourseAccessStatus.ACTIVE,
+          accessType: CourseAccessType.GRANTED,
+          activatedAt: now,
+          pricePaid: course.priceAmount,
+          priceCurrency: course.priceCurrency,
+        },
+        create: {
+          userId,
+          courseId: course.id,
+          status: CourseAccessStatus.ACTIVE,
+          accessType: CourseAccessType.GRANTED,
+          activatedAt: now,
+          pricePaid: course.priceAmount,
+          priceCurrency: course.priceCurrency,
+        },
+      });
+
+      await tx.courseAccessCode.update({
+        where: { id: codeRecord.id },
+        data: {
+          status: CourseAccessCodeStatus.REDEEMED,
+          activatedById: userId,
+          activatedAt: now,
+        },
+      });
+
+      await tx.activityLog.create({
+        data: {
+          actorId: userId,
+          actorType: ActivityActorType.USER,
+          action: 'course.access_code.redeemed',
+          metadata: {
+            courseId: course.id,
+            courseSlug: course.slug,
+            codeId: codeRecord.id,
+            code: codeRecord.code,
+          },
+          courseId: course.id,
+        },
+      });
+    });
+
+    return { status: 'redeemed', courseSlug: course.slug };
+  }
+
   async remove(idOrSlug: string): Promise<{ status: string }> {
     const course = await this.prisma.course.findFirst({
       where: {

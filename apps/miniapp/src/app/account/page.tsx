@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useTelegram } from "@/hooks/useTelegram";
 import { useUserProfile } from "@/hooks/useUserProfile";
 import {
@@ -34,6 +35,7 @@ const MANAGER_CHAT_URL =
   process.env.NEXT_PUBLIC_MANAGER_CHAT_URL ?? "https://t.me/mur_mur_manager_bot";
 
 export default function AccountPage() {
+  const router = useRouter();
   const { user, greetingName, webApp } = useTelegram();
   const [frequency, setFrequency] = useState("daily");
   const [daytime, setDaytime] = useState("morning");
@@ -208,7 +210,7 @@ export default function AccountPage() {
 
     try {
       const payload: RedeemCourseCodePayload = {
-        courseSlug: "", // будет проигнорирован на бэкенде, код содержит курс
+        courseSlug: "", // не используется в новом endpoint
         code: normalized,
         userId: resolvedUserId,
         firstName: user?.first_name ?? null,
@@ -218,15 +220,14 @@ export default function AccountPage() {
         avatarUrl: user?.photo_url ?? null,
       };
 
-      // используем специальный endpoint для кода, привязанного к курсу, если такой появится;
-      // пока просто отправим на один из курсов-заглушек нельзя, поэтому оставим сообщение
-      await Promise.reject(
-        new Error(
-          t(
-            "Активация по коду доступна из карточки конкретного курса. Напишите менеджеру, если нужна помощь.",
-          ),
-        ),
+      const result = await apiClient.redeemCodeByCode(payload);
+      setRedeemSuccess(
+        t("Код активирован! Мы добавили курс в раздел «Мои курсы»."),
       );
+      setTimeout(() => {
+        setIsRedeemModalOpen(false);
+        router.push("/my-courses");
+      }, 1200);
     } catch (error) {
       setRedeemError(
         error instanceof Error

@@ -439,6 +439,11 @@ export const apiClient = {
       method: "POST",
       body: JSON.stringify(payload),
     }),
+  redeemCodeByCode: (payload: RedeemCourseCodePayload) =>
+    request<{ status: string; courseSlug: string }>(`/courses/redeem-code`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
 };
 
 export function formatPrice(amount: number, currency: string) {
