@@ -369,14 +369,23 @@ export default function CourseDetailsPage({
     };
 
     try {
-      if (supportsStarPayment && webApp?.initStarPayment) {
+      if (supportsStarPayment && webApp?.openInvoice) {
         const { invoiceUrl } = await apiClient.createTelegramStarsInvoice(payload);
-        await webApp.initStarPayment({ invoiceUrl });
-        setStarsPaymentMessage(
-          t(
-            "Мы открыли окно оплаты Telegram Stars. После успешной оплаты курс появится в разделе «Мои курсы».",
-          ),
-        );
+        webApp.openInvoice(invoiceUrl, (status) => {
+          if (status === "paid") {
+            setStarsPaymentMessage(
+              t(
+                "Оплата прошла успешно. Курс скоро появится в разделе «Мои курсы».",
+              ),
+            );
+          } else if (status === "cancelled") {
+            setStarsPaymentMessage(t("Оплата была отменена."));
+          } else if (status === "failed") {
+            setStarsPaymentError(
+              t("Оплата не удалась. Попробуйте ещё раз или напишите менеджеру."),
+            );
+          }
+        });
       } else {
         await apiClient.sendTelegramStarsInvoice(payload);
         setStarsPaymentMessage(
