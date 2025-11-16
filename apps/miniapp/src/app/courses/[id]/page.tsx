@@ -50,7 +50,7 @@ export default function CourseDetailsPage({
     null,
   );
   const [starsPaymentError, setStarsPaymentError] = useState<string | null>(null);
-  const { user: tgUser, webApp } = useTelegram();
+  const { user: tgUser, webApp, supportsStarPayment } = useTelegram();
   const resolvedUserId = useMemo(
     () =>
       tgUser?.id && Number.isFinite(Number(tgUser.id))
@@ -356,31 +356,42 @@ export default function CourseDetailsPage({
     setStarsPaymentMessage(null);
     setIsPayingWithStars(true);
 
-    try {
-      await apiClient.sendTelegramStarsInvoice({
-        courseSlug: course.slug,
-        user: {
-          id: tgUser.id.toString(),
-          firstName: tgUser.first_name ?? null,
-          lastName: tgUser.last_name ?? null,
-          username: tgUser.username ?? null,
-          languageCode: profile?.languageCode ?? "sr",
-          avatarUrl: tgUser.photo_url ?? null,
-        },
-      });
+    const payload = {
+      courseSlug: course.slug,
+      user: {
+        id: tgUser.id.toString(),
+        firstName: tgUser.first_name ?? null,
+        lastName: tgUser.last_name ?? null,
+        username: tgUser.username ?? null,
+        languageCode: profile?.languageCode ?? "sr",
+        avatarUrl: tgUser.photo_url ?? null,
+      },
+    };
 
-      setStarsPaymentMessage(
-        t(
-          "Мы отправили счёт в ваш Telegram. Оплатите его, и курс появится в разделе «Мои курсы».",
-        ),
-      );
+    try {
+      if (supportsStarPayment && webApp?.initStarPayment) {
+        const { invoiceUrl } = await apiClient.createTelegramStarsInvoice(payload);
+        await webApp.initStarPayment({ invoiceUrl });
+        setStarsPaymentMessage(
+          t(
+            "Мы открыли окно оплаты Telegram Stars. После успешной оплаты курс появится в разделе «Мои курсы».",
+          ),
+        );
+      } else {
+        await apiClient.sendTelegramStarsInvoice(payload);
+        setStarsPaymentMessage(
+          t(
+            "Мы отправили счёт в ваш Telegram. Оплатите его, и курс появится в разделе «Мои курсы».",
+          ),
+        );
+      }
     } catch (starsError) {
-      console.error("Failed to send Telegram Stars invoice", starsError);
+      console.error("Failed to process Telegram Stars payment", starsError);
       setStarsPaymentError(
         starsError instanceof Error
           ? t(starsError.message)
           : t(
-              "Не удалось отправить счёт в Telegram Stars. Попробуйте ещё раз или напишите менеджеру.",
+              "Не удалось запустить оплату в Telegram Stars. Попробуйте ещё раз или напишите менеджеру.",
             ),
       );
     } finally {
@@ -528,7 +539,7 @@ export default function CourseDetailsPage({
                 className="rounded-full bg-brand-pink px-4 py-3 shadow-sm transition-transform active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {isPayingWithStars
-                  ? t("Отправляем счёт...")
+                  ? t("Готовим оплату...")
                   : t("Оплатить в Telegram Stars")}
               </button>
               <button
