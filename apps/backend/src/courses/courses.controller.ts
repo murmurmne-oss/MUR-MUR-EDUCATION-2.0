@@ -6,6 +6,7 @@ import {
   Param,
   Post,
   Put,
+  Query,
 } from '@nestjs/common';
 import { CoursesService } from './courses.service';
 import type {
@@ -27,8 +28,11 @@ export class CoursesController {
   }
 
   @Get(':idOrSlug')
-  getCourse(@Param('idOrSlug') idOrSlug: string) {
-    return this.coursesService.findOne(idOrSlug);
+  getCourse(
+    @Param('idOrSlug') idOrSlug: string,
+    @Query('userId') userId?: string,
+  ) {
+    return this.coursesService.findOne(idOrSlug, userId);
   }
 
   @Post()

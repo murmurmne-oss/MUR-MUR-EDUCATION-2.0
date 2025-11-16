@@ -189,7 +189,7 @@ export class CoursesService {
     });
   }
 
-  async findOne(idOrSlug: string) {
+  async findOne(idOrSlug: string, userId?: string) {
     const course = await this.prisma.course.findFirst({
       where: {
         OR: [{ id: idOrSlug }, { slug: idOrSlug }],
@@ -244,6 +244,25 @@ export class CoursesService {
                 },
               },
             },
+            ...(userId
+              ? {
+                  attempts: {
+                    where: {
+                      userId,
+                      status: TestAttemptStatus.COMPLETED,
+                    },
+                    orderBy: { completedAt: 'desc' },
+                    take: 1,
+                    select: {
+                      id: true,
+                      status: true,
+                      score: true,
+                      maxScore: true,
+                      completedAt: true,
+                    },
+                  },
+                }
+              : {}),
           },
         },
         _count: {

@@ -161,6 +161,10 @@ export type CourseDetails = {
     unlockModule?: {
       id: string;
       title: string;
+      order: number;
+      lessons?: Array<{
+        id: string;
+      }>;
     } | null;
     unlockLesson?: {
       id: string;
@@ -169,6 +173,13 @@ export type CourseDetails = {
         title: string | null;
       } | null;
     } | null;
+    attempts?: Array<{
+      id: string;
+      status: string;
+      score: number | null;
+      maxScore: number | null;
+      completedAt: string | null;
+    }>;
   }>;
   reviews: Array<{
     id: string;
@@ -362,8 +373,12 @@ export type SyncUserPayload = {
 
 export const apiClient = {
   getCatalog: () => request<CatalogCategory[]>("/catalog"),
-  getCourse: (idOrSlug: string) =>
-    request<CourseDetails>(`/courses/${idOrSlug}`),
+  getCourse: (idOrSlug: string, userId?: string) => {
+    const url = userId
+      ? `/courses/${idOrSlug}?userId=${encodeURIComponent(userId)}`
+      : `/courses/${idOrSlug}`;
+    return request<CourseDetails>(url);
+  },
   getUserEnrollments: (userId: string) =>
     request<UserEnrollmentsResponse>(`/users/${userId}/enrollments`),
   getUserProfile: (userId: string) =>

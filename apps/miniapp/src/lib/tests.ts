@@ -16,6 +16,8 @@ export type ParsedCourseTest = {
   title: string;
   description?: string | null;
   questions: ParsedTestQuestion[];
+  unlockModuleId?: string | null;
+  unlockLessonId?: string | null;
 };
 
 function createLocalId() {
@@ -205,11 +207,15 @@ export function parseCourseTest(rawTest: {
   title: string;
   description?: string | null;
   questions: unknown;
+  unlockModuleId?: string | null;
+  unlockLessonId?: string | null;
 }): ParsedCourseTest {
   return {
     id: rawTest.id,
     title: rawTest.title,
     description: rawTest.description ?? null,
     questions: parseTestQuestions(rawTest.questions),
+    unlockModuleId: rawTest.unlockModuleId ?? null,
+    unlockLessonId: rawTest.unlockLessonId ?? null,
   };
 }

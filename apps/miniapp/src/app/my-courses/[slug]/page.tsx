@@ -576,7 +576,7 @@ export default function MyCourseDetailsPage({
 
     startTransition(() => setIsLoading(true));
     Promise.all([
-      apiClient.getCourse(courseSlug),
+      apiClient.getCourse(courseSlug, userId),
       apiClient.getUserEnrollments(userId).catch(() => null),
     ])
       .then(([courseData, enrollmentsResponse]) => {
@@ -693,6 +693,46 @@ export default function MyCourseDetailsPage({
     return Math.min(100, Math.max(0, Math.round(raw)));
   }, [enrollment]);
 
+  // Проверка доступности модулей на основе пройденных тестов
+  const moduleAccessibility = useMemo(() => {
+    const accessMap = new Map<string, { isLocked: boolean; requiredTest: ParsedCourseTest | null }>();
+    
+    if (!course) return accessMap;
+
+    // Первый модуль всегда доступен
+    const firstModule = course.modules[0];
+    if (firstModule) {
+      accessMap.set(firstModule.id, { isLocked: false, requiredTest: null });
+    }
+
+    // Проверяем остальные модули
+    for (let i = 1; i < course.modules.length; i++) {
+      const module = course.modules[i];
+      const previousModule = course.modules[i - 1];
+      
+      // Ищем тест, который разблокирует этот модуль
+      const unlockTest = parsedTests.find(
+        (test) => test.unlockModuleId === module.id
+      );
+
+      if (unlockTest) {
+        // Проверяем, пройден ли тест
+        const testRecord = course.tests.find((t) => t.id === unlockTest.id);
+        const hasCompletedAttempt = testRecord?.attempts && testRecord.attempts.length > 0;
+        
+        accessMap.set(module.id, {
+          isLocked: !hasCompletedAttempt,
+          requiredTest: unlockTest,
+        });
+      } else {
+        // Если нет теста для разблокировки, модуль доступен
+        accessMap.set(module.id, { isLocked: false, requiredTest: null });
+      }
+    }
+
+    return accessMap;
+  }, [course, parsedTests]);
+
   const refreshEnrollment = useCallback(
     async (options?: { completedLessonId?: string }) => {
       const response = await apiClient.getUserEnrollments(userId);
@@ -775,10 +815,18 @@ export default function MyCourseDetailsPage({
 
   const handleSelectLesson = useCallback(
     async (lessonRef: LessonRef) => {
+      const previousModuleOrder = selectedLesson?.moduleOrder ?? -1;
+      const newModuleOrder = lessonRef.moduleOrder;
+      
       setSelectedLesson(lessonRef);
       await ensureLessonStarted(lessonRef);
+      
+      // Прокрутка наверх при переходе на новый модуль
+      if (newModuleOrder !== previousModuleOrder && typeof window !== 'undefined') {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
     },
-    [ensureLessonStarted],
+    [ensureLessonStarted, selectedLesson?.moduleOrder],
   );
 
   const handleCompleteLesson = useCallback(async () => {
@@ -1245,86 +1293,125 @@ export default function MyCourseDetailsPage({
                 {t('Программа курса')}
               </h2>
               <div className="space-y-3">
-                {course.modules.map((module) => (
-                  <div
-                    key={module.id}
-                    className="space-y-2 rounded-2xl border border-card bg-white px-4 py-3 text-sm text-text-medium"
-                  >
-                    <div>
-                      <p className="font-medium text-text-dark">
-                        {module.title}
-                      </p>
-                      <p className="text-xs text-text-light">
-                        {t('{count} уроков', { count: module.lessons.length })}
-                      </p>
-                      {module.description ? (
-                        <p className="mt-1 text-xs text-text-light">
-                          {module.description}
+                {course.modules.map((module) => {
+                  const access = moduleAccessibility.get(module.id);
+                  const isLocked = access?.isLocked ?? false;
+                  const requiredTest = access?.requiredTest ?? null;
+
+                  return (
+                    <div
+                      key={module.id}
+                      className={`space-y-2 rounded-2xl border px-4 py-3 text-sm text-text-medium ${
+                        isLocked
+                          ? 'border-card/50 bg-card/30 opacity-60'
+                          : 'border-card bg-white'
+                      }`}
+                    >
+                      <div>
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="font-medium text-text-dark">
+                            {module.title}
+                          </p>
+                          {isLocked ? (
+                            <span className="rounded-full bg-brand-orange/10 px-2 py-1 text-[10px] font-semibold text-brand-orange">
+                              {t('Заблокировано')}
+                            </span>
+                          ) : null}
+                        </div>
+                        <p className="text-xs text-text-light">
+                          {t('{count} уроков', { count: module.lessons.length })}
                         </p>
-                      ) : null}
-                    </div>
-                    <div className="space-y-2">
-                      {module.lessons.map((lesson) => {
-                        const lessonRef: LessonRef = {
-                          moduleId: module.id,
-                          moduleTitle: module.title,
-                          moduleOrder: module.order,
-                          lesson,
-                        };
-                        const lessonState =
-                          lessonProgressMap.get(lesson.id) ?? null;
-                        const isSelected =
-                          selectedLesson?.lesson.id === lesson.id;
-                        const status =
-                          lessonState?.status ?? 'NOT_STARTED';
+                        {module.description ? (
+                          <p className="mt-1 text-xs text-text-light">
+                            {module.description}
+                          </p>
+                        ) : null}
+                        {isLocked && requiredTest ? (
+                          <div className="mt-2 rounded-xl bg-brand-orange/10 px-3 py-2 text-xs text-brand-orange">
+                            <p className="font-medium">
+                              {t('Для доступа к этому модулю необходимо пройти тест:')}
+                            </p>
+                            <p className="mt-1">{requiredTest.title}</p>
+                            <button
+                              type="button"
+                              onClick={() => setSelectedTest(requiredTest)}
+                              className="mt-2 rounded-full bg-brand-orange px-3 py-1 text-xs font-semibold text-white transition-transform active:scale-95"
+                            >
+                              {t('Пройти тест')}
+                            </button>
+                          </div>
+                        ) : null}
+                      </div>
+                      <div className="space-y-2">
+                        {module.lessons.map((lesson) => {
+                          const lessonRef: LessonRef = {
+                            moduleId: module.id,
+                            moduleTitle: module.title,
+                            moduleOrder: module.order,
+                            lesson,
+                          };
+                          const lessonState =
+                            lessonProgressMap.get(lesson.id) ?? null;
+                          const isSelected =
+                            selectedLesson?.lesson.id === lesson.id;
+                          const status =
+                            lessonState?.status ?? 'NOT_STARTED';
 
-                        const previewBlock =
-                          parseLessonBlocks(lesson.content).find(
-                            (block) =>
-                              block.type === 'paragraph' ||
-                              block.type === 'heading',
-                          ) ?? null;
+                          const previewBlock =
+                            parseLessonBlocks(lesson.content).find(
+                              (block) =>
+                                block.type === 'paragraph' ||
+                                block.type === 'heading',
+                            ) ?? null;
 
-                        return (
-                          <button
-                            key={lesson.id}
-                            type="button"
-                            onClick={() => handleSelectLesson(lessonRef)}
-                            className={`w-full rounded-xl border px-3 py-2 text-left text-xs transition-colors ${
-                              isSelected
-                                ? 'border-brand-orange bg-brand-orange/10 text-text-dark'
-                                : 'border-card bg-surface hover:border-brand-orange/60 hover:text-text-dark'
-                            }`}
-                          >
-                            <div className="flex items-center justify-between gap-2">
-                              <p className="font-medium text-text-dark">
-                                {lesson.title}
-                              </p>
-                              <span
-                                className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${STATUS_BADGES[status]}`}
-                              >
-                                {t(STATUS_LABELS[status])}
-                              </span>
-                            </div>
-                            {lesson.summary ? (
-                              <p className="mt-1 text-text-light">
-                                {lesson.summary}
-                              </p>
-                            ) : null}
-                            {previewBlock && !lesson.summary ? (
-                              <p
-                                className={`mt-2 overflow-hidden text-text-medium ${STATUS_ACCENTS[status]}`}
-                                style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}
-                              >
-                                {previewBlock.text}
-                              </p>
-                            ) : null}
-                          </button>
-                        );
-                      })}
+                          return (
+                            <button
+                              key={lesson.id}
+                              type="button"
+                              onClick={() => {
+                                if (!isLocked) {
+                                  handleSelectLesson(lessonRef);
+                                }
+                              }}
+                              disabled={isLocked}
+                              className={`w-full rounded-xl border px-3 py-2 text-left text-xs transition-colors ${
+                                isLocked
+                                  ? 'cursor-not-allowed border-card/30 bg-card/20 opacity-50'
+                                  : isSelected
+                                    ? 'border-brand-orange bg-brand-orange/10 text-text-dark'
+                                    : 'border-card bg-surface hover:border-brand-orange/60 hover:text-text-dark'
+                              }`}
+                            >
+                              <div className="flex items-center justify-between gap-2">
+                                <p className="font-medium text-text-dark">
+                                  {lesson.title}
+                                </p>
+                                <span
+                                  className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${STATUS_BADGES[status]}`}
+                                >
+                                  {t(STATUS_LABELS[status])}
+                                </span>
+                              </div>
+                              {lesson.summary ? (
+                                <p className="mt-1 text-text-light">
+                                  {lesson.summary}
+                                </p>
+                              ) : null}
+                              {previewBlock && !lesson.summary ? (
+                                <p
+                                  className={`mt-2 overflow-hidden text-text-medium ${STATUS_ACCENTS[status]}`}
+                                  style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}
+                                >
+                                  {previewBlock.text}
+                                </p>
+                              ) : null}
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </section>
           </>
@@ -1334,7 +1421,18 @@ export default function MyCourseDetailsPage({
       {selectedTest ? (
         <TestRunnerModal
           test={selectedTest}
-          onClose={() => setSelectedTest(null)}
+          onClose={async () => {
+            setSelectedTest(null);
+            // Обновляем курс после закрытия теста, чтобы проверить разблокировку модулей
+            if (course) {
+              try {
+                const updatedCourse = await apiClient.getCourse(courseSlug, userId);
+                setCourse(updatedCourse);
+              } catch (refreshError) {
+                console.error('Failed to refresh course after test', refreshError);
+              }
+            }
+          }}
           t={t}
         />
       ) : null}

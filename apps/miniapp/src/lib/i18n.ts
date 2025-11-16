@@ -232,6 +232,9 @@ const TRANSLATIONS: Record<Locale, Record<string, string>> = {
       "Nismo pronašli Telegram WebApp. Otvorite mini-aplikaciju preko Telegrama da biste nastavili.",
     "Образовательное пространство Mur Mur Education в формате Telegram Mini App.":
       "Obrazovni prostor Mur Mur Education u formatu Telegram mini aplikacije.",
+    "Заблокировано": "Zaključano",
+    "Для доступа к этому модулю необходимо пройти тест:":
+      "Za pristup ovom modulu potrebno je proći test:",
   },
 };
 
