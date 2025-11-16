@@ -50,7 +50,7 @@ export default function CourseDetailsPage({
     null,
   );
   const [starsPaymentError, setStarsPaymentError] = useState<string | null>(null);
-  const { user: tgUser, webApp, supportsStarPayment } = useTelegram();
+  const { user: tgUser, webApp } = useTelegram();
   const resolvedUserId = useMemo(
     () =>
       tgUser?.id && Number.isFinite(Number(tgUser.id))
@@ -521,18 +521,16 @@ export default function CourseDetailsPage({
               )}
             </p>
             <div className="flex flex-col gap-3 text-sm font-semibold text-white sm:flex-row sm:flex-wrap">
-              {supportsStarPayment ? (
-                <button
-                  type="button"
-                  onClick={handlePayWithStars}
-                  disabled={isPayingWithStars}
-                  className="rounded-full bg-brand-pink px-4 py-3 shadow-sm transition-transform active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {isPayingWithStars
-                    ? t("Отправляем счёт...")
-                    : t("Оплатить в Telegram Stars")}
-                </button>
-              ) : null}
+              <button
+                type="button"
+                onClick={handlePayWithStars}
+                disabled={isPayingWithStars}
+                className="rounded-full bg-brand-pink px-4 py-3 shadow-sm transition-transform active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isPayingWithStars
+                  ? t("Отправляем счёт...")
+                  : t("Оплатить в Telegram Stars")}
+              </button>
               <button
                 type="button"
                 onClick={handleContactManager}
