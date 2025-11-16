@@ -45,7 +45,12 @@ export default function CourseDetailsPage({
   const [error, setError] = useState<string | null>(null);
   const [isEnrolling, setIsEnrolling] = useState(false);
   const [enrollError, setEnrollError] = useState<string | null>(null);
-  const { user: tgUser, webApp } = useTelegram();
+  const [isPayingWithStars, setIsPayingWithStars] = useState(false);
+  const [starsPaymentMessage, setStarsPaymentMessage] = useState<string | null>(
+    null,
+  );
+  const [starsPaymentError, setStarsPaymentError] = useState<string | null>(null);
+  const { user: tgUser, webApp, supportsStarPayment } = useTelegram();
   const resolvedUserId = useMemo(
     () =>
       tgUser?.id && Number.isFinite(Number(tgUser.id))
@@ -338,6 +343,51 @@ export default function CourseDetailsPage({
     }
   };
 
+  const handlePayWithStars = async () => {
+    if (!course) return;
+    if (!tgUser?.id) {
+      setStarsPaymentError(
+        t("Не удалось получить данные пользователя. Попробуйте ещё раз."),
+      );
+      return;
+    }
+
+    setStarsPaymentError(null);
+    setStarsPaymentMessage(null);
+    setIsPayingWithStars(true);
+
+    try {
+      await apiClient.sendTelegramStarsInvoice({
+        courseSlug: course.slug,
+        user: {
+          id: tgUser.id.toString(),
+          firstName: tgUser.first_name ?? null,
+          lastName: tgUser.last_name ?? null,
+          username: tgUser.username ?? null,
+          languageCode: profile?.languageCode ?? "sr",
+          avatarUrl: tgUser.photo_url ?? null,
+        },
+      });
+
+      setStarsPaymentMessage(
+        t(
+          "Мы отправили счёт в ваш Telegram. Оплатите его, и курс появится в разделе «Мои курсы».",
+        ),
+      );
+    } catch (starsError) {
+      console.error("Failed to send Telegram Stars invoice", starsError);
+      setStarsPaymentError(
+        starsError instanceof Error
+          ? t(starsError.message)
+          : t(
+              "Не удалось отправить счёт в Telegram Stars. Попробуйте ещё раз или напишите менеджеру.",
+            ),
+      );
+    } finally {
+      setIsPayingWithStars(false);
+    }
+  };
+
   const handleOpenRedeemModal = () => {
     setRedeemCode("");
     setRedeemError(null);
@@ -462,7 +512,7 @@ export default function CourseDetailsPage({
             </p>
             <p>
               {t(
-                "Чтобы купить курс, напишите нашему менеджеру. Он пришлёт индивидуальный код после оплаты.",
+                "Вы можете оплатить курс через Telegram Stars или написать нашему менеджеру. После оплаты вы получите индивидуальный код или доступ будет активирован автоматически.",
               )}
             </p>
             <p className="text-text-light">
@@ -470,7 +520,19 @@ export default function CourseDetailsPage({
                 "У вас уже есть код? Активируйте его, и мы сразу добавим курс в раздел «Мои курсы».",
               )}
             </p>
-            <div className="flex flex-col gap-3 text-sm font-semibold text-white sm:flex-row">
+            <div className="flex flex-col gap-3 text-sm font-semibold text-white sm:flex-row sm:flex-wrap">
+              {supportsStarPayment ? (
+                <button
+                  type="button"
+                  onClick={handlePayWithStars}
+                  disabled={isPayingWithStars}
+                  className="rounded-full bg-brand-pink px-4 py-3 shadow-sm transition-transform active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {isPayingWithStars
+                    ? t("Отправляем счёт...")
+                    : t("Оплатить в Telegram Stars")}
+                </button>
+              ) : null}
               <button
                 type="button"
                 onClick={handleContactManager}
@@ -486,6 +548,16 @@ export default function CourseDetailsPage({
                 {t("Активировать код")}
               </button>
             </div>
+            {starsPaymentError ? (
+              <p className="mt-2 rounded-2xl bg-brand-orange/10 px-3 py-2 text-xs text-brand-orange">
+                {starsPaymentError}
+              </p>
+            ) : null}
+            {starsPaymentMessage ? (
+              <p className="mt-2 rounded-2xl bg-brand-pink/10 px-3 py-2 text-xs text-brand-pink">
+                {starsPaymentMessage}
+              </p>
+            ) : null}
           </section>
         ) : null}
 
