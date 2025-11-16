@@ -329,20 +329,6 @@ export default function CourseDetailsPage({
     }
   };
 
-  const handleContactManager = () => {
-    if (!managerLink) {
-      setEnrollError(t("Ссылка на менеджера временно недоступна."));
-      return;
-    }
-    if (webApp?.openTelegramLink) {
-      webApp.openTelegramLink(managerLink);
-      return;
-    }
-    if (typeof window !== "undefined") {
-      window.open(managerLink, "_blank", "noopener,noreferrer");
-    }
-  };
-
   const handlePayWithStars = async () => {
     if (!course) return;
     if (!tgUser?.id) {
@@ -521,62 +507,15 @@ export default function CourseDetailsPage({
           </p>
         </section>
 
-        {isPaidCourse ? (
-          <section className="space-y-3 rounded-3xl border border-card bg-white p-5 text-sm text-text-medium shadow-sm">
-            <h2 className="text-lg font-semibold text-text-dark">
-              {t("Как получить доступ")}
-            </h2>
-            <p className="text-xs uppercase tracking-wide text-text-light">
-              {t("Стоимость")}:{" "}
-              <span className="font-semibold text-text-dark">{priceLabel}</span>
-            </p>
-            <p>
-              {t(
-                "Вы можете оплатить курс через Telegram Stars или написать нашему менеджеру. После оплаты вы получите индивидуальный код или доступ будет активирован автоматически.",
-              )}
-            </p>
-            <p className="text-text-light">
-              {t(
-                "У вас уже есть код? Активируйте его, и мы сразу добавим курс в раздел «Мои курсы».",
-              )}
-            </p>
-            <div className="flex flex-col gap-3 text-sm font-semibold text-white sm:flex-row sm:flex-wrap">
-              <button
-                type="button"
-                onClick={handlePayWithStars}
-                disabled={isPayingWithStars}
-                className="rounded-full bg-brand-pink px-4 py-3 shadow-sm transition-transform active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {isPayingWithStars
-                  ? t("Готовим оплату...")
-                  : t("Оплатить в Telegram Stars")}
-              </button>
-              <button
-                type="button"
-                onClick={handleContactManager}
-                className="rounded-full bg-brand-pink px-4 py-3 shadow-sm transition-transform active:scale-95"
-              >
-                {t("Написать менеджеру")}
-              </button>
-              <button
-                type="button"
-                onClick={handleOpenRedeemModal}
-                className="rounded-full border border-brand-pink px-4 py-3 text-brand-pink transition-transform active:scale-95"
-              >
-                {t("Активировать код")}
-              </button>
-            </div>
-            {starsPaymentError ? (
-              <p className="mt-2 rounded-2xl bg-brand-orange/10 px-3 py-2 text-xs text-brand-orange">
-                {starsPaymentError}
-              </p>
-            ) : null}
-            {starsPaymentMessage ? (
-              <p className="mt-2 rounded-2xl bg-brand-pink/10 px-3 py-2 text-xs text-brand-pink">
-                {starsPaymentMessage}
-              </p>
-            ) : null}
-          </section>
+        {isPaidCourse && starsPaymentError ? (
+          <p className="rounded-2xl bg-brand-orange/10 px-4 py-2 text-xs text-brand-orange">
+            {starsPaymentError}
+          </p>
+        ) : null}
+        {isPaidCourse && starsPaymentMessage ? (
+          <p className="rounded-2xl bg-brand-pink/10 px-4 py-2 text-xs text-brand-pink">
+            {starsPaymentMessage}
+          </p>
         ) : null}
 
         <section className="space-y-3">
@@ -1020,24 +959,39 @@ export default function CourseDetailsPage({
         </div>
       ) : null}
 
-      {course?.isFree ? (
+      {course ? (
         <footer className="fixed bottom-[76px] left-1/2 z-40 w-full max-w-md -translate-x-1/2 px-4">
           <div className="rounded-3xl bg-brand-pink px-5 py-4 text-white shadow-lg">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <p className="text-xs uppercase tracking-wide">{t("Бесплатно")}</p>
+                <p className="text-xs uppercase tracking-wide">
+                  {course.isFree ? t("Бесплатно") : t("Стоимость")}
+                </p>
                 <p className="text-lg font-semibold">
                   {course ? priceLabel : "—"}
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={handleEnroll}
-                disabled={actionDisabled}
-                className="rounded-full bg-white px-4 py-2 text-sm font-semibold text-brand-orange transition-transform active:scale-95"
-              >
-                {isEnrolling ? t("Подождите...") : t("Начать")}
-              </button>
+              {course.isFree ? (
+                <button
+                  type="button"
+                  onClick={handleEnroll}
+                  disabled={actionDisabled}
+                  className="rounded-full bg-white px-4 py-2 text-sm font-semibold text-brand-orange transition-transform active:scale-95"
+                >
+                  {isEnrolling ? t("Подождите...") : t("Начать")}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handlePayWithStars}
+                  disabled={isPayingWithStars}
+                  className="rounded-full bg-white px-4 py-2 text-sm font-semibold text-brand-orange transition-transform active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {isPayingWithStars
+                    ? t("Готовим оплату...")
+                    : t("Оплатить в Telegram Stars")}
+                </button>
+              )}
             </div>
           </div>
         </footer>

@@ -3,7 +3,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTelegram } from "@/hooks/useTelegram";
 import { useUserProfile } from "@/hooks/useUserProfile";
-import { apiClient } from "@/lib/api-client";
+import {
+  apiClient,
+  type RedeemCourseCodePayload,
+  type CourseDetails,
+} from "@/lib/api-client";
 import { createTranslator, type Locale } from "@/lib/i18n";
 
 const FREQUENCY_OPTIONS = [
@@ -26,8 +30,11 @@ const LANGUAGE_OPTIONS: Array<{ value: Locale; label: string }> = [
 
 const DEV_USER_ID = process.env.NEXT_PUBLIC_DEV_USER_ID ?? "555666777";
 
+const MANAGER_CHAT_URL =
+  process.env.NEXT_PUBLIC_MANAGER_CHAT_URL ?? "https://t.me/mur_mur_manager_bot";
+
 export default function AccountPage() {
-  const { user, greetingName } = useTelegram();
+  const { user, greetingName, webApp } = useTelegram();
   const [frequency, setFrequency] = useState("daily");
   const [daytime, setDaytime] = useState("morning");
   const [consent, setConsent] = useState(true);
@@ -152,6 +159,85 @@ export default function AccountPage() {
 
   const languageSelectionDisabled = isLanguageSaving || !resolvedUserId;
 
+  const [isRedeemModalOpen, setIsRedeemModalOpen] = useState(false);
+  const [redeemCode, setRedeemCode] = useState("");
+  const [redeemError, setRedeemError] = useState<string | null>(null);
+  const [redeemSuccess, setRedeemSuccess] = useState<string | null>(null);
+  const [isRedeeming, setIsRedeeming] = useState(false);
+  const [isContactingManager, setIsContactingManager] = useState(false);
+
+  const handleContactManager = () => {
+    if (!MANAGER_CHAT_URL) {
+      return;
+    }
+    setIsContactingManager(true);
+    try {
+      if (webApp?.openTelegramLink) {
+        webApp.openTelegramLink(MANAGER_CHAT_URL);
+      } else if (typeof window !== "undefined") {
+        window.open(MANAGER_CHAT_URL, "_blank", "noopener,noreferrer");
+      }
+    } finally {
+      setIsContactingManager(false);
+    }
+  };
+
+  const handleOpenRedeemModal = () => {
+    setRedeemCode("");
+    setRedeemError(null);
+    setRedeemSuccess(null);
+    setIsRedeemModalOpen(true);
+  };
+
+  const handleCloseRedeemModal = () => {
+    if (isRedeeming) return;
+    setIsRedeemModalOpen(false);
+  };
+
+  const handleRedeemSubmit = async () => {
+    if (!resolvedUserId) return;
+    const normalized = redeemCode.trim();
+    if (!normalized) {
+      setRedeemError(t("Введите код доступа"));
+      return;
+    }
+
+    setIsRedeeming(true);
+    setRedeemError(null);
+    setRedeemSuccess(null);
+
+    try {
+      const payload: RedeemCourseCodePayload = {
+        courseSlug: "", // будет проигнорирован на бэкенде, код содержит курс
+        code: normalized,
+        userId: resolvedUserId,
+        firstName: user?.first_name ?? null,
+        lastName: user?.last_name ?? null,
+        username: user?.username ?? null,
+        languageCode: profile?.languageCode ?? "sr",
+        avatarUrl: user?.photo_url ?? null,
+      };
+
+      // используем специальный endpoint для кода, привязанного к курсу, если такой появится;
+      // пока просто отправим на один из курсов-заглушек нельзя, поэтому оставим сообщение
+      await Promise.reject(
+        new Error(
+          t(
+            "Активация по коду доступна из карточки конкретного курса. Напишите менеджеру, если нужна помощь.",
+          ),
+        ),
+      );
+    } catch (error) {
+      setRedeemError(
+        error instanceof Error
+          ? error.message
+          : t("Не удалось активировать код. Попробуйте ещё раз."),
+      );
+    } finally {
+      setIsRedeeming(false);
+    }
+  };
+
   return (
     <div className="flex flex-1 flex-col bg-background text-text-dark">
       <header className="px-4 pt-6">
@@ -269,12 +355,99 @@ export default function AccountPage() {
           </div>
         </section>
 
-        <button
-          type="button"
-          className="rounded-full bg-brand-orange px-6 py-3 text-sm font-semibold text-white shadow-md transition-transform active:scale-95"
-        >
-          {t("Сохранить изменения")}
-        </button>
+        <section className="space-y-3 rounded-3xl bg-white p-5 text-sm text-text-medium shadow-sm">
+          <h2 className="text-lg font-semibold text-text-dark">
+            {t("Поддержка и доступ")}
+          </h2>
+          <p className="text-xs text-text-light">
+            {t(
+              "Если у вас есть вопросы или код доступа к курсу, воспользуйтесь кнопками ниже.",
+            )}
+          </p>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <button
+              type="button"
+              onClick={handleContactManager}
+              disabled={isContactingManager}
+              className="flex-1 rounded-full bg-brand-pink px-4 py-3 text-sm font-semibold text-white shadow-sm transition-transform active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isContactingManager
+                ? t("Открываем чат...")
+                : t("Написать менеджеру")}
+            </button>
+            <button
+              type="button"
+              onClick={handleOpenRedeemModal}
+              className="flex-1 rounded-full border border-brand-pink px-4 py-3 text-sm font-semibold text-brand-pink transition-transform active:scale-95"
+            >
+              {t("Активировать код доступа")}
+            </button>
+          </div>
+        </section>
+
+        {isRedeemModalOpen ? (
+          <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/50 px-4 py-8">
+            <div className="w-full max-w-sm rounded-3xl bg-white p-5 shadow-xl">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-text-light">
+                    {t("Код доступа")}
+                  </p>
+                  <h3 className="text-lg font-semibold text-text-dark">
+                    {t("Активировать код доступа")}
+                  </h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleCloseRedeemModal}
+                  className="text-xs font-semibold text-brand-orange underline-offset-4 hover:underline disabled:cursor-not-allowed disabled:opacity-60"
+                  disabled={isRedeeming}
+                >
+                  {t("Закрыть")}
+                </button>
+              </div>
+              <p className="mt-2 text-sm text-text-light">
+                {t("Введите код, который прислал менеджер после оплаты.")}
+              </p>
+              <input
+                type="text"
+                value={redeemCode}
+                onChange={(event) => setRedeemCode(event.target.value)}
+                placeholder={t("Код доступа из сообщения менеджера")}
+                className="mt-4 w-full rounded-2xl border border-border px-3 py-2 text-sm text-text-dark outline-none focus:border-brand-pink"
+                disabled={isRedeeming}
+              />
+              {redeemError ? (
+                <p className="mt-3 rounded-2xl bg-brand-orange/10 px-3 py-2 text-xs text-brand-orange">
+                  {redeemError}
+                </p>
+              ) : null}
+              {redeemSuccess ? (
+                <p className="mt-3 rounded-2xl bg-brand-pink/10 px-3 py-2 text-xs text-brand-pink">
+                  {redeemSuccess}
+                </p>
+              ) : null}
+              <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+                <button
+                  type="button"
+                  onClick={handleRedeemSubmit}
+                  disabled={isRedeeming}
+                  className="flex-1 rounded-full bg-brand-pink px-4 py-3 text-sm font-semibold text-white shadow-sm transition-transform active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {isRedeeming ? t("Активируем...") : t("Активировать")}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCloseRedeemModal}
+                  disabled={isRedeeming}
+                  className="flex-1 rounded-full border border-border px-4 py-3 text-sm font-semibold text-text-dark transition-transform active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {t("Отмена")}
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
       </main>
     </div>
   );
