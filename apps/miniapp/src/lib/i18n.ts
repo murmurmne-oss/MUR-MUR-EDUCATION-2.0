@@ -235,6 +235,7 @@ const TRANSLATIONS: Record<Locale, Record<string, string>> = {
     "Заблокировано": "Zaključano",
     "Для доступа к этому модулю необходимо пройти тест:":
       "Za pristup ovom modulu potrebno je proći test:",
+    "Перейти к следующему уроку": "Pređi na sledeću lekciju",
   },
 };
 

@@ -1218,7 +1218,7 @@ export default function MyCourseDetailsPage({
                       >
                         {isProgressUpdating
                           ? t('Сохраняем...')
-                          : t('Отметить завершённым')}
+                          : t('Перейти к следующему уроку')}
                       </button>
                     ) : (
                       <span className="text-sm font-medium text-brand-pink">

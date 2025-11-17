@@ -16,6 +16,8 @@ import {
   LessonContentMode,
   LessonSectionItemState,
 } from "./lesson-content-editor";
+import { CourseNavigationSidebar } from "./course-navigation-sidebar";
+import { CoursePreview } from "./course-preview";
 
 const CATEGORY_OPTIONS = [
   { value: "EROS_EVERY_DAY", label: "Eros & every day" },
@@ -49,7 +51,7 @@ type CourseFormProps = {
   initialCourse?: CourseDetails | null;
 };
 
-type FormState = {
+export type FormState = {
   title: string;
   slug: string;
   shortDescription: string;
@@ -65,7 +67,7 @@ type FormState = {
   isPublished: boolean;
 };
 
-type LessonState = {
+export type LessonState = {
   tempId: string;
   sourceId: string | null;
   title: string;
@@ -80,7 +82,7 @@ type LessonState = {
   videoUrl: string;
 };
 
-type ModuleState = {
+export type ModuleState = {
   tempId: string;
   sourceId: string | null;
   title: string;
@@ -893,6 +895,9 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [collapsedModules, setCollapsedModules] = useState<Set<string>>(
+    new Set(),
+  );
 
   useEffect(() => {
     if (initialCourse) {
@@ -981,6 +986,18 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
         order: (prev.length + 1).toString(),
       }),
     ]);
+  };
+
+  const toggleModuleCollapse = (moduleId: string) => {
+    setCollapsedModules((prev) => {
+      const next = new Set(prev);
+      if (next.has(moduleId)) {
+        next.delete(moduleId);
+      } else {
+        next.add(moduleId);
+      }
+      return next;
+    });
   };
 
   const handleRemoveModule = (moduleId: string) => {
@@ -1756,11 +1773,40 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
     );
   };
 
+  const scrollToElement = (elementId: string) => {
+    const element = document.getElementById(elementId);
+    if (element) {
+      element.scrollIntoView({ behavior: "smooth", block: "start" });
+      // Подсветка элемента
+      element.classList.add("ring-2", "ring-brand-pink");
+      setTimeout(() => {
+        element.classList.remove("ring-2", "ring-brand-pink");
+      }, 2000);
+    }
+  };
+
+  const handleNavigate = (moduleId: string, lessonId?: string) => {
+    const elementId = lessonId ? `lesson-${lessonId}` : `module-${moduleId}`;
+    scrollToElement(elementId);
+  };
+
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="flex flex-col gap-6 rounded-3xl bg-white p-6 shadow-sm ring-1 ring-border/40"
-    >
+    <div className="grid grid-cols-1 gap-6 lg:grid-cols-[280px_1fr_320px]">
+      {/* Сайдбар навигации */}
+      <div className="hidden lg:block">
+        <CourseNavigationSidebar
+          modules={modules}
+          onNavigate={handleNavigate}
+          collapsedModules={collapsedModules}
+          onToggleCollapse={toggleModuleCollapse}
+        />
+      </div>
+
+      {/* Основная форма */}
+      <form
+        onSubmit={handleSubmit}
+        className="flex flex-col gap-6 rounded-3xl bg-white p-6 shadow-sm ring-1 ring-border/40"
+      >
       <div className="grid gap-4 md:grid-cols-2">
         <label className="flex flex-col gap-2 text-sm text-text-dark">
           Название
@@ -1917,13 +1963,24 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
         ) : (
           modules.map((module, moduleIndex) => (
             <div
+              id={`module-${module.tempId}`}
               key={module.tempId}
-              className="space-y-4 rounded-3xl border border-border/60 bg-surface px-5 py-4"
+              className="space-y-4 rounded-3xl border border-border/60 bg-surface px-5 py-4 transition-all"
             >
               <div className="flex items-center justify-between">
-                <p className="text-sm font-semibold text-text-dark">
-                  Модуль {moduleIndex + 1}
-                </p>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => toggleModuleCollapse(module.tempId)}
+                    className="text-text-medium hover:text-text-dark"
+                  >
+                    {collapsedModules.has(module.tempId) ? "▶" : "▼"}
+                  </button>
+                  <p className="text-sm font-semibold text-text-dark">
+                    Модуль {moduleIndex + 1}
+                    {module.title.trim() ? `: ${module.title}` : ""}
+                  </p>
+                </div>
                 <button
                   type="button"
                   onClick={() => handleRemoveModule(module.tempId)}
@@ -1933,70 +1990,73 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
                 </button>
               </div>
 
-              <div className="grid gap-3 md:grid-cols-2">
-                <label className="flex flex-col gap-2 text-xs text-text-dark">
-                  Название модуля
-                  <input
-                    type="text"
-                    value={module.title}
-                    onChange={(event) =>
-                      handleModuleChange(module.tempId, "title", event.target.value)
-                    }
-                    required
-                    className="rounded-2xl border border-border bg-white px-3 py-2 text-sm text-text-dark outline-none focus:border-brand-pink"
-                  />
-                </label>
-                <label className="flex flex-col gap-2 text-xs text-text-dark">
-                  Порядок
-                  <input
-                    type="number"
-                    value={module.order}
-                    onChange={(event) =>
-                      handleModuleChange(module.tempId, "order", event.target.value)
-                    }
-                    className="rounded-2xl border border-border bg-white px-3 py-2 text-sm text-text-dark outline-none focus:border-brand-pink"
-                  />
-                </label>
-                <label className="md:col-span-2 flex flex-col gap-2 text-xs text-text-dark">
-                  Описание
-                  <textarea
-                    value={module.description}
-                    onChange={(event) =>
-                      handleModuleChange(
-                        module.tempId,
-                        "description",
-                        event.target.value,
-                      )
-                    }
-                    rows={3}
-                    className="rounded-2xl border border-border bg-white px-3 py-2 text-sm text-text-dark outline-none focus:border-brand-pink"
-                  />
-                </label>
-              </div>
+              {!collapsedModules.has(module.tempId) && (
+                <>
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <label className="flex flex-col gap-2 text-xs text-text-dark">
+                      Название модуля
+                      <input
+                        type="text"
+                        value={module.title}
+                        onChange={(event) =>
+                          handleModuleChange(module.tempId, "title", event.target.value)
+                        }
+                        required
+                        className="rounded-2xl border border-border bg-white px-3 py-2 text-sm text-text-dark outline-none focus:border-brand-pink"
+                      />
+                    </label>
+                    <label className="flex flex-col gap-2 text-xs text-text-dark">
+                      Порядок
+                      <input
+                        type="number"
+                        value={module.order}
+                        onChange={(event) =>
+                          handleModuleChange(module.tempId, "order", event.target.value)
+                        }
+                        className="rounded-2xl border border-border bg-white px-3 py-2 text-sm text-text-dark outline-none focus:border-brand-pink"
+                      />
+                    </label>
+                    <label className="md:col-span-2 flex flex-col gap-2 text-xs text-text-dark">
+                      Описание
+                      <textarea
+                        value={module.description}
+                        onChange={(event) =>
+                          handleModuleChange(
+                            module.tempId,
+                            "description",
+                            event.target.value,
+                          )
+                        }
+                        rows={3}
+                        className="rounded-2xl border border-border bg-white px-3 py-2 text-sm text-text-dark outline-none focus:border-brand-pink"
+                      />
+                    </label>
+                  </div>
 
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <p className="text-sm font-semibold text-text-dark">
-                    Уроки
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => handleAddLesson(module.tempId)}
-                    className="text-xs font-semibold text-brand-pink underline-offset-4 hover:underline"
-                  >
-                    Добавить урок
-                  </button>
-                </div>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-semibold text-text-dark">
+                        Уроки
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => handleAddLesson(module.tempId)}
+                        className="text-xs font-semibold text-brand-pink underline-offset-4 hover:underline"
+                      >
+                        Добавить урок
+                      </button>
+                    </div>
 
-                {module.lessons.length === 0 ? (
-                  <p className="rounded-2xl bg-white px-4 py-3 text-sm text-text-medium">
-                    В модуле нет уроков, добавьте первый.
-                  </p>
-                ) : (
-                  module.lessons.map((lesson, lessonIndex) => (
+                    {module.lessons.length === 0 ? (
+                      <p className="rounded-2xl bg-white px-4 py-3 text-sm text-text-medium">
+                        В модуле нет уроков, добавьте первый.
+                      </p>
+                    ) : (
+                      module.lessons.map((lesson, lessonIndex) => (
                     <div
+                      id={`lesson-${lesson.tempId}`}
                       key={lesson.tempId}
-                      className="space-y-3 rounded-2xl border border-border/60 bg-white px-4 py-3"
+                      className="space-y-3 rounded-2xl border border-border/60 bg-white px-4 py-3 transition-all"
                     >
                       <div className="flex items-center justify-between text-xs">
                         <span className="font-semibold text-text-dark">
@@ -2161,6 +2221,8 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
                   ))
                 )}
               </div>
+                </>
+              )}
             </div>
           ))
         )}
@@ -2674,6 +2736,12 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
         </button>
       </div>
     </form>
+
+      {/* Превью курса */}
+      <div className="hidden lg:block">
+        <CoursePreview formState={formState} modules={modules} />
+      </div>
+    </div>
   );
 }
 
