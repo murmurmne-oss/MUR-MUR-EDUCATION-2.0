@@ -33,8 +33,8 @@ export function CourseNavigationSidebar({
   }
 
   return (
-    <div className="sticky top-4 h-fit max-h-[calc(100vh-2rem)] overflow-y-auto rounded-2xl border border-border bg-white p-4 shadow-sm">
-      <h3 className="mb-3 text-sm font-semibold text-text-dark">
+    <div className="h-full">
+      <h3 className="mb-4 text-sm font-semibold text-text-dark">
         Навигация по курсу
       </h3>
       <nav className="space-y-2">

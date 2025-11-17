@@ -1791,9 +1791,9 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
   };
 
   return (
-    <div className="grid grid-cols-1 gap-6 lg:grid-cols-[280px_1fr_320px]">
-      {/* Сайдбар навигации */}
-      <div className="hidden lg:block">
+    <div className="relative">
+      {/* Сайдбар навигации - прижат к левому краю (после AdminNav 240px) */}
+      <div className="fixed left-[240px] top-0 z-10 hidden h-screen w-64 overflow-y-auto border-r border-border bg-white p-4 shadow-sm lg:block">
         <CourseNavigationSidebar
           modules={modules}
           onNavigate={handleNavigate}
@@ -1802,11 +1802,17 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
         />
       </div>
 
-      {/* Основная форма */}
-      <form
-        onSubmit={handleSubmit}
-        className="flex flex-col gap-6 rounded-3xl bg-white p-6 shadow-sm ring-1 ring-border/40"
-      >
+      {/* Превью курса - прижато к правому краю */}
+      <div className="fixed right-0 top-0 z-10 hidden h-screen w-80 overflow-y-auto border-l border-border bg-white p-4 shadow-sm lg:block">
+        <CoursePreview formState={formState} modules={modules} />
+      </div>
+
+      {/* Основная форма - расширенная центральная часть */}
+      <div className="lg:ml-64 lg:mr-80">
+        <form
+          onSubmit={handleSubmit}
+          className="flex flex-col gap-6 rounded-3xl bg-white p-6 shadow-sm ring-1 ring-border/40"
+        >
       <div className="grid gap-4 md:grid-cols-2">
         <label className="flex flex-col gap-2 text-sm text-text-dark">
           Название
@@ -2736,10 +2742,6 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
         </button>
       </div>
     </form>
-
-      {/* Превью курса */}
-      <div className="hidden lg:block">
-        <CoursePreview formState={formState} modules={modules} />
       </div>
     </div>
   );

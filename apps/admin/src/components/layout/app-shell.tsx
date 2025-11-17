@@ -23,11 +23,14 @@ export function AppShell({ children }: PropsWithChildren) {
     );
   }
 
+  const isCourseFormPage = pathname?.startsWith("/courses/new") || 
+    (pathname?.startsWith("/courses/") && pathname !== "/courses");
+
   return (
     <div className="flex min-h-screen">
       <AdminNav />
       <main className="w-full flex-1 bg-surface px-4 py-6 md:px-8">
-        <div className="mx-auto flex h-full max-w-6xl flex-col gap-6">
+        <div className={`mx-auto flex h-full flex-col gap-6 ${isCourseFormPage ? "max-w-none" : "max-w-6xl"}`}>
           {children}
         </div>
       </main>

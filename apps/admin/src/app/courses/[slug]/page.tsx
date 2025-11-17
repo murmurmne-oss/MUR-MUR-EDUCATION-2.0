@@ -72,7 +72,7 @@ export default function EditCoursePage() {
 
   return (
     <div className="flex flex-1 flex-col gap-6">
-      <header>
+      <header className="lg:ml-64 lg:mr-80">
         <h1 className="text-2xl font-semibold text-text-dark">
           Редактирование курса
         </h1>
@@ -83,20 +83,20 @@ export default function EditCoursePage() {
       </header>
 
       {error ? (
-        <div className="rounded-3xl bg-card p-4 text-sm text-brand-orange">
+        <div className="lg:ml-64 lg:mr-80 rounded-3xl bg-card p-4 text-sm text-brand-orange">
           {error}
         </div>
       ) : isLoading ? (
-        <div className="h-64 animate-pulse rounded-3xl bg-card" />
+        <div className="lg:ml-64 lg:mr-80 h-64 animate-pulse rounded-3xl bg-card" />
       ) : (
         <>
           {deleteError ? (
-            <div className="rounded-3xl bg-brand-orange/10 p-4 text-sm text-brand-orange">
+            <div className="lg:ml-64 lg:mr-80 rounded-3xl bg-brand-orange/10 p-4 text-sm text-brand-orange">
               {deleteError}
             </div>
           ) : null}
           {course ? (
-            <div className="flex justify-end">
+            <div className="lg:ml-64 lg:mr-80 flex justify-end">
               <button
                 type="button"
                 onClick={handleDelete}
@@ -109,7 +109,9 @@ export default function EditCoursePage() {
           ) : null}
           <CourseForm initialCourse={course} />
           {course ? (
-            <AccessCodesPanel courseSlug={course.slug} />
+            <div className="lg:ml-64 lg:mr-80">
+              <AccessCodesPanel courseSlug={course.slug} />
+            </div>
           ) : null}
         </>
       )}
