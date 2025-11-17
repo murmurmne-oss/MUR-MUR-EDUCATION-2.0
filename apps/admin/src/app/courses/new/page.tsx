@@ -5,7 +5,7 @@ import { CourseForm } from "@/components/courses/course-form";
 export default function CreateCoursePage() {
   return (
     <div className="flex flex-1 flex-col gap-6">
-      <header className="lg:ml-64 lg:mr-80">
+      <header className="lg:ml-64">
         <h1 className="text-2xl font-semibold text-text-dark">
           Новый курс
         </h1>

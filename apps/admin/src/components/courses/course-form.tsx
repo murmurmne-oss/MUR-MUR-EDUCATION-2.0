@@ -898,6 +898,7 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
   const [collapsedModules, setCollapsedModules] = useState<Set<string>>(
     new Set(),
   );
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
 
   useEffect(() => {
     if (initialCourse) {
@@ -1802,13 +1803,54 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
         />
       </div>
 
-      {/* Превью курса - прижато к правому краю */}
-      <div className="fixed right-0 top-0 z-10 hidden h-screen w-80 overflow-y-auto border-l border-border bg-white p-4 shadow-sm lg:block">
-        <CoursePreview formState={formState} modules={modules} />
-      </div>
+      {/* Кнопка для открытия превью - справа */}
+      <button
+        type="button"
+        onClick={() => setIsPreviewOpen(true)}
+        className="fixed right-0 top-1/2 z-20 hidden -translate-y-1/2 rounded-l-2xl border-l border-t border-b border-border bg-white px-2 py-12 shadow-lg transition-all hover:scale-105 hover:shadow-xl lg:flex flex-col items-center gap-2 group"
+        title="Открыть превью курса"
+      >
+        <span className="text-[10px] font-semibold text-text-dark [writing-mode:vertical-rl] group-hover:text-brand-pink transition-colors">
+          Превью
+        </span>
+        <span className="text-lg text-text-medium group-hover:text-brand-pink transition-colors">◀</span>
+      </button>
+
+      {/* Выдвижное превью курса */}
+      {isPreviewOpen && (
+        <>
+          {/* Overlay */}
+          <div
+            className="fixed inset-0 z-30 bg-black/20 lg:hidden"
+            onClick={() => setIsPreviewOpen(false)}
+          />
+          {/* Drawer */}
+          <div
+            className={`fixed right-0 top-0 z-30 h-screen w-full max-w-3xl overflow-y-auto border-l border-border bg-white shadow-2xl transition-transform duration-300 ease-in-out ${
+              isPreviewOpen ? "translate-x-0" : "translate-x-full"
+            }`}
+          >
+            <div className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-white px-6 py-4">
+              <h3 className="text-lg font-semibold text-text-dark">
+                Превью курса
+              </h3>
+              <button
+                type="button"
+                onClick={() => setIsPreviewOpen(false)}
+                className="rounded-full p-2 text-text-medium hover:bg-surface hover:text-text-dark"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="p-6">
+              <CoursePreview formState={formState} modules={modules} />
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Основная форма - расширенная центральная часть */}
-      <div className="lg:ml-64 lg:mr-80">
+      <div className="lg:ml-64">
         <form
           onSubmit={handleSubmit}
           className="flex flex-col gap-6 rounded-3xl bg-white p-6 shadow-sm ring-1 ring-border/40"
@@ -2129,6 +2171,26 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
                             className="rounded-2xl border border-border bg-surface px-3 py-2 text-sm text-text-dark outline-none focus:border-brand-pink"
                           />
                         </label>
+                        {/* Ссылка на видео - компактная строка над контентом */}
+                        <label className="flex flex-col gap-1 text-xs text-text-dark">
+                          <span className="text-[11px] font-medium text-text-light">
+                            Ссылка на видео (если урок — видео):
+                          </span>
+                          <input
+                            type="url"
+                            value={lesson.videoUrl}
+                            onChange={(event) =>
+                              handleLessonChange(
+                                module.tempId,
+                                lesson.tempId,
+                                "videoUrl",
+                                event.target.value,
+                              )
+                            }
+                            placeholder="https://..."
+                            className="rounded-xl border border-border bg-surface px-3 py-1.5 text-xs text-text-dark outline-none focus:border-brand-pink"
+                          />
+                        </label>
                         <LessonContentEditor
                           mode={lesson.contentMode}
                           onModeChange={(mode) =>
@@ -2172,23 +2234,6 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
                           }
                           onUploadImage={handleLessonUploadImage}
                         />
-                      <label className="flex flex-col gap-2 text-xs text-text-dark">
-                        Ссылка на видео (если урок — видео)
-                        <input
-                          type="url"
-                          value={lesson.videoUrl}
-                          onChange={(event) =>
-                            handleLessonChange(
-                              module.tempId,
-                              lesson.tempId,
-                              "videoUrl",
-                              event.target.value,
-                            )
-                          }
-                          placeholder="https://..."
-                          className="rounded-2xl border border-border bg-surface px-3 py-2 text-sm text-text-dark outline-none focus:border-brand-pink"
-                        />
-                      </label>
                         <label className="flex flex-col gap-2 text-xs text-text-dark">
                           Длительность (мин)
                           <input

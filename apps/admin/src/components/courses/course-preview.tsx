@@ -23,15 +23,11 @@ export function CoursePreview({ formState, modules }: CoursePreviewProps) {
 
   return (
     <div className="flex h-full flex-col">
-      <h3 className="mb-4 text-sm font-semibold text-text-dark">
-        Превью курса
-      </h3>
-      
-      {/* Мобильный телефон */}
+      {/* Мобильный телефон - шире */}
       <div className="flex flex-1 items-center justify-center py-4">
-        <div className="relative h-[680px] w-[340px] rounded-[3.5rem] border-[12px] border-gray-800 bg-gray-900 p-3 shadow-2xl">
+        <div className="relative h-[720px] w-[380px] rounded-[3.5rem] border-[14px] border-gray-800 bg-gray-900 p-3 shadow-2xl">
           {/* Вырез для камеры */}
-          <div className="absolute left-1/2 top-0 h-8 w-44 -translate-x-1/2 rounded-b-3xl bg-gray-900"></div>
+          <div className="absolute left-1/2 top-0 h-9 w-48 -translate-x-1/2 rounded-b-3xl bg-gray-900"></div>
           
           {/* Экран */}
           <div className="h-full w-full overflow-y-auto rounded-[2.75rem] bg-background">
