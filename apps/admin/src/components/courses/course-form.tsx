@@ -18,6 +18,7 @@ import {
 } from "./lesson-content-editor";
 import { CourseNavigationSidebar } from "./course-navigation-sidebar";
 import { CoursePreview } from "./course-preview";
+import { ImageUploadField } from "./image-upload-field";
 
 const CATEGORY_OPTIONS = [
   { value: "EROS_EVERY_DAY", label: "Eros & every day" },
@@ -1966,17 +1967,14 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
           />
         </label>
 
-        <label className="flex flex-col gap-2 text-sm text-text-dark">
-          Ссылка на обложку
-          <input
-            type="url"
+        <div className="flex flex-col gap-2 text-sm text-text-dark">
+          <ImageUploadField
             value={formState.coverImageUrl}
-            onChange={(event) =>
-              handleFormChange("coverImageUrl", event.target.value)
-            }
-            className="rounded-2xl border border-border bg-surface px-4 py-2 text-sm text-text-dark outline-none focus:border-brand-pink"
+            onChange={(url) => handleFormChange("coverImageUrl", url)}
+            label="Обложка курса"
+            placeholder="https://... или загрузите файл"
           />
-        </label>
+        </div>
 
         <label className="flex flex-col gap-2 text-sm text-text-dark">
           Промо видео (опционально)
