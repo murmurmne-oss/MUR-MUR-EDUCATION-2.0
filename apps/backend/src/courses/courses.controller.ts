@@ -7,8 +7,10 @@ import {
   Post,
   Put,
   Query,
+  UseGuards,
 } from '@nestjs/common';
 import { CoursesService } from './courses.service';
+import { ApiKeyGuard } from '../auth/api-key.guard';
 import type {
   CourseInput,
   EnrollCourseInput,
@@ -36,16 +38,19 @@ export class CoursesController {
   }
 
   @Post()
+  @UseGuards(ApiKeyGuard)
   createCourse(@Body() body: CourseInput) {
     return this.coursesService.create(body);
   }
 
   @Put(':idOrSlug')
+  @UseGuards(ApiKeyGuard)
   updateCourse(@Param('idOrSlug') idOrSlug: string, @Body() body: CourseInput) {
     return this.coursesService.update(idOrSlug, body);
   }
 
   @Delete(':idOrSlug')
+  @UseGuards(ApiKeyGuard)
   deleteCourse(@Param('idOrSlug') idOrSlug: string) {
     return this.coursesService.remove(idOrSlug);
   }
@@ -59,11 +64,13 @@ export class CoursesController {
   }
 
   @Get(':idOrSlug/access-codes')
+  @UseGuards(ApiKeyGuard)
   listAccessCodes(@Param('idOrSlug') idOrSlug: string) {
     return this.coursesService.listAccessCodes(idOrSlug);
   }
 
   @Post(':idOrSlug/access-codes')
+  @UseGuards(ApiKeyGuard)
   generateAccessCode(
     @Param('idOrSlug') idOrSlug: string,
     @Body() body: GenerateAccessCodeInput,

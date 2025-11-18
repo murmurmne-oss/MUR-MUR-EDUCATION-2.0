@@ -14,24 +14,23 @@ function normalizeBaseUrl(rawValue: string | undefined) {
   return base.replace(/\.+$/, "").replace(/\/+$/, "");
 }
 
-const API_BASE_URL = normalizeBaseUrl(
-  process.env.NEXT_PUBLIC_API_BASE_URL,
-);
-
+// Используем прокси-роут для безопасной передачи API key
 function buildUrl(path: string) {
-  if (!path.startsWith("/")) {
-    return `${API_BASE_URL}/${path}`;
-  }
-  return `${API_BASE_URL}${path}`;
+  // Убираем ведущий слэш, если есть
+  const cleanPath = path.startsWith("/") ? path.slice(1) : path;
+  // Используем прокси-роут вместо прямого обращения к API
+  return `/api/proxy/${cleanPath}`;
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const headers: HeadersInit = {
+    "Content-Type": "application/json",
+    ...init?.headers,
+  };
+
   const response = await fetch(buildUrl(path), {
     ...init,
-    headers: {
-      "Content-Type": "application/json",
-      ...init?.headers,
-    },
+    headers,
     cache: "no-store",
   });
 
@@ -62,7 +61,9 @@ async function uploadImage(file: File): Promise<{ url: string }> {
   const formData = new FormData();
   formData.append("file", file);
 
-  const response = await fetch(buildUrl("/uploads/images"), {
+  // Для загрузки файлов используем прокси, но нужно обработать FormData
+  // Создаем специальный endpoint для загрузки файлов
+  const response = await fetch("/api/proxy/uploads/images", {
     method: "POST",
     body: formData,
   });

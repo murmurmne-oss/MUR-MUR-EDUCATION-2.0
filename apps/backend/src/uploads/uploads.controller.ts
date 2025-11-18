@@ -4,9 +4,11 @@ import {
   Post,
   Req,
   UploadedFile,
+  UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { ApiKeyGuard } from '../auth/api-key.guard';
 import type { Request } from 'express';
 import { existsSync, mkdirSync } from 'fs';
 import { diskStorage } from 'multer';
@@ -42,6 +44,7 @@ function resolveUploadsBaseUrl(request: Request) {
 @Controller('uploads')
 export class UploadsController {
   @Post('images')
+  @UseGuards(ApiKeyGuard)
   @UseInterceptors(
     FileInterceptor('file', {
       storage: diskStorage({

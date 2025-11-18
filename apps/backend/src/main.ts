@@ -41,8 +41,10 @@ async function bootstrap() {
       },
     }),
   );
+  const corsOrigins = process.env.CORS_ORIGIN?.split(',').map((o) => o.trim()).filter((o) => o.length > 0) ?? [];
   app.enableCors({
-    origin: process.env.CORS_ORIGIN?.split(',') ?? '*',
+    origin: corsOrigins.length > 0 ? corsOrigins : (process.env.NODE_ENV === 'production' ? false : '*'),
+    credentials: true,
   });
 
   const uploadsDir = resolveUploadsDir();

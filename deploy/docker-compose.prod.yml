@@ -16,6 +16,7 @@ services:
       DATABASE_URL: ${DATABASE_URL}
       REDIS_URL: ${REDIS_URL-}
       CORS_ORIGIN: https://mini.murmurmne.com,https://admin.murmurmne.com
+      API_KEY: ${API_KEY}
       UPLOADS_DIR: /uploads
       MANAGER_BOT_TOKEN: ${MANAGER_BOT_TOKEN}
       MANAGER_BOT_SECRET_TOKEN: ${MANAGER_BOT_SECRET_TOKEN-}
@@ -70,6 +71,8 @@ services:
       ADMIN_ALLOWED_IDS: ${ADMIN_ALLOWED_IDS-}
       ADMIN_ACCESS_TOKEN: ${ADMIN_ACCESS_TOKEN-}
       ADMIN_SESSION_SECRET: ${ADMIN_SESSION_SECRET}
+      API_KEY: ${API_KEY}
+      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL}
     expose:
       - "3000"
 

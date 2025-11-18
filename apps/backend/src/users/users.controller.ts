@@ -1,21 +1,24 @@
-import { Body, Controller, Get, Param, Post, Put } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Put, UseGuards } from '@nestjs/common';
 import {
   UsersService,
   type ProgressUpdateInput,
   type ReminderInput,
   type SyncUserInput,
 } from './users.service';
+import { ApiKeyGuard } from '../auth/api-key.guard';
 
 @Controller('users')
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
   @Get()
+  @UseGuards(ApiKeyGuard)
   getUsers() {
     return this.usersService.findAll();
   }
 
   @Get(':id')
+  @UseGuards(ApiKeyGuard)
   getUser(@Param('id') id: string) {
     return this.usersService.findOne(id);
   }
@@ -26,6 +29,7 @@ export class UsersController {
   }
 
   @Put(':id/reminder')
+  @UseGuards(ApiKeyGuard)
   updateReminder(@Param('id') id: string, @Body() body: ReminderInput) {
     return this.usersService.updateReminder(id, body);
   }
