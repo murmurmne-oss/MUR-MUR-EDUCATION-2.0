@@ -7,6 +7,8 @@ services:
       dockerfile: Dockerfile
     image: murmur-backend:latest
     restart: unless-stopped
+    env_file:
+      - .env
     environment:
       NODE_ENV: production
       PORT: 4000
@@ -62,6 +64,8 @@ services:
         ADMIN_SESSION_SECRET: ${ADMIN_SESSION_SECRET}
     image: murmur-admin:latest
     restart: unless-stopped
+    env_file:
+      - .env
     environment:
       NODE_ENV: production
       PORT: 3000
@@ -72,7 +76,6 @@ services:
       ADMIN_ACCESS_TOKEN: ${ADMIN_ACCESS_TOKEN-}
       ADMIN_SESSION_SECRET: ${ADMIN_SESSION_SECRET}
       API_KEY: ${API_KEY}
-      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL}
     expose:
       - "3000"
 

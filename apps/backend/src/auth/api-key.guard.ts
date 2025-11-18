@@ -23,9 +23,13 @@ export class ApiKeyGuard implements CanActivate {
     }
 
     if (!apiKey || apiKey !== validApiKey) {
+      console.log(
+        `[ApiKeyGuard] Доступ запрещен: путь=${request.path}, получен ключ=${apiKey ? 'да' : 'нет'}, ожидаемый ключ=${validApiKey ? 'да' : 'нет'}`,
+      );
       throw new UnauthorizedException('Неверный или отсутствующий API ключ');
     }
 
+    console.log(`[ApiKeyGuard] Доступ разрешен: путь=${request.path}`);
     return true;
   }
 
