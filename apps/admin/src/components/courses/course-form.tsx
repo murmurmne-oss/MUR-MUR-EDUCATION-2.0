@@ -2169,26 +2169,31 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
                             className="rounded-2xl border border-border bg-surface px-3 py-2 text-sm text-text-dark outline-none focus:border-brand-pink"
                           />
                         </label>
-                        {/* Ссылка на видео - компактная строка над контентом */}
-                        <label className="flex flex-col gap-1 text-xs text-text-dark">
-                          <span className="text-[11px] font-medium text-text-light">
-                            Ссылка на видео (если урок — видео):
-                          </span>
-                          <input
-                            type="url"
-                            value={lesson.videoUrl}
-                            onChange={(event) =>
-                              handleLessonChange(
-                                module.tempId,
-                                lesson.tempId,
-                                "videoUrl",
-                                event.target.value,
-                              )
-                            }
-                            placeholder="https://..."
-                            className="rounded-xl border border-border bg-surface px-3 py-1.5 text-xs text-text-dark outline-none focus:border-brand-pink"
-                          />
-                        </label>
+                      </div>
+
+                      {/* Ссылка на видео - компактная строка над контентом */}
+                      <label className="flex flex-col gap-1 text-xs text-text-dark">
+                        <span className="text-[11px] font-medium text-text-light">
+                          Ссылка на видео (если урок — видео):
+                        </span>
+                        <input
+                          type="url"
+                          value={lesson.videoUrl}
+                          onChange={(event) =>
+                            handleLessonChange(
+                              module.tempId,
+                              lesson.tempId,
+                              "videoUrl",
+                              event.target.value,
+                            )
+                          }
+                          placeholder="https://..."
+                          className="rounded-xl border border-border bg-surface px-3 py-1.5 text-xs text-text-dark outline-none focus:border-brand-pink"
+                        />
+                      </label>
+
+                      {/* Раздел контента - на всю ширину */}
+                      <div className="w-full">
                         <LessonContentEditor
                           mode={lesson.contentMode}
                           onModeChange={(mode) =>
@@ -2232,6 +2237,10 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
                           }
                           onUploadImage={handleLessonUploadImage}
                         />
+                      </div>
+
+                      {/* Длительность и превью - в отдельном grid */}
+                      <div className="grid gap-3 md:grid-cols-2">
                         <label className="flex flex-col gap-2 text-xs text-text-dark">
                           Длительность (мин)
                           <input
