@@ -33,30 +33,50 @@ export function FullscreenEnforcer() {
       }
     };
 
-    // Call expand immediately
+    // Call expand immediately and aggressively
     expandToFullscreen();
+    
+    // Call expand multiple times immediately (some clients need this)
+    for (let i = 0; i < 5; i++) {
+      setTimeout(expandToFullscreen, i * 50);
+    }
 
     // Call expand on various events
-    const events = ["load", "DOMContentLoaded", "resize", "orientationchange"];
+    const events = ["load", "DOMContentLoaded", "resize", "orientationchange", "focus"];
     events.forEach((eventName) => {
-      window.addEventListener(eventName, expandToFullscreen);
+      window.addEventListener(eventName, expandToFullscreen, { passive: true });
     });
 
     // Call expand with delays
-    const timeouts = [100, 300, 500, 1000, 2000];
+    const timeouts = [50, 100, 200, 300, 500, 1000, 2000, 3000];
     const timeoutIds = timeouts.map((delay) =>
       setTimeout(expandToFullscreen, delay),
     );
 
     // Also try to expand when WebApp becomes available
+    let checkCount = 0;
+    const maxChecks = 50; // Check for 5 seconds (50 * 100ms)
     const checkInterval = setInterval(() => {
+      checkCount++;
       const webApp = window.Telegram?.WebApp;
       if (webApp) {
         expandToFullscreen();
-        // Stop checking after WebApp is found
+        // Continue checking for a bit to ensure it stays expanded
+        if (checkCount >= maxChecks) {
+          clearInterval(checkInterval);
+        }
+      } else if (checkCount >= maxChecks) {
         clearInterval(checkInterval);
       }
     }, 100);
+    
+    // Also listen for viewport changes and expand
+    const webApp = window.Telegram?.WebApp;
+    if (webApp && typeof (webApp as any).onEvent === "function") {
+      (webApp as any).onEvent("viewportChanged", () => {
+        setTimeout(expandToFullscreen, 50);
+      });
+    }
 
     // Cleanup after 5 seconds
     const cleanupTimeout = setTimeout(() => {
