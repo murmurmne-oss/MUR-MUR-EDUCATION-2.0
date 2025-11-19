@@ -198,7 +198,24 @@ export function useTelegram() {
     if (webApp) {
       try {
         webApp.ready();
-        webApp.expand?.();
+        
+        // Expand to fullscreen - call multiple times to ensure it works
+        const expandToFullscreen = () => {
+          try {
+            webApp.expand?.();
+          } catch (e) {
+            // Silently fail - expand might not be available in all contexts
+          }
+        };
+        
+        // Call expand immediately
+        expandToFullscreen();
+        
+        // Call expand again after delays (some Telegram clients need this)
+        setTimeout(expandToFullscreen, 100);
+        setTimeout(expandToFullscreen, 500);
+        setTimeout(expandToFullscreen, 1000);
+        
         // Disable closing confirmation for better UX
         webApp.enableClosingConfirmation?.(false);
         // Disable vertical swipes to prevent accidental closing

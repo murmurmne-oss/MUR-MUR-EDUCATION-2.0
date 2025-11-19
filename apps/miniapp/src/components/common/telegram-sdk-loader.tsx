@@ -30,8 +30,29 @@ export function TelegramSdkLoader() {
       try {
         // Telegram recommends calling ready() as soon as the SDK becomes available.
         webApp.ready?.();
-        // Expand to fullscreen
-        webApp.expand?.();
+        
+        // Expand to fullscreen - call multiple times to ensure it works
+        const expandToFullscreen = () => {
+          try {
+            webApp.expand?.();
+          } catch (e) {
+            console.warn("[TelegramSdkLoader] expand() failed", e);
+          }
+        };
+        
+        // Call expand immediately
+        expandToFullscreen();
+        
+        // Call expand again after a short delay (some Telegram clients need this)
+        setTimeout(expandToFullscreen, 100);
+        setTimeout(expandToFullscreen, 500);
+        setTimeout(expandToFullscreen, 1000);
+        
+        // Also call expand when viewport changes
+        if (typeof (webApp as any).onEvent === "function") {
+          (webApp as any).onEvent("viewportChanged", expandToFullscreen);
+        }
+        
         // Disable closing confirmation for better UX
         if (typeof (webApp as any).enableClosingConfirmation === "function") {
           (webApp as any).enableClosingConfirmation(false);

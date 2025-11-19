@@ -3,6 +3,7 @@ import { Montserrat } from "next/font/google";
 import "./globals.css";
 import { BottomNav } from "@/components/navigation/bottom-nav";
 import { TelegramSdkLoader } from "@/components/common/telegram-sdk-loader";
+import { FullscreenEnforcer } from "@/components/common/fullscreen-enforcer";
 
 const montserrat = Montserrat({
   subsets: ["latin", "cyrillic"],
@@ -28,6 +29,7 @@ export default function RootLayout({
         className={`${montserrat.variable} antialiased bg-surface text-text-medium`}
       >
         <TelegramSdkLoader />
+        <FullscreenEnforcer />
         <div className="flex w-full flex-col pb-24" style={{ minHeight: 'var(--tg-viewport-stable-height, 100vh)' }}>
           {children}
         </div>
