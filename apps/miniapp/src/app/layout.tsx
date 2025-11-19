@@ -28,7 +28,7 @@ export default function RootLayout({
         className={`${montserrat.variable} antialiased bg-surface text-text-medium`}
       >
         <TelegramSdkLoader />
-        <div className="mx-auto flex min-h-screen w-full max-w-md flex-col pb-24">
+        <div className="flex w-full flex-col pb-24" style={{ minHeight: 'var(--tg-viewport-stable-height, 100vh)' }}>
           {children}
         </div>
         <BottomNav />

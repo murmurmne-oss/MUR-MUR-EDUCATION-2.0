@@ -30,7 +30,16 @@ export function TelegramSdkLoader() {
       try {
         // Telegram recommends calling ready() as soon as the SDK becomes available.
         webApp.ready?.();
+        // Expand to fullscreen
         webApp.expand?.();
+        // Disable closing confirmation for better UX
+        if (typeof (webApp as any).enableClosingConfirmation === "function") {
+          (webApp as any).enableClosingConfirmation(false);
+        }
+        // Disable vertical swipes to prevent accidental closing
+        if (typeof (webApp as any).enableVerticalSwipes === "function") {
+          (webApp as any).enableVerticalSwipes(false);
+        }
       } catch (readyError) {
         console.warn("[TelegramSdkLoader] failed to call WebApp.ready()", readyError);
       }

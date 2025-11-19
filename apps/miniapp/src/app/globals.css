@@ -21,8 +21,15 @@
   --font-sans: var(--font-montserrat);
 }
 
+html {
+  /* Use Telegram's viewport height if available, fallback to 100vh */
+  height: var(--tg-viewport-stable-height, var(--tg-viewport-height, 100vh));
+}
+
 body {
   @apply min-h-screen bg-surface text-text-medium font-sans antialiased;
+  /* Use Telegram's viewport height if available */
+  min-height: var(--tg-viewport-stable-height, var(--tg-viewport-height, 100vh));
 }
 
 .no-scrollbar {

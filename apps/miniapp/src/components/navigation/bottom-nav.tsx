@@ -60,7 +60,7 @@ export function BottomNav() {
   );
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 mx-auto max-w-md rounded-t-3xl border border-transparent border-t-card bg-background/95 px-6 py-3 shadow-[0_-10px_40px_-24px_rgba(31,41,55,0.35)] backdrop-blur">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 rounded-t-3xl border border-transparent border-t-card bg-background/95 px-6 py-3 shadow-[0_-10px_40px_-24px_rgba(31,41,55,0.35)] backdrop-blur">
       <ul className="flex items-center justify-between gap-4 text-xs font-medium">
         {NAV_ITEMS.map(({ href, labelKey, icon: Icon }) => {
           const isActive =

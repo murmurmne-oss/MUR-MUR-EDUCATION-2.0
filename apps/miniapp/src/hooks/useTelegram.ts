@@ -24,6 +24,8 @@ interface TelegramWebApp {
   colorScheme?: "light" | "dark";
   ready: () => void;
   expand: () => void;
+  enableClosingConfirmation?: (enabled: boolean) => void;
+  enableVerticalSwipes?: (enabled: boolean) => void;
   initStarPayment?: (params: unknown) => Promise<unknown>;
   openInvoice?: (
     url: string,
@@ -197,6 +199,10 @@ export function useTelegram() {
       try {
         webApp.ready();
         webApp.expand?.();
+        // Disable closing confirmation for better UX
+        webApp.enableClosingConfirmation?.(false);
+        // Disable vertical swipes to prevent accidental closing
+        webApp.enableVerticalSwipes?.(false);
       } catch (readyError) {
         console.warn("Failed to call Telegram WebApp ready()", readyError);
       }
