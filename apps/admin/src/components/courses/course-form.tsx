@@ -139,7 +139,7 @@ type FormResultState = {
   description: string;
 };
 
-type FormState = {
+type CourseFormState = {
   tempId: string;
   title: string;
   description: string;
@@ -896,7 +896,7 @@ function mapCourseToTests(course?: CourseDetails | null): TestState[] {
   );
 }
 
-function createFormState(partial?: Partial<FormState>): FormState {
+function createFormState(partial?: Partial<CourseFormState>): CourseFormState {
   const questions = partial?.questions ?? [createFormQuestionState()];
   const results = partial?.results ?? [createFormResultState()];
   return {
@@ -1032,7 +1032,7 @@ function parseFormResultsToState(results: unknown): FormResultState[] {
   });
 }
 
-function mapCourseToForms(course?: CourseDetails | null): FormState[] {
+function mapCourseToForms(course?: CourseDetails | null): CourseFormState[] {
   if (!course || !course.forms) {
     return [];
   }
@@ -1083,6 +1083,9 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
   );
   const [tests, setTests] = useState<TestState[]>(
     mapCourseToTests(initialCourse),
+  );
+  const [forms, setForms] = useState<CourseFormState[]>(
+    mapCourseToForms(initialCourse),
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
