@@ -156,6 +156,15 @@ export type CourseDetails = {
       } | null;
     } | null;
   }>;
+  forms: Array<{
+    id: string;
+    title: string;
+    description: string | null;
+    questions: unknown;
+    results: unknown;
+    unlockModuleId: string | null;
+    unlockLessonId: string | null;
+  }>;
 };
 
 export type CourseAccessCode = {
@@ -195,6 +204,7 @@ export type CoursePayload = {
   isPublished: boolean;
   modules?: CourseModulePayload[];
   tests?: CourseTestPayload[];
+  forms?: CourseFormPayload[];
 };
 
 export type LessonPayload = {
@@ -221,6 +231,15 @@ export type CourseTestPayload = {
   title: string;
   description?: string | null;
   questions?: unknown;
+  unlockModuleId?: string | null;
+  unlockLessonId?: string | null;
+};
+
+export type CourseFormPayload = {
+  title: string;
+  description?: string | null;
+  questions?: unknown;
+  results?: unknown;
   unlockModuleId?: string | null;
   unlockLessonId?: string | null;
 };

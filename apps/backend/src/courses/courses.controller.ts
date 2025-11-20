@@ -18,6 +18,8 @@ import type {
   RedeemAccessCodeInput,
   StartTestInput,
   SubmitTestInput,
+  StartFormInput,
+  SubmitFormInput,
 } from './courses.service';
 
 @Controller('courses')
@@ -107,5 +109,23 @@ export class CoursesController {
     @Body() body: SubmitTestInput,
   ) {
     return this.coursesService.submitTest(idOrSlug, testId, body);
+  }
+
+  @Post(':idOrSlug/forms/:formId/start')
+  startForm(
+    @Param('idOrSlug') idOrSlug: string,
+    @Param('formId') formId: string,
+    @Body() body: StartFormInput,
+  ) {
+    return this.coursesService.startForm(idOrSlug, formId, body);
+  }
+
+  @Post(':idOrSlug/forms/:formId/submit')
+  submitForm(
+    @Param('idOrSlug') idOrSlug: string,
+    @Param('formId') formId: string,
+    @Body() body: SubmitFormInput,
+  ) {
+    return this.coursesService.submitForm(idOrSlug, formId, body);
   }
 }

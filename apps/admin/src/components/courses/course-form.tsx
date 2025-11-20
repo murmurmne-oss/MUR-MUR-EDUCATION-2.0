@@ -119,6 +119,36 @@ type TestState = {
   unlockLessonId: string | null;
 };
 
+type FormOptionState = {
+  tempId: string;
+  text: string;
+  category: string; // A, B, C и т.д.
+};
+
+type FormQuestionState = {
+  tempId: string;
+  text: string;
+  options: FormOptionState[];
+};
+
+type FormResultState = {
+  tempId: string;
+  id: string;
+  condition: string; // "more_A", "more_B", "equal_A_B" и т.д.
+  title: string;
+  description: string;
+};
+
+type FormState = {
+  tempId: string;
+  title: string;
+  description: string;
+  questions: FormQuestionState[];
+  results: FormResultState[];
+  unlockModuleId: string | null;
+  unlockLessonId: string | null;
+};
+
 function slugify(value: string) {
   return value
     .toLowerCase()
@@ -866,6 +896,166 @@ function mapCourseToTests(course?: CourseDetails | null): TestState[] {
   );
 }
 
+function createFormState(partial?: Partial<FormState>): FormState {
+  const questions = partial?.questions ?? [createFormQuestionState()];
+  const results = partial?.results ?? [createFormResultState()];
+  return {
+    tempId: partial?.tempId ?? createTempId("form"),
+    title: partial?.title ?? "",
+    description: partial?.description ?? "",
+    questions,
+    results,
+    unlockModuleId: partial?.unlockModuleId ?? null,
+    unlockLessonId: partial?.unlockLessonId ?? null,
+  };
+}
+
+function createFormQuestionState(
+  partial?: Partial<FormQuestionState>,
+): FormQuestionState {
+  const baseOptions =
+    partial?.options && partial.options.length > 0
+      ? partial.options
+      : [
+          createFormOptionState({
+            text: "Вариант 1",
+            category: "A",
+          }),
+          createFormOptionState({
+            text: "Вариант 2",
+            category: "B",
+          }),
+        ];
+
+  return {
+    tempId: partial?.tempId ?? createTempId("form-question"),
+    text: partial?.text ?? "",
+    options: baseOptions,
+  };
+}
+
+function createFormOptionState(
+  partial?: Partial<FormOptionState>,
+): FormOptionState {
+  return {
+    tempId: partial?.tempId ?? createTempId("form-option"),
+    text: partial?.text ?? "",
+    category: partial?.category ?? "A",
+  };
+}
+
+function createFormResultState(
+  partial?: Partial<FormResultState>,
+): FormResultState {
+  return {
+    tempId: partial?.tempId ?? createTempId("form-result"),
+    id: partial?.id ?? createTempId("result"),
+    condition: partial?.condition ?? "more_A",
+    title: partial?.title ?? "",
+    description: partial?.description ?? "",
+  };
+}
+
+function serializeFormQuestions(questions: FormQuestionState[]): unknown[] {
+  return questions.map((question) => ({
+    id: question.tempId,
+    text: question.text,
+    options: question.options.map((option) => ({
+      id: option.tempId,
+      text: option.text,
+      category: option.category,
+    })),
+  }));
+}
+
+function serializeFormResults(results: FormResultState[]): unknown[] {
+  return results.map((result) => ({
+    id: result.id,
+    condition: result.condition,
+    title: result.title,
+    description: result.description,
+  }));
+}
+
+function parseFormQuestionsToState(questions: unknown): FormQuestionState[] {
+  if (!Array.isArray(questions)) {
+    return [];
+  }
+
+  return questions.map((q) => {
+    if (!q || typeof q !== "object") {
+      return createFormQuestionState();
+    }
+
+    const question = q as Record<string, unknown>;
+    const options = Array.isArray(question.options)
+      ? question.options.map((opt) => {
+          if (!opt || typeof opt !== "object") {
+            return createFormOptionState();
+          }
+          const option = opt as Record<string, unknown>;
+          return createFormOptionState({
+            text: typeof option.text === "string" ? option.text : "",
+            category: typeof option.category === "string" ? option.category : "A",
+          });
+        })
+      : [];
+
+    return createFormQuestionState({
+      text: typeof question.text === "string" ? question.text : "",
+      options: options.length > 0 ? options : undefined,
+    });
+  });
+}
+
+function parseFormResultsToState(results: unknown): FormResultState[] {
+  if (!Array.isArray(results)) {
+    return [createFormResultState()];
+  }
+
+  if (results.length === 0) {
+    return [createFormResultState()];
+  }
+
+  return results.map((r) => {
+    if (!r || typeof r !== "object") {
+      return createFormResultState();
+    }
+
+    const result = r as Record<string, unknown>;
+    return createFormResultState({
+      id: typeof result.id === "string" ? result.id : createTempId("result"),
+      condition: typeof result.condition === "string" ? result.condition : "more_A",
+      title: typeof result.title === "string" ? result.title : "",
+      description: typeof result.description === "string" ? result.description : "",
+    });
+  });
+}
+
+function mapCourseToForms(course?: CourseDetails | null): FormState[] {
+  if (!course || !course.forms) {
+    return [];
+  }
+
+  return course.forms.map((form) =>
+    createFormState({
+      tempId: createTempId("form"),
+      title: form.title,
+      description: form.description ?? "",
+      questions: (() => {
+        const parsed = parseFormQuestionsToState(form.questions);
+        return parsed.length > 0 ? parsed : [createFormQuestionState()];
+      })(),
+      results: (() => {
+        const parsed = parseFormResultsToState(form.results);
+        return parsed.length > 0 ? parsed : [createFormResultState()];
+      })(),
+      unlockModuleId: form.unlockModuleId ?? null,
+      unlockLessonId: form.unlockLessonId ?? null,
+    }),
+  );
+}
+
 export function CourseForm({ initialCourse }: CourseFormProps) {
   const router = useRouter();
   const [formState, setFormState] = useState<FormState>(() => ({
@@ -924,6 +1114,7 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
       });
       setModules(mapCourseToModules(initialCourse));
       setTests(mapCourseToTests(initialCourse));
+      setForms(mapCourseToForms(initialCourse));
     }
   }, [initialCourse]);
 
@@ -1712,6 +1903,14 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
       language: formState.language,
       modules: modulesPayload,
       tests: testsPayload,
+      forms: forms.map((form) => ({
+        title: form.title,
+        description: form.description || null,
+        questions: serializeFormQuestions(form.questions),
+        results: serializeFormResults(form.results),
+        unlockModuleId: form.unlockModuleId || null,
+        unlockLessonId: form.unlockLessonId || null,
+      })),
     };
   };
 
@@ -2695,6 +2894,544 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
                   </span>
                 </label>
               </div>
+            </div>
+          ))
+        )}
+      </section>
+
+      <section className="flex flex-col gap-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-text-dark">Формы</h2>
+          <button
+            type="button"
+            onClick={() => setForms([...forms, createFormState()])}
+            className="rounded-full border border-brand-pink px-4 py-2 text-xs font-semibold text-brand-pink transition-colors hover:bg-brand-pink hover:text-white"
+          >
+            Добавить форму
+          </button>
+        </div>
+
+        {forms.length === 0 ? (
+          <p className="rounded-2xl bg-card px-4 py-3 text-sm text-text-medium">
+            Пока нет форм. Добавьте первую форму для опросов с результатами на основе выбора вариантов.
+          </p>
+        ) : (
+          forms.map((form) => (
+            <div
+              key={form.tempId}
+              className="flex flex-col gap-4 rounded-2xl border border-border/40 bg-white p-4 shadow-sm"
+            >
+              <div className="grid gap-3 md:grid-cols-2">
+                <label className="flex flex-col gap-1 text-xs text-text-dark">
+                  <span className="text-[11px] font-medium text-text-light">
+                    Название формы
+                  </span>
+                  <input
+                    type="text"
+                    value={form.title}
+                    onChange={(event) =>
+                      setForms((prev) =>
+                        prev.map((f) =>
+                          f.tempId === form.tempId
+                            ? { ...f, title: event.target.value }
+                            : f,
+                        ),
+                      )
+                    }
+                    placeholder="Название формы"
+                    className="rounded-xl border border-border bg-surface px-3 py-1.5 text-xs text-text-dark outline-none focus:border-brand-pink"
+                  />
+                </label>
+                <label className="flex flex-col gap-1 text-xs text-text-dark">
+                  <span className="text-[11px] font-medium text-text-light">
+                    Описание (опционально)
+                  </span>
+                  <input
+                    type="text"
+                    value={form.description}
+                    onChange={(event) =>
+                      setForms((prev) =>
+                        prev.map((f) =>
+                          f.tempId === form.tempId
+                            ? { ...f, description: event.target.value }
+                            : f,
+                        ),
+                      )
+                    }
+                    placeholder="Описание формы"
+                    className="rounded-xl border border-border bg-surface px-3 py-1.5 text-xs text-text-dark outline-none focus:border-brand-pink"
+                  />
+                </label>
+              </div>
+
+              <div className="flex flex-col gap-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-semibold text-text-dark">Вопросы</h3>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setForms((prev) =>
+                        prev.map((f) =>
+                          f.tempId === form.tempId
+                            ? {
+                                ...f,
+                                questions: [
+                                  ...f.questions,
+                                  createFormQuestionState(),
+                                ],
+                              }
+                            : f,
+                        ),
+                      )
+                    }
+                    className="rounded-full border border-border px-3 py-1 text-[11px] font-medium text-text-medium transition-colors hover:bg-surface"
+                  >
+                    + Добавить вопрос
+                  </button>
+                </div>
+
+                {form.questions.map((question, questionIndex) => (
+                  <div
+                    key={question.tempId}
+                    className="rounded-xl border border-border/40 bg-surface p-3"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 space-y-2">
+                        <label className="flex flex-col gap-1 text-xs text-text-dark">
+                          <span className="text-[11px] font-medium text-text-light">
+                            Вопрос {questionIndex + 1}
+                          </span>
+                          <input
+                            type="text"
+                            value={question.text}
+                            onChange={(event) =>
+                              setForms((prev) =>
+                                prev.map((f) =>
+                                  f.tempId === form.tempId
+                                    ? {
+                                        ...f,
+                                        questions: f.questions.map((q) =>
+                                          q.tempId === question.tempId
+                                            ? { ...q, text: event.target.value }
+                                            : q,
+                                        ),
+                                      }
+                                    : f,
+                                ),
+                              )
+                            }
+                            placeholder="Текст вопроса"
+                            className="rounded-xl border border-border bg-white px-3 py-1.5 text-xs text-text-dark outline-none focus:border-brand-pink"
+                          />
+                        </label>
+
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[11px] font-medium text-text-light">
+                              Варианты ответов
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setForms((prev) =>
+                                  prev.map((f) =>
+                                    f.tempId === form.tempId
+                                      ? {
+                                          ...f,
+                                          questions: f.questions.map((q) =>
+                                            q.tempId === question.tempId
+                                              ? {
+                                                  ...q,
+                                                  options: [
+                                                    ...q.options,
+                                                    createFormOptionState(),
+                                                  ],
+                                                }
+                                              : q,
+                                          ),
+                                        }
+                                      : f,
+                                  ),
+                                )
+                              }
+                              className="rounded-full border border-border px-2 py-0.5 text-[10px] font-medium text-text-medium transition-colors hover:bg-white"
+                            >
+                              + Вариант
+                            </button>
+                          </div>
+
+                          {question.options.map((option, optionIndex) => (
+                            <div
+                              key={option.tempId}
+                              className="flex items-center gap-2"
+                            >
+                              <input
+                                type="text"
+                                value={option.text}
+                                onChange={(event) =>
+                                  setForms((prev) =>
+                                    prev.map((f) =>
+                                      f.tempId === form.tempId
+                                        ? {
+                                            ...f,
+                                            questions: f.questions.map((q) =>
+                                              q.tempId === question.tempId
+                                                ? {
+                                                    ...q,
+                                                    options: q.options.map(
+                                                      (opt) =>
+                                                        opt.tempId ===
+                                                        option.tempId
+                                                          ? {
+                                                              ...opt,
+                                                              text: event.target.value,
+                                                            }
+                                                          : opt,
+                                                    ),
+                                                  }
+                                                : q,
+                                            ),
+                                          }
+                                        : f,
+                                    ),
+                                  )
+                                }
+                                placeholder={`Вариант ${optionIndex + 1}`}
+                                className="flex-1 rounded-xl border border-border bg-white px-3 py-1.5 text-xs text-text-dark outline-none focus:border-brand-pink"
+                              />
+                              <select
+                                value={option.category}
+                                onChange={(event) =>
+                                  setForms((prev) =>
+                                    prev.map((f) =>
+                                      f.tempId === form.tempId
+                                        ? {
+                                            ...f,
+                                            questions: f.questions.map((q) =>
+                                              q.tempId === question.tempId
+                                                ? {
+                                                    ...q,
+                                                    options: q.options.map(
+                                                      (opt) =>
+                                                        opt.tempId ===
+                                                        option.tempId
+                                                          ? {
+                                                              ...opt,
+                                                              category: event.target.value,
+                                                            }
+                                                          : opt,
+                                                    ),
+                                                  }
+                                                : q,
+                                            ),
+                                          }
+                                        : f,
+                                    ),
+                                  )
+                                }
+                                className="w-20 rounded-xl border border-border bg-white px-2 py-1.5 text-xs text-text-dark outline-none focus:border-brand-pink"
+                              >
+                                <option value="A">A</option>
+                                <option value="B">B</option>
+                                <option value="C">C</option>
+                                <option value="D">D</option>
+                              </select>
+                              {question.options.length > 2 && (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setForms((prev) =>
+                                      prev.map((f) =>
+                                        f.tempId === form.tempId
+                                          ? {
+                                              ...f,
+                                              questions: f.questions.map((q) =>
+                                                q.tempId === question.tempId
+                                                  ? {
+                                                      ...q,
+                                                      options: q.options.filter(
+                                                        (opt) =>
+                                                          opt.tempId !==
+                                                          option.tempId,
+                                                      ),
+                                                    }
+                                                  : q,
+                                              ),
+                                            }
+                                          : f,
+                                      ),
+                                    )
+                                  }
+                                  className="rounded-full p-1 text-text-medium hover:bg-white hover:text-text-dark"
+                                  title="Удалить вариант"
+                                >
+                                  ✕
+                                </button>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                      {form.questions.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setForms((prev) =>
+                              prev.map((f) =>
+                                f.tempId === form.tempId
+                                  ? {
+                                      ...f,
+                                      questions: f.questions.filter(
+                                        (q) => q.tempId !== question.tempId,
+                                      ),
+                                    }
+                                  : f,
+                              ),
+                            )
+                          }
+                          className="rounded-full p-1 text-text-medium hover:bg-white hover:text-text-dark"
+                          title="Удалить вопрос"
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex flex-col gap-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-semibold text-text-dark">Результаты</h3>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setForms((prev) =>
+                        prev.map((f) =>
+                          f.tempId === form.tempId
+                            ? {
+                                ...f,
+                                results: [...f.results, createFormResultState()],
+                              }
+                            : f,
+                        ),
+                      )
+                    }
+                    className="rounded-full border border-border px-3 py-1 text-[11px] font-medium text-text-medium transition-colors hover:bg-surface"
+                  >
+                    + Добавить результат
+                  </button>
+                </div>
+
+                {form.results.map((result, resultIndex) => (
+                  <div
+                    key={result.tempId}
+                    className="rounded-xl border border-border/40 bg-surface p-3"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 space-y-2">
+                        <div className="grid gap-2 md:grid-cols-2">
+                          <label className="flex flex-col gap-1 text-xs text-text-dark">
+                            <span className="text-[11px] font-medium text-text-light">
+                              Условие
+                            </span>
+                            <select
+                              value={result.condition}
+                              onChange={(event) =>
+                                setForms((prev) =>
+                                  prev.map((f) =>
+                                    f.tempId === form.tempId
+                                      ? {
+                                          ...f,
+                                          results: f.results.map((r) =>
+                                            r.tempId === result.tempId
+                                              ? {
+                                                  ...r,
+                                                  condition: event.target.value,
+                                                }
+                                              : r,
+                                          ),
+                                        }
+                                      : f,
+                                  ),
+                                )
+                              }
+                              className="rounded-xl border border-border bg-white px-3 py-1.5 text-xs text-text-dark outline-none focus:border-brand-pink"
+                            >
+                              <option value="more_A">Больше вариантов A</option>
+                              <option value="more_B">Больше вариантов B</option>
+                              <option value="more_C">Больше вариантов C</option>
+                              <option value="more_D">Больше вариантов D</option>
+                              <option value="equal_A_B">Равно A и B</option>
+                            </select>
+                          </label>
+                          <label className="flex flex-col gap-1 text-xs text-text-dark">
+                            <span className="text-[11px] font-medium text-text-light">
+                              Название результата
+                            </span>
+                            <input
+                              type="text"
+                              value={result.title}
+                              onChange={(event) =>
+                                setForms((prev) =>
+                                  prev.map((f) =>
+                                    f.tempId === form.tempId
+                                      ? {
+                                          ...f,
+                                          results: f.results.map((r) =>
+                                            r.tempId === result.tempId
+                                              ? {
+                                                  ...r,
+                                                  title: event.target.value,
+                                                }
+                                              : r,
+                                          ),
+                                        }
+                                      : f,
+                                  ),
+                                )
+                              }
+                              placeholder="Название результата"
+                              className="rounded-xl border border-border bg-white px-3 py-1.5 text-xs text-text-dark outline-none focus:border-brand-pink"
+                            />
+                          </label>
+                        </div>
+                        <label className="flex flex-col gap-1 text-xs text-text-dark">
+                          <span className="text-[11px] font-medium text-text-light">
+                            Описание результата
+                          </span>
+                          <textarea
+                            value={result.description}
+                            onChange={(event) =>
+                              setForms((prev) =>
+                                prev.map((f) =>
+                                  f.tempId === form.tempId
+                                    ? {
+                                        ...f,
+                                        results: f.results.map((r) =>
+                                          r.tempId === result.tempId
+                                            ? {
+                                                ...r,
+                                                description: event.target.value,
+                                              }
+                                            : r,
+                                        ),
+                                      }
+                                    : f,
+                                ),
+                              )
+                            }
+                            placeholder="Описание результата"
+                            rows={3}
+                            className="rounded-xl border border-border bg-white px-3 py-1.5 text-xs text-text-dark outline-none focus:border-brand-pink"
+                          />
+                        </label>
+                      </div>
+                      {form.results.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setForms((prev) =>
+                              prev.map((f) =>
+                                f.tempId === form.tempId
+                                  ? {
+                                      ...f,
+                                      results: f.results.filter(
+                                        (r) => r.tempId !== result.tempId,
+                                      ),
+                                    }
+                                  : f,
+                              ),
+                            )
+                          }
+                          className="rounded-full p-1 text-text-medium hover:bg-white hover:text-text-dark"
+                          title="Удалить результат"
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="grid gap-3 md:grid-cols-2">
+                <label className="flex flex-col gap-2 text-xs text-text-dark">
+                  Ограничение по модулю
+                  <select
+                    value={form.unlockModuleId ?? ""}
+                    onChange={(event) =>
+                      setForms((prev) =>
+                        prev.map((f) =>
+                          f.tempId === form.tempId
+                            ? {
+                                ...f,
+                                unlockModuleId:
+                                  event.target.value.trim().length > 0
+                                    ? event.target.value
+                                    : null,
+                                unlockLessonId: event.target.value.trim().length > 0
+                                  ? null
+                                  : f.unlockLessonId,
+                              }
+                            : f,
+                        ),
+                      )
+                    }
+                    disabled={unlockModuleOptions.length === 0}
+                    className="rounded-2xl border border-border bg-white px-3 py-2 text-sm text-text-dark outline-none focus:border-brand-pink disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    <option value="">Не требуется</option>
+                    {unlockModuleOptions.map((module) => (
+                      <option key={module.id} value={module.id}>
+                        {module.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="flex flex-col gap-2 text-xs text-text-dark">
+                  Ограничение по уроку
+                  <select
+                    value={form.unlockLessonId ?? ""}
+                    onChange={(event) =>
+                      setForms((prev) =>
+                        prev.map((f) =>
+                          f.tempId === form.tempId
+                            ? {
+                                ...f,
+                                unlockLessonId:
+                                  event.target.value.trim().length > 0
+                                    ? event.target.value
+                                    : null,
+                              }
+                            : f,
+                        ),
+                      )
+                    }
+                    disabled={unlockLessonOptions.length === 0}
+                    className="rounded-2xl border border-border bg-white px-3 py-2 text-sm text-text-dark outline-none focus:border-brand-pink disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    <option value="">Не требуется</option>
+                    {unlockLessonOptions.map((lesson) => (
+                      <option key={lesson.id} value={lesson.id}>
+                        {lesson.moduleLabel} — {lesson.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+
+              <button
+                type="button"
+                onClick={() =>
+                  setForms((prev) =>
+                    prev.filter((f) => f.tempId !== form.tempId),
+                  )
+                }
+                className="self-start rounded-full border border-brand-orange px-4 py-2 text-xs font-semibold text-brand-orange transition-colors hover:bg-brand-orange hover:text-white"
+              >
+                Удалить форму
+              </button>
             </div>
           ))
         )}

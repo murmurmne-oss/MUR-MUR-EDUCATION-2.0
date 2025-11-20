@@ -17,6 +17,7 @@ import {
   LessonProgressStatus,
   Prisma,
   TestAttemptStatus,
+  FormAttemptStatus,
 } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -48,6 +49,15 @@ export type CourseTestInput = {
   unlockLessonId?: string | null;
 };
 
+export type CourseFormInput = {
+  title: string;
+  description?: string | null;
+  questions?: Prisma.InputJsonValue | null;
+  results?: Prisma.InputJsonValue | null;
+  unlockModuleId?: string | null;
+  unlockLessonId?: string | null;
+};
+
 export type CourseInput = {
   title: string;
   slug: string;
@@ -64,6 +74,7 @@ export type CourseInput = {
   isPublished: boolean;
   modules?: CourseModuleInput[];
   tests?: CourseTestInput[];
+  forms?: CourseFormInput[];
 };
 
 export type EnrollCourseInput = {
@@ -170,6 +181,59 @@ export type SubmitTestResult = {
   answers: TestAnswerEvaluation[];
 };
 
+export type PublicFormQuestionOption = {
+  id: string;
+  text: string;
+  category: string; // A, B, C и т.д.
+};
+
+export type PublicFormQuestion = {
+  id: string;
+  order: number;
+  text: string;
+  options: PublicFormQuestionOption[];
+};
+
+export type PublicForm = {
+  id: string;
+  title: string;
+  description: string | null;
+  questionCount: number;
+  questions: PublicFormQuestion[];
+  unlockLesson?: {
+    id: string;
+    title: string;
+  };
+  unlockModule?: {
+    id: string;
+    title: string;
+  };
+};
+
+export type StartFormInput = {
+  userId: string;
+  firstName?: string | null;
+  lastName?: string | null;
+  username?: string | null;
+  languageCode?: string | null;
+  avatarUrl?: string | null;
+};
+
+export type SubmitFormInput = {
+  attemptId: string;
+  responses: Record<string, string | string[]>; // questionId -> selected optionId(s)
+};
+
+export type SubmitFormResult = {
+  attemptId: string;
+  resultId?: string;
+  result?: {
+    id: string;
+    title: string;
+    description?: string;
+  };
+};
+
 @Injectable()
 export class CoursesService {
   constructor(private readonly prisma: PrismaService) {}
@@ -265,6 +329,52 @@ export class CoursesService {
               : {}),
           },
         },
+        forms: {
+          orderBy: { createdAt: 'desc' },
+          include: {
+            unlockModule: {
+              select: {
+                id: true,
+                title: true,
+                order: true,
+                lessons: {
+                  select: {
+                    id: true,
+                  },
+                },
+              },
+            },
+            unlockLesson: {
+              select: {
+                id: true,
+                title: true,
+                module: {
+                  select: {
+                    title: true,
+                  },
+                },
+              },
+            },
+            ...(userId
+              ? {
+                  attempts: {
+                    where: {
+                      userId,
+                      status: FormAttemptStatus.COMPLETED,
+                    },
+                    orderBy: { completedAt: 'desc' },
+                    take: 1,
+                    select: {
+                      id: true,
+                      status: true,
+                      resultId: true,
+                      completedAt: true,
+                    },
+                  },
+                }
+              : {}),
+          },
+        },
         _count: {
           select: {
             enrollments: true,
@@ -286,6 +396,7 @@ export class CoursesService {
 
     const modulesData = this.mapModuleInputs(data.modules);
     const testsData = this.mapTestInputs(data.tests);
+    const formsData = this.mapFormInputs(data.forms);
 
     const created = await this.prisma.course.create({
       data: {
@@ -317,6 +428,13 @@ export class CoursesService {
               },
             }
           : {}),
+        ...(formsData.length > 0
+          ? {
+              forms: {
+                create: formsData,
+              },
+            }
+          : {}),
       },
     });
 
@@ -342,11 +460,19 @@ export class CoursesService {
     const modulesData = this.mapModuleInputs(data.modules);
     const testsDefined = data.tests !== undefined;
     const testsData = this.mapTestInputs(data.tests);
+    const formsDefined = data.forms !== undefined;
+    const formsData = this.mapFormInputs(data.forms);
     let updatedCourseId = existing.id;
 
     await this.prisma.$transaction(async (tx) => {
       if (testsDefined) {
         await tx.courseTest.deleteMany({
+          where: { courseId: existing.id },
+        });
+      }
+
+      if (formsDefined) {
+        await tx.courseForm.deleteMany({
           where: { courseId: existing.id },
         });
       }
@@ -387,6 +513,13 @@ export class CoursesService {
             ? {
                 tests: {
                   create: testsData,
+                },
+              }
+            : {}),
+          ...(formsDefined && formsData.length > 0
+            ? {
+                forms: {
+                  create: formsData,
                 },
               }
             : {}),
@@ -1390,5 +1523,383 @@ export class CoursesService {
         unlockLessonId: unlockLessonId.length > 0 ? unlockLessonId : null,
       };
     });
+  }
+
+  private mapFormInputs(
+    forms?: CourseFormInput[],
+  ): Prisma.CourseFormCreateWithoutCourseInput[] {
+    if (!forms) {
+      return [];
+    }
+
+    return forms.map((form) => {
+      const unlockModuleId =
+        typeof form.unlockModuleId === 'string' ? form.unlockModuleId.trim() : '';
+      const unlockLessonId =
+        typeof form.unlockLessonId === 'string' ? form.unlockLessonId.trim() : '';
+
+      return {
+        title: form.title,
+        description: form.description ?? null,
+        questions: form.questions ?? Prisma.JsonNull,
+        results: form.results ?? Prisma.JsonNull,
+        unlockModuleId: unlockModuleId.length > 0 ? unlockModuleId : null,
+        unlockLessonId: unlockLessonId.length > 0 ? unlockLessonId : null,
+      };
+    });
+  }
+
+  async startForm(
+    idOrSlug: string,
+    formId: string,
+    payload: StartFormInput,
+  ): Promise<{ attemptId: string; form: PublicForm }> {
+    const course = await this.prisma.course.findFirst({
+      where: { OR: [{ id: idOrSlug }, { slug: idOrSlug }] },
+      select: {
+        id: true,
+        slug: true,
+        title: true,
+        forms: {
+          where: { id: formId },
+          select: {
+            id: true,
+            title: true,
+            description: true,
+            questions: true,
+            results: true,
+            unlockLessonId: true,
+            unlockModuleId: true,
+            unlockLesson: {
+              select: {
+                id: true,
+                title: true,
+              },
+            },
+            unlockModule: {
+              select: {
+                id: true,
+                title: true,
+                lessons: {
+                  select: { id: true },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!course || course.forms.length === 0) {
+      throw new NotFoundException(`Form ${formId} not found in course ${idOrSlug}`);
+    }
+
+    const formRecord = course.forms[0];
+    const userId = payload.userId;
+
+    await this.prisma.user.upsert({
+      where: { id: userId },
+      update: {
+        firstName: payload.firstName ?? null,
+        lastName: payload.lastName ?? null,
+        username: payload.username ?? null,
+        languageCode: payload.languageCode ?? null,
+        avatarUrl: payload.avatarUrl ?? null,
+      },
+      create: {
+        id: userId,
+        firstName: payload.firstName ?? null,
+        lastName: payload.lastName ?? null,
+        username: payload.username ?? null,
+        languageCode: payload.languageCode ?? null,
+        avatarUrl: payload.avatarUrl ?? null,
+      },
+    });
+
+    const enrollment = await this.prisma.courseEnrollment.findUnique({
+      where: {
+        userId_courseId: {
+          userId,
+          courseId: course.id,
+        },
+      },
+    });
+
+    if (!enrollment || enrollment.status !== CourseAccessStatus.ACTIVE) {
+      throw new BadRequestException('У вас нет доступа к этому курсу');
+    }
+
+    const attempt = await this.prisma.formAttempt.create({
+      data: {
+        formId: formRecord.id,
+        userId,
+        status: FormAttemptStatus.IN_PROGRESS,
+      },
+    });
+
+    const publicForm = this.mapStoredFormToPublic(formRecord);
+
+    return {
+      attemptId: attempt.id,
+      form: publicForm,
+    };
+  }
+
+  async submitForm(
+    idOrSlug: string,
+    formId: string,
+    payload: SubmitFormInput,
+  ): Promise<SubmitFormResult> {
+    const attempt = await this.prisma.formAttempt.findUnique({
+      where: { id: payload.attemptId },
+      include: {
+        form: {
+          select: {
+            id: true,
+            courseId: true,
+            questions: true,
+            results: true,
+            course: {
+              select: { slug: true },
+            },
+          },
+        },
+      },
+    });
+
+    if (
+      !attempt ||
+      attempt.form.id !== formId ||
+      (attempt.form.course.slug !== idOrSlug && attempt.form.courseId !== idOrSlug)
+    ) {
+      throw new NotFoundException('Form attempt not found');
+    }
+
+    if (attempt.status === FormAttemptStatus.COMPLETED) {
+      return {
+        attemptId: attempt.id,
+        resultId: attempt.resultId ?? undefined,
+        result: attempt.resultId
+          ? this.getFormResultById(attempt.form.results, attempt.resultId)
+          : undefined,
+      };
+    }
+
+    // Подсчитываем результаты на основе выбранных вариантов
+    const resultId = this.calculateFormResult(attempt.form.questions, attempt.form.results, payload.responses);
+
+    await this.prisma.formAttempt.update({
+      where: { id: attempt.id },
+      data: {
+        responses: payload.responses as unknown as Prisma.InputJsonValue,
+        resultId,
+        status: FormAttemptStatus.COMPLETED,
+        completedAt: new Date(),
+      },
+    });
+
+    await this.prisma.activityLog.create({
+      data: {
+        actorId: attempt.userId,
+        actorType: ActivityActorType.USER,
+        action: 'course.form.completed',
+        metadata: {
+          courseId: attempt.form.courseId,
+          courseSlug: attempt.form.course.slug,
+          formId,
+          attemptId: attempt.id,
+          resultId,
+        },
+        courseId: attempt.form.courseId,
+      },
+    });
+
+    const result = resultId ? this.getFormResultById(attempt.form.results, resultId) : undefined;
+
+    return {
+      attemptId: attempt.id,
+      resultId,
+      result,
+    };
+  }
+
+  private calculateFormResult(
+    questions: Prisma.JsonValue,
+    results: Prisma.JsonValue,
+    responses: Record<string, string | string[]>,
+  ): string | null {
+    if (!Array.isArray(questions) || !Array.isArray(results)) {
+      return null;
+    }
+
+    // Подсчитываем количество выбранных вариантов по категориям
+    const categoryCounts: Record<string, number> = {};
+
+    for (const question of questions) {
+      if (!question || typeof question !== 'object') continue;
+      const q = question as Record<string, unknown>;
+      const questionId = typeof q.id === 'string' ? q.id : '';
+      const response = responses[questionId];
+
+      if (!response) continue;
+
+      const selectedOptionIds = Array.isArray(response) ? response : [response];
+
+      if (!Array.isArray(q.options)) continue;
+
+      for (const option of q.options) {
+        if (!option || typeof option !== 'object') continue;
+        const opt = option as Record<string, unknown>;
+        const optionId = typeof opt.id === 'string' ? opt.id : '';
+        const category = typeof opt.category === 'string' ? opt.category : '';
+
+        if (selectedOptionIds.includes(optionId) && category) {
+          categoryCounts[category] = (categoryCounts[category] || 0) + 1;
+        }
+      }
+    }
+
+    // Находим результат на основе условий
+    for (const result of results) {
+      if (!result || typeof result !== 'object') continue;
+      const r = result as Record<string, unknown>;
+      const condition = typeof r.condition === 'string' ? r.condition : '';
+      const resultId = typeof r.id === 'string' ? r.id : '';
+
+      if (!condition || !resultId) continue;
+
+      // Парсим условие (например, "more_A", "more_B", "equal_A_B")
+      if (condition.startsWith('more_')) {
+        const category = condition.replace('more_', '');
+        const count = categoryCounts[category] || 0;
+        const otherCounts = Object.entries(categoryCounts)
+          .filter(([cat]) => cat !== category)
+          .map(([, cnt]) => cnt);
+        const maxOtherCount = otherCounts.length > 0 ? Math.max(...otherCounts) : 0;
+
+        if (count > maxOtherCount) {
+          return resultId;
+        }
+      } else if (condition.startsWith('equal_')) {
+        // Для условий типа "equal_A_B" проверяем равенство
+        const categories = condition.replace('equal_', '').split('_');
+        if (categories.length === 2) {
+          const countA = categoryCounts[categories[0]] || 0;
+          const countB = categoryCounts[categories[1]] || 0;
+          if (countA === countB && countA > 0) {
+            return resultId;
+          }
+        }
+      }
+    }
+
+    // Если не нашли подходящий результат, возвращаем первый или null
+    const firstResult = results[0];
+    if (firstResult && typeof firstResult === 'object') {
+      const r = firstResult as Record<string, unknown>;
+      return typeof r.id === 'string' ? r.id : null;
+    }
+
+    return null;
+  }
+
+  private getFormResultById(
+    results: Prisma.JsonValue,
+    resultId: string,
+  ): { id: string; title: string; description?: string } | undefined {
+    if (!Array.isArray(results)) {
+      return undefined;
+    }
+
+    const result = results.find((r) => {
+      if (!r || typeof r !== 'object') return false;
+      const rObj = r as Record<string, unknown>;
+      return rObj.id === resultId;
+    });
+
+    if (!result || typeof result !== 'object') {
+      return undefined;
+    }
+
+    const rObj = result as Record<string, unknown>;
+    return {
+      id: typeof rObj.id === 'string' ? rObj.id : resultId,
+      title: typeof rObj.title === 'string' ? rObj.title : 'Результат',
+      description: typeof rObj.description === 'string' ? rObj.description : undefined,
+    };
+  }
+
+  private mapStoredFormToPublic(form: {
+    id: string;
+    title: string;
+    description: string | null;
+    questions: Prisma.JsonValue;
+    results: Prisma.JsonValue;
+    unlockModuleId?: string | null;
+    unlockLessonId?: string | null;
+    unlockModule?: {
+      id: string;
+      title: string;
+    } | null;
+    unlockLesson?: {
+      id: string;
+      title: string;
+    } | null;
+  }): PublicForm {
+    const questions = Array.isArray(form.questions) ? form.questions : [];
+    const publicQuestions = questions.map((question, index) => {
+      if (!question || typeof question !== 'object') {
+        return {
+          id: `q-${index}`,
+          order: index,
+          text: 'Вопрос',
+          options: [],
+        };
+      }
+
+      const q = question as Record<string, unknown>;
+      const options = Array.isArray(q.options) ? q.options : [];
+
+      return {
+        id: typeof q.id === 'string' ? q.id : `q-${index}`,
+        order: index,
+        text: typeof q.text === 'string' ? q.text : 'Вопрос',
+        options: options.map((option, optIndex) => {
+          if (!option || typeof option !== 'object') {
+            return {
+              id: `q-${index}-opt-${optIndex}`,
+              text: 'Вариант',
+              category: '',
+            };
+          }
+          const opt = option as Record<string, unknown>;
+          return {
+            id: typeof opt.id === 'string' ? opt.id : `q-${index}-opt-${optIndex}`,
+            text: typeof opt.text === 'string' ? opt.text : 'Вариант',
+            category: typeof opt.category === 'string' ? opt.category : '',
+          };
+        }),
+      };
+    });
+
+    return {
+      id: form.id,
+      title: form.title,
+      description: form.description,
+      questionCount: publicQuestions.length,
+      questions: publicQuestions,
+      unlockLesson: form.unlockLessonId
+        ? {
+            id: form.unlockLessonId,
+            title: form.unlockLesson?.title ?? 'Урок',
+          }
+        : undefined,
+      unlockModule: form.unlockModuleId
+        ? {
+            id: form.unlockModuleId,
+            title: form.unlockModule?.title ?? 'Модуль',
+          }
+        : undefined,
+    };
   }
 }

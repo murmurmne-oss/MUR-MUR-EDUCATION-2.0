@@ -34,6 +34,7 @@ model User {
   reminderSetting ReminderSetting?
   reviews         CourseReview[]
   testAttempts    TestAttempt[]
+  formAttempts    FormAttempt[]
   activityLogs    ActivityLog[]      @relation("UserActivityLogs")
   redeemedCodes   CourseAccessCode[] @relation("UserRedeemedCodes")
 }
@@ -64,6 +65,7 @@ model Course {
   enrollments  CourseEnrollment[]
   reviews      CourseReview[]
   tests        CourseTest[]
+  forms        CourseForm[]
   activityLogs ActivityLog[]
   accessCodes  CourseAccessCode[]
 
@@ -84,6 +86,7 @@ model CourseModule {
   course  Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
   lessons Lesson[]
   unlockTests CourseTest[] @relation("ModuleUnlockTests")
+  unlockForms CourseForm[] @relation("ModuleUnlockForms")
 
   @@index([courseId, order])
 }
@@ -107,6 +110,7 @@ model Lesson {
   attachments LessonAttachment[]
   progresses  CourseProgress[]
   unlockTests CourseTest[]       @relation("LessonUnlockTests")
+  unlockForms CourseForm[]       @relation("LessonUnlockForms")
 
   @@index([moduleId, order])
 }
@@ -250,6 +254,44 @@ model TestAttempt {
   user User       @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
+/// Формы / опросники в курсах (с результатами на основе выбора вариантов).
+model CourseForm {
+  id          String   @id @default(cuid())
+  courseId    String
+  title       String
+  description String?
+  questions   Json     // Вопросы с вариантами ответов, помеченными категориями (A, B, C...)
+  results     Json     // Результаты с условиями (больше A, больше B и т.д.)
+  unlockModuleId String?
+  unlockLessonId String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  course   Course        @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  attempts FormAttempt[]
+  unlockModule CourseModule? @relation("ModuleUnlockForms", fields: [unlockModuleId], references: [id])
+  unlockLesson Lesson?       @relation("LessonUnlockForms", fields: [unlockLessonId], references: [id])
+}
+
+/// Попытки прохождения формы.
+model FormAttempt {
+  id          String            @id @default(cuid())
+  formId      String
+  userId      String
+  responses   Json?             // Выбранные ответы пользователя
+  resultId    String?           // ID результата, который получил пользователь
+  status      FormAttemptStatus @default(IN_PROGRESS)
+  startedAt   DateTime          @default(now())
+  completedAt DateTime?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  form CourseForm @relation(fields: [formId], references: [id], onDelete: Cascade)
+  user User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([formId, userId])
+}
+
 /// Лог активности (для аналитики и аудита).
 model ActivityLog {
   id        String            @id @default(cuid())
@@ -357,6 +399,11 @@ enum TestAttemptStatus {
   IN_PROGRESS
   COMPLETED
   FAILED
+}
+
+enum FormAttemptStatus {
+  IN_PROGRESS
+  COMPLETED
 }
 
 enum ActivityActorType {

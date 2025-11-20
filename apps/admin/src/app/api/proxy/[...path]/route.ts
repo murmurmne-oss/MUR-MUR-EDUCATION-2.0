@@ -55,8 +55,18 @@ async function proxyRequest(
   pathSegments: string[],
   method: string,
 ) {
+  // В Next.js переменные окружения доступны через process.env
+  // Но для серверных компонентов они должны быть загружены во время выполнения
   const apiKey = process.env.API_KEY?.trim();
+  
+  // Логирование для диагностики (временно включено для отладки)
+  console.log("[Proxy] API_KEY present:", !!apiKey);
+  console.log("[Proxy] API_KEY length:", apiKey?.length || 0);
+  console.log("[Proxy] All env vars with API:", Object.keys(process.env).filter(k => k.includes('API')));
+  
   if (!apiKey) {
+    console.error("[Proxy] API_KEY не найден в переменных окружения");
+    console.error("[Proxy] Available env vars:", Object.keys(process.env).slice(0, 20));
     return NextResponse.json(
       { message: "API_KEY не настроен на сервере" },
       { status: 500 },
@@ -74,6 +84,12 @@ async function proxyRequest(
   const headers: HeadersInit = {
     "X-API-Key": apiKey,
   };
+  
+  // Логирование для диагностики
+  if (process.env.NODE_ENV !== "production") {
+    console.log("[Proxy] Request:", method, url.toString());
+    console.log("[Proxy] Headers:", Object.keys(headers));
+  }
 
   // Для FormData не устанавливаем Content-Type, браузер сам установит с boundary
   const contentType = request.headers.get("content-type");
@@ -108,6 +124,12 @@ async function proxyRequest(
       jsonData = responseData;
     }
 
+  // Логирование для диагностики (временно включено для отладки)
+  if (!response.ok) {
+    console.error("[Proxy] Response status:", response.status);
+    console.error("[Proxy] Response data:", typeof jsonData === "string" ? jsonData.substring(0, 500) : jsonData);
+  }
+
     return NextResponse.json(jsonData, {
       status: response.status,
       headers: {
@@ -115,9 +137,9 @@ async function proxyRequest(
       },
     });
   } catch (error) {
-    console.error("Proxy request failed:", error);
+    console.error("[Proxy] Request failed:", error);
     return NextResponse.json(
-      { message: "Ошибка при запросе к API" },
+      { message: "Ошибка при запросе к API", error: error instanceof Error ? error.message : String(error) },
       { status: 500 },
     );
   }
