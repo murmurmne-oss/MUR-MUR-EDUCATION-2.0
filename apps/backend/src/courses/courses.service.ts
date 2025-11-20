@@ -1723,7 +1723,7 @@ export class CoursesService {
 
     return {
       attemptId: attempt.id,
-      resultId,
+      resultId: resultId ?? undefined,
       result,
     };
   }
