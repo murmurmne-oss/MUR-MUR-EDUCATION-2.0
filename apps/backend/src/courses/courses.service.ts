@@ -54,6 +54,7 @@ export type CourseFormInput = {
   description?: string | null;
   questions?: Prisma.InputJsonValue | null;
   results?: Prisma.InputJsonValue | null;
+  lessonId?: string | null;
   unlockModuleId?: string | null;
   unlockLessonId?: string | null;
 };
@@ -1538,11 +1539,15 @@ export class CoursesService {
       const unlockLessonId =
         typeof form.unlockLessonId === 'string' ? form.unlockLessonId.trim() : '';
 
+      const lessonId =
+        typeof form.lessonId === 'string' ? form.lessonId.trim() : '';
+
       return {
         title: form.title,
         description: form.description ?? null,
         questions: form.questions ?? Prisma.JsonNull,
         results: form.results ?? Prisma.JsonNull,
+        lessonId: lessonId.length > 0 ? lessonId : null,
         unlockModuleId: unlockModuleId.length > 0 ? unlockModuleId : null,
         unlockLessonId: unlockLessonId.length > 0 ? unlockLessonId : null,
       };

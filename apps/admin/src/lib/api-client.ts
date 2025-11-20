@@ -162,6 +162,7 @@ export type CourseDetails = {
     description: string | null;
     questions: unknown;
     results: unknown;
+    lessonId: string | null;
     unlockModuleId: string | null;
     unlockLessonId: string | null;
   }>;

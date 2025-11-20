@@ -111,6 +111,7 @@ model Lesson {
   progresses  CourseProgress[]
   unlockTests CourseTest[]       @relation("LessonUnlockTests")
   unlockForms CourseForm[]       @relation("LessonUnlockForms")
+  forms       CourseForm[]       @relation("LessonForms")
 
   @@index([moduleId, order])
 }
@@ -258,6 +259,7 @@ model TestAttempt {
 model CourseForm {
   id          String   @id @default(cuid())
   courseId    String
+  lessonId    String?  // Если указан, форма принадлежит конкретному уроку
   title       String
   description String?
   questions   Json     // Вопросы с вариантами ответов, помеченными категориями (A, B, C...)
@@ -268,6 +270,7 @@ model CourseForm {
   updatedAt   DateTime @updatedAt
 
   course   Course        @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  lesson   Lesson?       @relation("LessonForms", fields: [lessonId], references: [id], onDelete: Cascade)
   attempts FormAttempt[]
   unlockModule CourseModule? @relation("ModuleUnlockForms", fields: [unlockModuleId], references: [id])
   unlockLesson Lesson?       @relation("LessonUnlockForms", fields: [unlockLessonId], references: [id])

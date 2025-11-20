@@ -81,6 +81,7 @@ export type LessonState = {
   contentMode: LessonContentMode;
   contentBlocks: LessonContentBlockState[];
   videoUrl: string;
+  forms: CourseFormState[]; // Формы, принадлежащие этому уроку
 };
 
 export type ModuleState = {
@@ -176,6 +177,7 @@ function createLessonState(partial?: Partial<LessonState>): LessonState {
     contentMode: partial?.contentMode ?? "rich",
     contentBlocks: partial?.contentBlocks ?? [],
     videoUrl: partial?.videoUrl ?? "",
+    forms: partial?.forms ?? [],
   };
 }
 
@@ -853,6 +855,8 @@ function mapCourseToModules(course?: CourseDetails | null): ModuleState[] {
       lessons:
         module.lessons.map((lesson) => {
           const parsed = parseLessonContentToState(lesson.content);
+          // Найти формы, принадлежащие этому уроку
+          const lessonForms = course?.forms?.filter((form) => form.lessonId === lesson.id) ?? [];
           return createLessonState({
             tempId: createTempId("lesson"),
             sourceId: lesson.id,
@@ -866,6 +870,7 @@ function mapCourseToModules(course?: CourseDetails | null): ModuleState[] {
             contentMode: parsed.mode,
             contentBlocks: parsed.blocks,
             videoUrl: lesson.videoUrl ?? "",
+            forms: lessonForms.length > 0 ? mapCourseToForms({ forms: lessonForms } as CourseDetails) : [],
           });
         }) ?? [],
     }),
@@ -1084,9 +1089,6 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
   const [tests, setTests] = useState<TestState[]>(
     mapCourseToTests(initialCourse),
   );
-  const [forms, setForms] = useState<CourseFormState[]>(
-    mapCourseToForms(initialCourse),
-  );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [collapsedModules, setCollapsedModules] = useState<Set<string>>(
@@ -1117,7 +1119,6 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
       });
       setModules(mapCourseToModules(initialCourse));
       setTests(mapCourseToTests(initialCourse));
-      setForms(mapCourseToForms(initialCourse));
     }
   }, [initialCourse]);
 
@@ -1906,14 +1907,27 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
       language: formState.language,
       modules: modulesPayload,
       tests: testsPayload,
-      forms: forms.map((form) => ({
-        title: form.title,
-        description: form.description || null,
-        questions: serializeFormQuestions(form.questions),
-        results: serializeFormResults(form.results),
-        unlockModuleId: form.unlockModuleId || null,
-        unlockLessonId: form.unlockLessonId || null,
-      })),
+      forms: (() => {
+        // Собрать все формы из всех уроков
+        const lessonForms: Array<{ form: CourseFormState; lessonId: string }> = [];
+        modules.forEach((module) => {
+          module.lessons.forEach((lesson) => {
+            lesson.forms.forEach((form) => {
+              lessonForms.push({ form, lessonId: lesson.sourceId ?? lesson.tempId });
+            });
+          });
+        });
+        // Преобразовать в payload
+        return lessonForms.map(({ form, lessonId }) => ({
+          title: form.title,
+          description: form.description || null,
+          questions: serializeFormQuestions(form.questions),
+          results: serializeFormResults(form.results),
+          lessonId: lessonId || null,
+          unlockModuleId: form.unlockModuleId || null,
+          unlockLessonId: form.unlockLessonId || null,
+        }));
+      })(),
     };
   };
 
@@ -2477,6 +2491,731 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
                           Доступен в качестве превью
                         </label>
                       </div>
+
+                      {/* Формы урока */}
+                      <div className="flex flex-col gap-3 rounded-xl border border-border/40 bg-surface p-3">
+                        <div className="flex items-center justify-between">
+                          <h4 className="text-sm font-semibold text-text-dark">Формы</h4>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setModules((prev) =>
+                                prev.map((m) =>
+                                  m.tempId === module.tempId
+                                    ? {
+                                        ...m,
+                                        lessons: m.lessons.map((l) =>
+                                          l.tempId === lesson.tempId
+                                            ? {
+                                                ...l,
+                                                forms: [...l.forms, createFormState()],
+                                              }
+                                            : l,
+                                        ),
+                                      }
+                                    : m,
+                                ),
+                              );
+                            }}
+                            className="rounded-full border border-border px-3 py-1 text-[11px] font-medium text-text-medium transition-colors hover:bg-white"
+                          >
+                            + Добавить форму
+                          </button>
+                        </div>
+
+                        {lesson.forms.length === 0 ? (
+                          <p className="text-xs text-text-medium">
+                            Пока нет форм. Добавьте форму для опроса с результатами.
+                          </p>
+                        ) : (
+                          lesson.forms.map((form) => (
+                            <div
+                              key={form.tempId}
+                              className="flex flex-col gap-3 rounded-xl border border-border/40 bg-white p-3"
+                            >
+                              <div className="grid gap-3 md:grid-cols-2">
+                                <label className="flex flex-col gap-1 text-xs text-text-dark">
+                                  <span className="text-[11px] font-medium text-text-light">
+                                    Название формы
+                                  </span>
+                                  <input
+                                    type="text"
+                                    value={form.title}
+                                    onChange={(event) =>
+                                      setModules((prev) =>
+                                        prev.map((m) =>
+                                          m.tempId === module.tempId
+                                            ? {
+                                                ...m,
+                                                lessons: m.lessons.map((l) =>
+                                                  l.tempId === lesson.tempId
+                                                    ? {
+                                                        ...l,
+                                                        forms: l.forms.map((f) =>
+                                                          f.tempId === form.tempId
+                                                            ? { ...f, title: event.target.value }
+                                                            : f,
+                                                        ),
+                                                      }
+                                                    : l,
+                                                ),
+                                              }
+                                            : m,
+                                        ),
+                                      )
+                                    }
+                                    placeholder="Название формы"
+                                    className="rounded-xl border border-border bg-surface px-3 py-1.5 text-xs text-text-dark outline-none focus:border-brand-pink"
+                                  />
+                                </label>
+                                <label className="flex flex-col gap-1 text-xs text-text-dark">
+                                  <span className="text-[11px] font-medium text-text-light">
+                                    Описание (опционально)
+                                  </span>
+                                  <input
+                                    type="text"
+                                    value={form.description}
+                                    onChange={(event) =>
+                                      setModules((prev) =>
+                                        prev.map((m) =>
+                                          m.tempId === module.tempId
+                                            ? {
+                                                ...m,
+                                                lessons: m.lessons.map((l) =>
+                                                  l.tempId === lesson.tempId
+                                                    ? {
+                                                        ...l,
+                                                        forms: l.forms.map((f) =>
+                                                          f.tempId === form.tempId
+                                                            ? { ...f, description: event.target.value }
+                                                            : f,
+                                                        ),
+                                                      }
+                                                    : l,
+                                                ),
+                                              }
+                                            : m,
+                                        ),
+                                      )
+                                    }
+                                    placeholder="Описание формы"
+                                    className="rounded-xl border border-border bg-surface px-3 py-1.5 text-xs text-text-dark outline-none focus:border-brand-pink"
+                                  />
+                                </label>
+                              </div>
+
+                              {/* Вопросы формы */}
+                              <div className="flex flex-col gap-2">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-xs font-medium text-text-dark">Вопросы</span>
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      setModules((prev) =>
+                                        prev.map((m) =>
+                                          m.tempId === module.tempId
+                                            ? {
+                                                ...m,
+                                                lessons: m.lessons.map((l) =>
+                                                  l.tempId === lesson.tempId
+                                                    ? {
+                                                        ...l,
+                                                        forms: l.forms.map((f) =>
+                                                          f.tempId === form.tempId
+                                                            ? {
+                                                                ...f,
+                                                                questions: [
+                                                                  ...f.questions,
+                                                                  createFormQuestionState(),
+                                                                ],
+                                                              }
+                                                            : f,
+                                                        ),
+                                                      }
+                                                    : l,
+                                                ),
+                                              }
+                                            : m,
+                                        ),
+                                      )
+                                    }
+                                    className="rounded-full border border-border px-2 py-0.5 text-[10px] font-medium text-text-medium transition-colors hover:bg-surface"
+                                  >
+                                    + Вопрос
+                                  </button>
+                                </div>
+
+                                {form.questions.map((question, questionIndex) => (
+                                  <div
+                                    key={question.tempId}
+                                    className="rounded-lg border border-border/40 bg-surface p-2"
+                                  >
+                                    <div className="flex items-start justify-between gap-2">
+                                      <div className="flex-1 space-y-2">
+                                        <label className="flex flex-col gap-1 text-xs text-text-dark">
+                                          <span className="text-[11px] font-medium text-text-light">
+                                            Вопрос {questionIndex + 1}
+                                          </span>
+                                          <input
+                                            type="text"
+                                            value={question.text}
+                                            onChange={(event) =>
+                                              setModules((prev) =>
+                                                prev.map((m) =>
+                                                  m.tempId === module.tempId
+                                                    ? {
+                                                        ...m,
+                                                        lessons: m.lessons.map((l) =>
+                                                          l.tempId === lesson.tempId
+                                                            ? {
+                                                                ...l,
+                                                                forms: l.forms.map((f) =>
+                                                                  f.tempId === form.tempId
+                                                                    ? {
+                                                                        ...f,
+                                                                        questions: f.questions.map(
+                                                                          (q) =>
+                                                                            q.tempId ===
+                                                                            question.tempId
+                                                                              ? {
+                                                                                  ...q,
+                                                                                  text: event.target.value,
+                                                                                }
+                                                                              : q,
+                                                                        ),
+                                                                      }
+                                                                    : f,
+                                                                ),
+                                                              }
+                                                            : l,
+                                                        ),
+                                                      }
+                                                    : m,
+                                                ),
+                                              )
+                                            }
+                                            placeholder="Текст вопроса"
+                                            className="rounded-lg border border-border bg-white px-2 py-1 text-xs text-text-dark outline-none focus:border-brand-pink"
+                                          />
+                                        </label>
+
+                                        <div className="space-y-1">
+                                          {question.options.map((option, optionIndex) => (
+                                            <div
+                                              key={option.tempId}
+                                              className="flex items-center gap-2"
+                                            >
+                                              <input
+                                                type="text"
+                                                value={option.text}
+                                                onChange={(event) =>
+                                                  setModules((prev) =>
+                                                    prev.map((m) =>
+                                                      m.tempId === module.tempId
+                                                        ? {
+                                                            ...m,
+                                                            lessons: m.lessons.map((l) =>
+                                                              l.tempId === lesson.tempId
+                                                                ? {
+                                                                    ...l,
+                                                                    forms: l.forms.map((f) =>
+                                                                      f.tempId === form.tempId
+                                                                        ? {
+                                                                            ...f,
+                                                                            questions: f.questions.map(
+                                                                              (q) =>
+                                                                                q.tempId ===
+                                                                                question.tempId
+                                                                                  ? {
+                                                                                      ...q,
+                                                                                      options: q.options.map(
+                                                                                        (opt) =>
+                                                                                          opt.tempId ===
+                                                                                          option.tempId
+                                                                                            ? {
+                                                                                                ...opt,
+                                                                                                text: event.target.value,
+                                                                                              }
+                                                                                            : opt,
+                                                                                      ),
+                                                                                    }
+                                                                                  : q,
+                                                                            ),
+                                                                          }
+                                                                        : f,
+                                                                    ),
+                                                                  }
+                                                                : l,
+                                                            ),
+                                                          }
+                                                        : m,
+                                                    ),
+                                                  )
+                                                }
+                                                placeholder={`Вариант ${optionIndex + 1}`}
+                                                className="flex-1 rounded-lg border border-border bg-white px-2 py-1 text-xs text-text-dark outline-none focus:border-brand-pink"
+                                              />
+                                              <select
+                                                value={option.category}
+                                                onChange={(event) =>
+                                                  setModules((prev) =>
+                                                    prev.map((m) =>
+                                                      m.tempId === module.tempId
+                                                        ? {
+                                                            ...m,
+                                                            lessons: m.lessons.map((l) =>
+                                                              l.tempId === lesson.tempId
+                                                                ? {
+                                                                    ...l,
+                                                                    forms: l.forms.map((f) =>
+                                                                      f.tempId === form.tempId
+                                                                        ? {
+                                                                            ...f,
+                                                                            questions: f.questions.map(
+                                                                              (q) =>
+                                                                                q.tempId ===
+                                                                                question.tempId
+                                                                                  ? {
+                                                                                      ...q,
+                                                                                      options: q.options.map(
+                                                                                        (opt) =>
+                                                                                          opt.tempId ===
+                                                                                          option.tempId
+                                                                                            ? {
+                                                                                                ...opt,
+                                                                                                category: event.target.value,
+                                                                                              }
+                                                                                            : opt,
+                                                                                      ),
+                                                                                    }
+                                                                                  : q,
+                                                                            ),
+                                                                          }
+                                                                        : f,
+                                                                    ),
+                                                                  }
+                                                                : l,
+                                                            ),
+                                                          }
+                                                        : m,
+                                                    ),
+                                                  )
+                                                }
+                                                className="w-16 rounded-lg border border-border bg-white px-1.5 py-1 text-xs text-text-dark outline-none focus:border-brand-pink"
+                                              >
+                                                <option value="A">A</option>
+                                                <option value="B">B</option>
+                                                <option value="C">C</option>
+                                                <option value="D">D</option>
+                                              </select>
+                                              {question.options.length > 2 && (
+                                                <button
+                                                  type="button"
+                                                  onClick={() =>
+                                                    setModules((prev) =>
+                                                      prev.map((m) =>
+                                                        m.tempId === module.tempId
+                                                          ? {
+                                                              ...m,
+                                                              lessons: m.lessons.map((l) =>
+                                                                l.tempId === lesson.tempId
+                                                                  ? {
+                                                                      ...l,
+                                                                      forms: l.forms.map((f) =>
+                                                                        f.tempId === form.tempId
+                                                                          ? {
+                                                                              ...f,
+                                                                              questions: f.questions.map(
+                                                                                (q) =>
+                                                                                  q.tempId ===
+                                                                                  question.tempId
+                                                                                    ? {
+                                                                                        ...q,
+                                                                                        options: q.options.filter(
+                                                                                          (opt) =>
+                                                                                            opt.tempId !==
+                                                                                            option.tempId,
+                                                                                        ),
+                                                                                      }
+                                                                                    : q,
+                                                                              ),
+                                                                            }
+                                                                          : f,
+                                                                      ),
+                                                                    }
+                                                                  : l,
+                                                              ),
+                                                            }
+                                                          : m,
+                                                      ),
+                                                    )
+                                                  }
+                                                  className="rounded-full p-0.5 text-text-medium hover:bg-white hover:text-text-dark"
+                                                  title="Удалить вариант"
+                                                >
+                                                  ✕
+                                                </button>
+                                              )}
+                                            </div>
+                                          ))}
+                                          <button
+                                            type="button"
+                                            onClick={() =>
+                                              setModules((prev) =>
+                                                prev.map((m) =>
+                                                  m.tempId === module.tempId
+                                                    ? {
+                                                        ...m,
+                                                        lessons: m.lessons.map((l) =>
+                                                          l.tempId === lesson.tempId
+                                                            ? {
+                                                                ...l,
+                                                                forms: l.forms.map((f) =>
+                                                                  f.tempId === form.tempId
+                                                                    ? {
+                                                                        ...f,
+                                                                        questions: f.questions.map(
+                                                                          (q) =>
+                                                                            q.tempId ===
+                                                                            question.tempId
+                                                                              ? {
+                                                                                  ...q,
+                                                                                  options: [
+                                                                                    ...q.options,
+                                                                                    createFormOptionState(),
+                                                                                  ],
+                                                                                }
+                                                                              : q,
+                                                                        ),
+                                                                      }
+                                                                    : f,
+                                                                ),
+                                                              }
+                                                            : l,
+                                                        ),
+                                                      }
+                                                    : m,
+                                                ),
+                                              )
+                                            }
+                                            className="self-start rounded-full border border-border px-2 py-0.5 text-[10px] font-medium text-text-medium transition-colors hover:bg-white"
+                                          >
+                                            + Вариант
+                                          </button>
+                                        </div>
+                                      </div>
+                                      {form.questions.length > 1 && (
+                                        <button
+                                          type="button"
+                                          onClick={() =>
+                                            setModules((prev) =>
+                                              prev.map((m) =>
+                                                m.tempId === module.tempId
+                                                  ? {
+                                                      ...m,
+                                                      lessons: m.lessons.map((l) =>
+                                                        l.tempId === lesson.tempId
+                                                          ? {
+                                                              ...l,
+                                                              forms: l.forms.map((f) =>
+                                                                f.tempId === form.tempId
+                                                                  ? {
+                                                                      ...f,
+                                                                      questions: f.questions.filter(
+                                                                        (q) =>
+                                                                          q.tempId !==
+                                                                          question.tempId,
+                                                                      ),
+                                                                    }
+                                                                  : f,
+                                                              ),
+                                                            }
+                                                          : l,
+                                                      ),
+                                                    }
+                                                  : m,
+                                              ),
+                                            )
+                                          }
+                                          className="rounded-full p-1 text-text-medium hover:bg-white hover:text-text-dark"
+                                          title="Удалить вопрос"
+                                        >
+                                          ✕
+                                        </button>
+                                      )}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+
+                              {/* Результаты формы */}
+                              <div className="flex flex-col gap-2">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-xs font-medium text-text-dark">Результаты</span>
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      setModules((prev) =>
+                                        prev.map((m) =>
+                                          m.tempId === module.tempId
+                                            ? {
+                                                ...m,
+                                                lessons: m.lessons.map((l) =>
+                                                  l.tempId === lesson.tempId
+                                                    ? {
+                                                        ...l,
+                                                        forms: l.forms.map((f) =>
+                                                          f.tempId === form.tempId
+                                                            ? {
+                                                                ...f,
+                                                                results: [
+                                                                  ...f.results,
+                                                                  createFormResultState(),
+                                                                ],
+                                                              }
+                                                            : f,
+                                                        ),
+                                                      }
+                                                    : l,
+                                                ),
+                                              }
+                                            : m,
+                                        ),
+                                      )
+                                    }
+                                    className="rounded-full border border-border px-2 py-0.5 text-[10px] font-medium text-text-medium transition-colors hover:bg-surface"
+                                  >
+                                    + Результат
+                                  </button>
+                                </div>
+
+                                {form.results.map((result) => (
+                                  <div
+                                    key={result.tempId}
+                                    className="rounded-lg border border-border/40 bg-surface p-2"
+                                  >
+                                    <div className="flex items-start justify-between gap-2">
+                                      <div className="flex-1 space-y-2">
+                                        <div className="grid gap-2 md:grid-cols-2">
+                                          <label className="flex flex-col gap-1 text-xs text-text-dark">
+                                            <span className="text-[11px] font-medium text-text-light">
+                                              Условие
+                                            </span>
+                                            <select
+                                              value={result.condition}
+                                              onChange={(event) =>
+                                                setModules((prev) =>
+                                                  prev.map((m) =>
+                                                    m.tempId === module.tempId
+                                                      ? {
+                                                          ...m,
+                                                          lessons: m.lessons.map((l) =>
+                                                            l.tempId === lesson.tempId
+                                                              ? {
+                                                                  ...l,
+                                                                  forms: l.forms.map((f) =>
+                                                                    f.tempId === form.tempId
+                                                                      ? {
+                                                                          ...f,
+                                                                          results: f.results.map(
+                                                                            (r) =>
+                                                                              r.tempId ===
+                                                                              result.tempId
+                                                                                ? {
+                                                                                    ...r,
+                                                                                    condition: event.target.value,
+                                                                                  }
+                                                                                : r,
+                                                                          ),
+                                                                        }
+                                                                      : f,
+                                                                  ),
+                                                                }
+                                                              : l,
+                                                          ),
+                                                        }
+                                                      : m,
+                                                  ),
+                                                )
+                                              }
+                                              className="rounded-lg border border-border bg-white px-2 py-1 text-xs text-text-dark outline-none focus:border-brand-pink"
+                                            >
+                                              <option value="more_A">Больше вариантов A</option>
+                                              <option value="more_B">Больше вариантов B</option>
+                                              <option value="more_C">Больше вариантов C</option>
+                                              <option value="more_D">Больше вариантов D</option>
+                                              <option value="equal_A_B">Равно A и B</option>
+                                            </select>
+                                          </label>
+                                          <label className="flex flex-col gap-1 text-xs text-text-dark">
+                                            <span className="text-[11px] font-medium text-text-light">
+                                              Название результата
+                                            </span>
+                                            <input
+                                              type="text"
+                                              value={result.title}
+                                              onChange={(event) =>
+                                                setModules((prev) =>
+                                                  prev.map((m) =>
+                                                    m.tempId === module.tempId
+                                                      ? {
+                                                          ...m,
+                                                          lessons: m.lessons.map((l) =>
+                                                            l.tempId === lesson.tempId
+                                                              ? {
+                                                                  ...l,
+                                                                  forms: l.forms.map((f) =>
+                                                                    f.tempId === form.tempId
+                                                                      ? {
+                                                                          ...f,
+                                                                          results: f.results.map(
+                                                                            (r) =>
+                                                                              r.tempId ===
+                                                                              result.tempId
+                                                                                ? {
+                                                                                    ...r,
+                                                                                    title: event.target.value,
+                                                                                  }
+                                                                                : r,
+                                                                          ),
+                                                                        }
+                                                                      : f,
+                                                                  ),
+                                                                }
+                                                              : l,
+                                                          ),
+                                                        }
+                                                      : m,
+                                                  ),
+                                                )
+                                              }
+                                              placeholder="Название результата"
+                                              className="rounded-lg border border-border bg-white px-2 py-1 text-xs text-text-dark outline-none focus:border-brand-pink"
+                                            />
+                                          </label>
+                                        </div>
+                                        <label className="flex flex-col gap-1 text-xs text-text-dark">
+                                          <span className="text-[11px] font-medium text-text-light">
+                                            Описание результата
+                                          </span>
+                                          <textarea
+                                            value={result.description}
+                                            onChange={(event) =>
+                                              setModules((prev) =>
+                                                prev.map((m) =>
+                                                  m.tempId === module.tempId
+                                                    ? {
+                                                        ...m,
+                                                        lessons: m.lessons.map((l) =>
+                                                          l.tempId === lesson.tempId
+                                                            ? {
+                                                                ...l,
+                                                                forms: l.forms.map((f) =>
+                                                                  f.tempId === form.tempId
+                                                                    ? {
+                                                                        ...f,
+                                                                        results: f.results.map(
+                                                                          (r) =>
+                                                                            r.tempId ===
+                                                                            result.tempId
+                                                                              ? {
+                                                                                  ...r,
+                                                                                  description: event.target.value,
+                                                                                }
+                                                                              : r,
+                                                                        ),
+                                                                      }
+                                                                    : f,
+                                                                ),
+                                                              }
+                                                            : l,
+                                                        ),
+                                                      }
+                                                    : m,
+                                                ),
+                                              )
+                                            }
+                                            placeholder="Описание результата"
+                                            rows={2}
+                                            className="rounded-lg border border-border bg-white px-2 py-1 text-xs text-text-dark outline-none focus:border-brand-pink"
+                                          />
+                                        </label>
+                                      </div>
+                                      {form.results.length > 1 && (
+                                        <button
+                                          type="button"
+                                          onClick={() =>
+                                            setModules((prev) =>
+                                              prev.map((m) =>
+                                                m.tempId === module.tempId
+                                                  ? {
+                                                      ...m,
+                                                      lessons: m.lessons.map((l) =>
+                                                        l.tempId === lesson.tempId
+                                                          ? {
+                                                              ...l,
+                                                              forms: l.forms.map((f) =>
+                                                                f.tempId === form.tempId
+                                                                  ? {
+                                                                      ...f,
+                                                                      results: f.results.filter(
+                                                                        (r) =>
+                                                                          r.tempId !==
+                                                                          result.tempId,
+                                                                      ),
+                                                                    }
+                                                                  : f,
+                                                              ),
+                                                            }
+                                                          : l,
+                                                      ),
+                                                    }
+                                                  : m,
+                                              ),
+                                            )
+                                          }
+                                          className="rounded-full p-1 text-text-medium hover:bg-white hover:text-text-dark"
+                                          title="Удалить результат"
+                                        >
+                                          ✕
+                                        </button>
+                                      )}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setModules((prev) =>
+                                    prev.map((m) =>
+                                      m.tempId === module.tempId
+                                        ? {
+                                            ...m,
+                                            lessons: m.lessons.map((l) =>
+                                              l.tempId === lesson.tempId
+                                                ? {
+                                                    ...l,
+                                                    forms: l.forms.filter(
+                                                      (f) => f.tempId !== form.tempId,
+                                                    ),
+                                                  }
+                                                : l,
+                                            ),
+                                          }
+                                        : m,
+                                    ),
+                                  )
+                                }
+                                className="self-start rounded-full border border-brand-orange px-3 py-1 text-xs font-semibold text-brand-orange transition-colors hover:bg-brand-orange hover:text-white"
+                              >
+                                Удалить форму
+                              </button>
+                            </div>
+                          ))
+                        )}
+                      </div>
                     </div>
                   ))
                 )}
@@ -2902,543 +3641,7 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
         )}
       </section>
 
-      <section className="flex flex-col gap-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-text-dark">Формы</h2>
-          <button
-            type="button"
-            onClick={() => setForms([...forms, createFormState()])}
-            className="rounded-full border border-brand-pink px-4 py-2 text-xs font-semibold text-brand-pink transition-colors hover:bg-brand-pink hover:text-white"
-          >
-            Добавить форму
-          </button>
-        </div>
-
-        {forms.length === 0 ? (
-          <p className="rounded-2xl bg-card px-4 py-3 text-sm text-text-medium">
-            Пока нет форм. Добавьте первую форму для опросов с результатами на основе выбора вариантов.
-          </p>
-        ) : (
-          forms.map((form) => (
-            <div
-              key={form.tempId}
-              className="flex flex-col gap-4 rounded-2xl border border-border/40 bg-white p-4 shadow-sm"
-            >
-              <div className="grid gap-3 md:grid-cols-2">
-                <label className="flex flex-col gap-1 text-xs text-text-dark">
-                  <span className="text-[11px] font-medium text-text-light">
-                    Название формы
-                  </span>
-                  <input
-                    type="text"
-                    value={form.title}
-                    onChange={(event) =>
-                      setForms((prev) =>
-                        prev.map((f) =>
-                          f.tempId === form.tempId
-                            ? { ...f, title: event.target.value }
-                            : f,
-                        ),
-                      )
-                    }
-                    placeholder="Название формы"
-                    className="rounded-xl border border-border bg-surface px-3 py-1.5 text-xs text-text-dark outline-none focus:border-brand-pink"
-                  />
-                </label>
-                <label className="flex flex-col gap-1 text-xs text-text-dark">
-                  <span className="text-[11px] font-medium text-text-light">
-                    Описание (опционально)
-                  </span>
-                  <input
-                    type="text"
-                    value={form.description}
-                    onChange={(event) =>
-                      setForms((prev) =>
-                        prev.map((f) =>
-                          f.tempId === form.tempId
-                            ? { ...f, description: event.target.value }
-                            : f,
-                        ),
-                      )
-                    }
-                    placeholder="Описание формы"
-                    className="rounded-xl border border-border bg-surface px-3 py-1.5 text-xs text-text-dark outline-none focus:border-brand-pink"
-                  />
-                </label>
-              </div>
-
-              <div className="flex flex-col gap-3">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-semibold text-text-dark">Вопросы</h3>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setForms((prev) =>
-                        prev.map((f) =>
-                          f.tempId === form.tempId
-                            ? {
-                                ...f,
-                                questions: [
-                                  ...f.questions,
-                                  createFormQuestionState(),
-                                ],
-                              }
-                            : f,
-                        ),
-                      )
-                    }
-                    className="rounded-full border border-border px-3 py-1 text-[11px] font-medium text-text-medium transition-colors hover:bg-surface"
-                  >
-                    + Добавить вопрос
-                  </button>
-                </div>
-
-                {form.questions.map((question, questionIndex) => (
-                  <div
-                    key={question.tempId}
-                    className="rounded-xl border border-border/40 bg-surface p-3"
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex-1 space-y-2">
-                        <label className="flex flex-col gap-1 text-xs text-text-dark">
-                          <span className="text-[11px] font-medium text-text-light">
-                            Вопрос {questionIndex + 1}
-                          </span>
-                          <input
-                            type="text"
-                            value={question.text}
-                            onChange={(event) =>
-                              setForms((prev) =>
-                                prev.map((f) =>
-                                  f.tempId === form.tempId
-                                    ? {
-                                        ...f,
-                                        questions: f.questions.map((q) =>
-                                          q.tempId === question.tempId
-                                            ? { ...q, text: event.target.value }
-                                            : q,
-                                        ),
-                                      }
-                                    : f,
-                                ),
-                              )
-                            }
-                            placeholder="Текст вопроса"
-                            className="rounded-xl border border-border bg-white px-3 py-1.5 text-xs text-text-dark outline-none focus:border-brand-pink"
-                          />
-                        </label>
-
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between">
-                            <span className="text-[11px] font-medium text-text-light">
-                              Варианты ответов
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setForms((prev) =>
-                                  prev.map((f) =>
-                                    f.tempId === form.tempId
-                                      ? {
-                                          ...f,
-                                          questions: f.questions.map((q) =>
-                                            q.tempId === question.tempId
-                                              ? {
-                                                  ...q,
-                                                  options: [
-                                                    ...q.options,
-                                                    createFormOptionState(),
-                                                  ],
-                                                }
-                                              : q,
-                                          ),
-                                        }
-                                      : f,
-                                  ),
-                                )
-                              }
-                              className="rounded-full border border-border px-2 py-0.5 text-[10px] font-medium text-text-medium transition-colors hover:bg-white"
-                            >
-                              + Вариант
-                            </button>
-                          </div>
-
-                          {question.options.map((option, optionIndex) => (
-                            <div
-                              key={option.tempId}
-                              className="flex items-center gap-2"
-                            >
-                              <input
-                                type="text"
-                                value={option.text}
-                                onChange={(event) =>
-                                  setForms((prev) =>
-                                    prev.map((f) =>
-                                      f.tempId === form.tempId
-                                        ? {
-                                            ...f,
-                                            questions: f.questions.map((q) =>
-                                              q.tempId === question.tempId
-                                                ? {
-                                                    ...q,
-                                                    options: q.options.map(
-                                                      (opt) =>
-                                                        opt.tempId ===
-                                                        option.tempId
-                                                          ? {
-                                                              ...opt,
-                                                              text: event.target.value,
-                                                            }
-                                                          : opt,
-                                                    ),
-                                                  }
-                                                : q,
-                                            ),
-                                          }
-                                        : f,
-                                    ),
-                                  )
-                                }
-                                placeholder={`Вариант ${optionIndex + 1}`}
-                                className="flex-1 rounded-xl border border-border bg-white px-3 py-1.5 text-xs text-text-dark outline-none focus:border-brand-pink"
-                              />
-                              <select
-                                value={option.category}
-                                onChange={(event) =>
-                                  setForms((prev) =>
-                                    prev.map((f) =>
-                                      f.tempId === form.tempId
-                                        ? {
-                                            ...f,
-                                            questions: f.questions.map((q) =>
-                                              q.tempId === question.tempId
-                                                ? {
-                                                    ...q,
-                                                    options: q.options.map(
-                                                      (opt) =>
-                                                        opt.tempId ===
-                                                        option.tempId
-                                                          ? {
-                                                              ...opt,
-                                                              category: event.target.value,
-                                                            }
-                                                          : opt,
-                                                    ),
-                                                  }
-                                                : q,
-                                            ),
-                                          }
-                                        : f,
-                                    ),
-                                  )
-                                }
-                                className="w-20 rounded-xl border border-border bg-white px-2 py-1.5 text-xs text-text-dark outline-none focus:border-brand-pink"
-                              >
-                                <option value="A">A</option>
-                                <option value="B">B</option>
-                                <option value="C">C</option>
-                                <option value="D">D</option>
-                              </select>
-                              {question.options.length > 2 && (
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    setForms((prev) =>
-                                      prev.map((f) =>
-                                        f.tempId === form.tempId
-                                          ? {
-                                              ...f,
-                                              questions: f.questions.map((q) =>
-                                                q.tempId === question.tempId
-                                                  ? {
-                                                      ...q,
-                                                      options: q.options.filter(
-                                                        (opt) =>
-                                                          opt.tempId !==
-                                                          option.tempId,
-                                                      ),
-                                                    }
-                                                  : q,
-                                              ),
-                                            }
-                                          : f,
-                                      ),
-                                    )
-                                  }
-                                  className="rounded-full p-1 text-text-medium hover:bg-white hover:text-text-dark"
-                                  title="Удалить вариант"
-                                >
-                                  ✕
-                                </button>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                      {form.questions.length > 1 && (
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setForms((prev) =>
-                              prev.map((f) =>
-                                f.tempId === form.tempId
-                                  ? {
-                                      ...f,
-                                      questions: f.questions.filter(
-                                        (q) => q.tempId !== question.tempId,
-                                      ),
-                                    }
-                                  : f,
-                              ),
-                            )
-                          }
-                          className="rounded-full p-1 text-text-medium hover:bg-white hover:text-text-dark"
-                          title="Удалить вопрос"
-                        >
-                          ✕
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="flex flex-col gap-3">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-semibold text-text-dark">Результаты</h3>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setForms((prev) =>
-                        prev.map((f) =>
-                          f.tempId === form.tempId
-                            ? {
-                                ...f,
-                                results: [...f.results, createFormResultState()],
-                              }
-                            : f,
-                        ),
-                      )
-                    }
-                    className="rounded-full border border-border px-3 py-1 text-[11px] font-medium text-text-medium transition-colors hover:bg-surface"
-                  >
-                    + Добавить результат
-                  </button>
-                </div>
-
-                {form.results.map((result, resultIndex) => (
-                  <div
-                    key={result.tempId}
-                    className="rounded-xl border border-border/40 bg-surface p-3"
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex-1 space-y-2">
-                        <div className="grid gap-2 md:grid-cols-2">
-                          <label className="flex flex-col gap-1 text-xs text-text-dark">
-                            <span className="text-[11px] font-medium text-text-light">
-                              Условие
-                            </span>
-                            <select
-                              value={result.condition}
-                              onChange={(event) =>
-                                setForms((prev) =>
-                                  prev.map((f) =>
-                                    f.tempId === form.tempId
-                                      ? {
-                                          ...f,
-                                          results: f.results.map((r) =>
-                                            r.tempId === result.tempId
-                                              ? {
-                                                  ...r,
-                                                  condition: event.target.value,
-                                                }
-                                              : r,
-                                          ),
-                                        }
-                                      : f,
-                                  ),
-                                )
-                              }
-                              className="rounded-xl border border-border bg-white px-3 py-1.5 text-xs text-text-dark outline-none focus:border-brand-pink"
-                            >
-                              <option value="more_A">Больше вариантов A</option>
-                              <option value="more_B">Больше вариантов B</option>
-                              <option value="more_C">Больше вариантов C</option>
-                              <option value="more_D">Больше вариантов D</option>
-                              <option value="equal_A_B">Равно A и B</option>
-                            </select>
-                          </label>
-                          <label className="flex flex-col gap-1 text-xs text-text-dark">
-                            <span className="text-[11px] font-medium text-text-light">
-                              Название результата
-                            </span>
-                            <input
-                              type="text"
-                              value={result.title}
-                              onChange={(event) =>
-                                setForms((prev) =>
-                                  prev.map((f) =>
-                                    f.tempId === form.tempId
-                                      ? {
-                                          ...f,
-                                          results: f.results.map((r) =>
-                                            r.tempId === result.tempId
-                                              ? {
-                                                  ...r,
-                                                  title: event.target.value,
-                                                }
-                                              : r,
-                                          ),
-                                        }
-                                      : f,
-                                  ),
-                                )
-                              }
-                              placeholder="Название результата"
-                              className="rounded-xl border border-border bg-white px-3 py-1.5 text-xs text-text-dark outline-none focus:border-brand-pink"
-                            />
-                          </label>
-                        </div>
-                        <label className="flex flex-col gap-1 text-xs text-text-dark">
-                          <span className="text-[11px] font-medium text-text-light">
-                            Описание результата
-                          </span>
-                          <textarea
-                            value={result.description}
-                            onChange={(event) =>
-                              setForms((prev) =>
-                                prev.map((f) =>
-                                  f.tempId === form.tempId
-                                    ? {
-                                        ...f,
-                                        results: f.results.map((r) =>
-                                          r.tempId === result.tempId
-                                            ? {
-                                                ...r,
-                                                description: event.target.value,
-                                              }
-                                            : r,
-                                        ),
-                                      }
-                                    : f,
-                                ),
-                              )
-                            }
-                            placeholder="Описание результата"
-                            rows={3}
-                            className="rounded-xl border border-border bg-white px-3 py-1.5 text-xs text-text-dark outline-none focus:border-brand-pink"
-                          />
-                        </label>
-                      </div>
-                      {form.results.length > 1 && (
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setForms((prev) =>
-                              prev.map((f) =>
-                                f.tempId === form.tempId
-                                  ? {
-                                      ...f,
-                                      results: f.results.filter(
-                                        (r) => r.tempId !== result.tempId,
-                                      ),
-                                    }
-                                  : f,
-                              ),
-                            )
-                          }
-                          className="rounded-full p-1 text-text-medium hover:bg-white hover:text-text-dark"
-                          title="Удалить результат"
-                        >
-                          ✕
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="grid gap-3 md:grid-cols-2">
-                <label className="flex flex-col gap-2 text-xs text-text-dark">
-                  Ограничение по модулю
-                  <select
-                    value={form.unlockModuleId ?? ""}
-                    onChange={(event) =>
-                      setForms((prev) =>
-                        prev.map((f) =>
-                          f.tempId === form.tempId
-                            ? {
-                                ...f,
-                                unlockModuleId:
-                                  event.target.value.trim().length > 0
-                                    ? event.target.value
-                                    : null,
-                                unlockLessonId: event.target.value.trim().length > 0
-                                  ? null
-                                  : f.unlockLessonId,
-                              }
-                            : f,
-                        ),
-                      )
-                    }
-                    disabled={unlockModuleOptions.length === 0}
-                    className="rounded-2xl border border-border bg-white px-3 py-2 text-sm text-text-dark outline-none focus:border-brand-pink disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    <option value="">Не требуется</option>
-                    {unlockModuleOptions.map((module) => (
-                      <option key={module.id} value={module.id}>
-                        {module.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label className="flex flex-col gap-2 text-xs text-text-dark">
-                  Ограничение по уроку
-                  <select
-                    value={form.unlockLessonId ?? ""}
-                    onChange={(event) =>
-                      setForms((prev) =>
-                        prev.map((f) =>
-                          f.tempId === form.tempId
-                            ? {
-                                ...f,
-                                unlockLessonId:
-                                  event.target.value.trim().length > 0
-                                    ? event.target.value
-                                    : null,
-                              }
-                            : f,
-                        ),
-                      )
-                    }
-                    disabled={unlockLessonOptions.length === 0}
-                    className="rounded-2xl border border-border bg-white px-3 py-2 text-sm text-text-dark outline-none focus:border-brand-pink disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    <option value="">Не требуется</option>
-                    {unlockLessonOptions.map((lesson) => (
-                      <option key={lesson.id} value={lesson.id}>
-                        {lesson.moduleLabel} — {lesson.label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              </div>
-
-              <button
-                type="button"
-                onClick={() =>
-                  setForms((prev) =>
-                    prev.filter((f) => f.tempId !== form.tempId),
-                  )
-                }
-                className="self-start rounded-full border border-brand-orange px-4 py-2 text-xs font-semibold text-brand-orange transition-colors hover:bg-brand-orange hover:text-white"
-              >
-                Удалить форму
-              </button>
-            </div>
-          ))
-        )}
-      </section>
+      {/* Формы теперь добавляются в уроках, а не на уровне курса */}
 
       <div className="grid gap-4 md:grid-cols-4">
         <label className="flex items-center gap-3 rounded-2xl bg-card px-4 py-3 text-sm text-text-dark md:col-span-1">
