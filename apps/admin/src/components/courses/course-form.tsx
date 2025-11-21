@@ -10,6 +10,7 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
+  useDroppable,
   closestCenter,
 } from "@dnd-kit/core";
 import {
@@ -1090,7 +1091,7 @@ function DraggableFormItem({
   children: React.ReactNode;
 }) {
   // Используем специальный разделитель, который не встречается в tempId
-  const formId = `${moduleTempId}:::${lessonTempId}:::${form.tempId}`;
+  const formId = `form:::${moduleTempId}:::${lessonTempId}:::${form.tempId}`;
   const {
     attributes,
     listeners,
@@ -1100,6 +1101,101 @@ function DraggableFormItem({
     isDragging,
   } = useSortable({
     id: formId,
+  });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
+      {children}
+    </div>
+  );
+}
+
+// Компонент для drop zone заголовка урока
+function LessonDropZone({
+  moduleTempId,
+  lessonTempId,
+  children,
+}: {
+  moduleTempId: string;
+  lessonTempId: string;
+  children: React.ReactNode;
+}) {
+  const dropId = `lesson-drop:::${moduleTempId}:::${lessonTempId}`;
+  const { setNodeRef, isOver } = useDroppable({
+    id: dropId,
+  });
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={`flex items-center justify-between text-xs rounded-lg border-2 border-dashed transition-colors p-2 -m-2 ${
+        isOver
+          ? "border-brand-pink bg-brand-pink/10"
+          : "border-transparent hover:border-brand-pink/50"
+      }`}
+    >
+      {children}
+    </div>
+  );
+}
+
+// Компонент для перетаскиваемого теста
+function DraggableTestItem({
+  test,
+  children,
+}: {
+  test: TestState;
+  children: React.ReactNode;
+}) {
+  const testId = `test:::${test.tempId}`;
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
+    id: testId,
+  });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
+      {children}
+    </div>
+  );
+}
+
+// Компонент для перетаскиваемого теста
+function DraggableTestItem({
+  test,
+  children,
+}: {
+  test: TestState;
+  children: React.ReactNode;
+}) {
+  const testId = `test:::${test.tempId}`;
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
+    id: testId,
   });
 
   const style = {
@@ -1150,6 +1246,7 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
   );
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [activeFormId, setActiveFormId] = useState<string | null>(null);
+  const [activeTestId, setActiveTestId] = useState<string | null>(null);
 
   // Настройка сенсоров для drag-and-drop
   const sensors = useSensors(
@@ -1161,11 +1258,16 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
   );
 
   // Функция для обработки начала перетаскивания
-  const handleFormDragStart = (event: DragStartEvent) => {
-    setActiveFormId(event.active.id as string);
+  const handleDragStart = (event: DragStartEvent) => {
+    const id = event.active.id as string;
+    if (id.startsWith("form:::")) {
+      setActiveFormId(id);
+    } else if (id.startsWith("test:::")) {
+      setActiveTestId(id);
+    }
   };
 
-  // Функция для обработки окончания перетаскивания
+  // Функция для обработки окончания перетаскивания форм
   const handleFormDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     setActiveFormId(null);
@@ -1175,21 +1277,87 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
     const activeId = active.id as string;
     const overId = over.id as string;
 
-    // Парсим идентификаторы: moduleTempId:::lessonTempId:::formTempId
+    // Парсим идентификаторы: form:::moduleTempId:::lessonTempId:::formTempId
+    // или lesson-drop:::moduleTempId:::lessonTempId (для drop zone заголовка урока)
     const parseFormId = (id: string) => {
       const parts = id.split(":::");
-      if (parts.length !== 3) return null;
-      return {
-        moduleTempId: parts[0],
-        lessonTempId: parts[1],
-        formTempId: parts[2],
-      };
+      if (parts[0] === "lesson-drop" && parts.length === 3) {
+        return {
+          type: "lesson-drop" as const,
+          moduleTempId: parts[1],
+          lessonTempId: parts[2],
+        };
+      }
+      if (parts.length === 4 && parts[0] === "form") {
+        return {
+          type: "form" as const,
+          moduleTempId: parts[1],
+          lessonTempId: parts[2],
+          formTempId: parts[3],
+        };
+      }
+      return null;
     };
 
     const activeForm = parseFormId(activeId);
-    const overForm = parseFormId(overId);
+    const overTarget = parseFormId(overId);
 
-    if (!activeForm || !overForm) return;
+    if (!activeForm || !overTarget || activeForm.type !== "form") return;
+
+    // Если перетаскиваем на drop zone урока
+    if (overTarget.type === "lesson-drop") {
+      setModules((prev) => {
+        // Находим форму для перемещения
+        const activeFormData = prev
+          .find((mod) => mod.tempId === activeForm.moduleTempId)
+          ?.lessons.find((les) => les.tempId === activeForm.lessonTempId)
+          ?.forms.find((f) => f.tempId === activeForm.formTempId);
+
+        if (!activeFormData) return prev;
+
+        return prev.map((m) => {
+          // Удаляем форму из исходного урока
+          if (m.tempId === activeForm.moduleTempId) {
+            return {
+              ...m,
+              lessons: m.lessons.map((l) =>
+                l.tempId === activeForm.lessonTempId
+                  ? {
+                      ...l,
+                      forms: l.forms.filter(
+                        (f) => f.tempId !== activeForm.formTempId,
+                      ),
+                    }
+                  : l,
+              ),
+            };
+          }
+          // Добавляем форму в начало целевого урока
+          if (
+            m.tempId === overTarget.moduleTempId &&
+            m.lessons.some((l) => l.tempId === overTarget.lessonTempId)
+          ) {
+            return {
+              ...m,
+              lessons: m.lessons.map((l) =>
+                l.tempId === overTarget.lessonTempId
+                  ? {
+                      ...l,
+                      forms: [activeFormData, ...l.forms],
+                    }
+                  : l,
+              ),
+            };
+          }
+          return m;
+        });
+      });
+      return;
+    }
+
+    // Если перетаскиваем на другую форму
+    if (overTarget.type !== "form") return;
+    const overForm = overTarget;
 
     // Если форма перемещается в тот же урок, просто меняем порядок
     if (
@@ -1281,6 +1449,54 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
         return m;
       }),
     );
+  };
+
+  // Функция для обработки окончания перетаскивания тестов
+  const handleTestDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    setActiveTestId(null);
+
+    if (!over) return;
+
+    const activeId = active.id as string;
+    const overId = over.id as string;
+
+    // Парсим идентификаторы: test:::testTempId
+    const parseTestId = (id: string) => {
+      const parts = id.split(":::");
+      if (parts.length !== 2 || parts[0] !== "test") return null;
+      return { testTempId: parts[1] };
+    };
+
+    const activeTest = parseTestId(activeId);
+    const overTest = parseTestId(overId);
+
+    if (!activeTest || !overTest) return;
+
+    // Меняем порядок тестов
+    setTests((prev) => {
+      const tests = [...prev];
+      const activeIndex = tests.findIndex(
+        (t) => t.tempId === activeTest.testTempId,
+      );
+      const overIndex = tests.findIndex(
+        (t) => t.tempId === overTest.testTempId,
+      );
+      if (activeIndex === -1 || overIndex === -1) return prev;
+      const [removed] = tests.splice(activeIndex, 1);
+      tests.splice(overIndex, 0, removed);
+      return tests;
+    });
+  };
+
+  // Общая функция для обработки окончания перетаскивания
+  const handleDragEnd = (event: DragEndEvent) => {
+    const activeId = event.active.id as string;
+    if (activeId.startsWith("form:::")) {
+      handleFormDragEnd(event);
+    } else if (activeId.startsWith("test:::")) {
+      handleTestDragEnd(event);
+    }
   };
 
   useEffect(() => {
@@ -2200,8 +2416,8 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
     <DndContext
       sensors={sensors}
       collisionDetection={closestCenter}
-      onDragStart={handleFormDragStart}
-      onDragEnd={handleFormDragEnd}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
     >
       <div className="relative">
         {/* Сайдбар навигации - прижат к левому краю (после AdminNav 240px) */}
@@ -2516,20 +2732,24 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
                             key={lesson.tempId}
                             className="space-y-3 rounded-2xl border border-border/60 bg-white px-4 py-3 transition-all"
                           >
-                      <div className="flex items-center justify-between text-xs">
+                      <LessonDropZone
+                        moduleTempId={module.tempId}
+                        lessonTempId={lesson.tempId}
+                      >
                         <span className="font-semibold text-text-dark">
                           Урок {lessonIndex + 1}
                         </span>
                         <button
                           type="button"
-                          onClick={() =>
-                            handleRemoveLesson(module.tempId, lesson.tempId)
-                          }
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleRemoveLesson(module.tempId, lesson.tempId);
+                          }}
                           className="text-brand-orange underline-offset-4 hover:underline"
                         >
                           Удалить
                         </button>
-                      </div>
+                      </LessonDropZone>
 
                       <div className="grid gap-3 md:grid-cols-2">
                         <label className="flex flex-col gap-2 text-xs text-text-dark">
@@ -2726,7 +2946,7 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
                         ) : (
                           <SortableContext
                             items={lesson.forms.map(
-                              (f) => `${module.tempId}:::${lesson.tempId}:::${f.tempId}`,
+                              (f) => `form:::${module.tempId}:::${lesson.tempId}:::${f.tempId}`,
                             )}
                             strategy={verticalListSortingStrategy}
                           >
@@ -3592,26 +3812,36 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
             Пока нет тестов. Добавьте первый, чтобы завершить курс квизом.
           </p>
         ) : (
-          <>
-            {tests.map((test, index) => (
-            <div
-              key={test.tempId}
-              className="space-y-3 rounded-3xl border border-border/60 bg-surface px-5 py-4"
-            >
-              <div className="flex items-center justify-between">
-                <p className="text-sm font-semibold text-text-dark">
-                  Тест {index + 1}
-                </p>
-                <button
-                  type="button"
-                  onClick={() => handleRemoveTest(test.tempId)}
-                  className="text-xs font-semibold text-brand-orange underline-offset-4 hover:underline"
-                >
-                  Удалить
-                </button>
-              </div>
+          <SortableContext
+            items={tests.map((t) => `test:::${t.tempId}`)}
+            strategy={verticalListSortingStrategy}
+          >
+            <>
+              {tests.map((test, index) => (
+                <DraggableTestItem key={test.tempId} test={test}>
+                  <div className="space-y-3 rounded-3xl border border-border/60 bg-surface px-5 py-4 cursor-move hover:border-brand-pink transition-colors">
+                    {/* Индикатор перетаскивания */}
+                    <div className="flex items-center gap-2 text-[10px] text-text-light mb-2">
+                      <span>⋮⋮</span>
+                      <span>Перетащите тест для изменения порядка</span>
+                    </div>
+                    <div className="flex items-center justify-between" onClick={(e) => e.stopPropagation()}>
+                      <p className="text-sm font-semibold text-text-dark">
+                        Тест {index + 1}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleRemoveTest(test.tempId);
+                        }}
+                        className="text-xs font-semibold text-brand-orange underline-offset-4 hover:underline"
+                      >
+                        Удалить
+                      </button>
+                    </div>
 
-              <div className="grid gap-3 md:grid-cols-2">
+                    <div className="grid gap-3 md:grid-cols-2" onClick={(e) => e.stopPropagation()}>
                 <label className="flex flex-col gap-2 text-xs text-text-dark">
                   Название
                   <input
@@ -3642,13 +3872,16 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
               </div>
 
               <div className="space-y-3 rounded-2xl border border-border/60 bg-white px-4 py-3">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between" onClick={(e) => e.stopPropagation()}>
                   <p className="text-sm font-semibold text-text-dark">
                     Вопросы теста
                   </p>
                   <button
                     type="button"
-                    onClick={() => handleAddTestQuestion(test.tempId)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleAddTestQuestion(test.tempId);
+                    }}
                     className="rounded-full border border-brand-pink px-3 py-1 text-[11px] font-semibold text-brand-pink transition-colors hover:bg-brand-pink hover:text-white"
                   >
                     Добавить вопрос
@@ -3827,9 +4060,10 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
 
                           <button
                             type="button"
-                            onClick={() =>
-                              handleAddTestOption(test.tempId, question.tempId)
-                            }
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleAddTestOption(test.tempId, question.tempId);
+                            }}
                             className="rounded-full border border-dashed border-brand-pink/70 px-3 py-1 text-[11px] font-semibold text-brand-pink transition-colors hover:border-brand-pink hover:bg-brand-pink/10"
                           >
                             Добавить вариант
@@ -3838,18 +4072,21 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
                       )}
                     </div>
                     ))}
-                    {/* Кнопка добавления вопроса внизу списка */}
-                    <div className="flex justify-center pt-3">
-                      <button
-                        type="button"
-                        onClick={() => handleAddTestQuestion(test.tempId)}
-                        className="rounded-full border border-brand-pink px-4 py-2 text-xs font-semibold text-brand-pink transition-colors hover:bg-brand-pink hover:text-white"
-                      >
-                        + Добавить вопрос
-                      </button>
-                    </div>
-                  </>
-                )}
+                      {/* Кнопка добавления вопроса внизу списка */}
+                      <div className="flex justify-center pt-3">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleAddTestQuestion(test.tempId);
+                          }}
+                          className="rounded-full border border-brand-pink px-4 py-2 text-xs font-semibold text-brand-pink transition-colors hover:bg-brand-pink hover:text-white"
+                        >
+                          + Добавить вопрос
+                        </button>
+                      </div>
+                    </>
+                  )}
               </div>
 
               <details className="rounded-2xl border border-dashed border-border/70 bg-white px-4 py-3 text-xs text-text-dark">
@@ -3873,14 +4110,20 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
                   <div className="flex flex-wrap gap-2">
                     <button
                       type="button"
-                      onClick={() => handleTestImportFromJson(test.tempId)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleTestImportFromJson(test.tempId);
+                      }}
                       className="rounded-full bg-brand-pink px-3 py-1 text-[11px] font-semibold text-white transition-transform active:scale-95"
                     >
                       Импортировать
                     </button>
                     <button
                       type="button"
-                      onClick={() => handleTestSyncJson(test.tempId)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleTestSyncJson(test.tempId);
+                      }}
                       className="rounded-full border border-brand-pink px-3 py-1 text-[11px] font-semibold text-brand-pink transition-colors hover:bg-brand-pink hover:text-white"
                     >
                       Синхронизировать с формой
@@ -3996,20 +4239,22 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
                       : "Выбор конкретного урока сбрасывает ограничение по модулю."}
                   </span>
                 </label>
+                    </div>
+                  </div>
+                </DraggableTestItem>
+              ))}
+              {/* Кнопка добавления теста внизу списка */}
+              <div className="flex justify-center pt-4">
+                <button
+                  type="button"
+                  onClick={handleAddTest}
+                  className="rounded-full border border-brand-pink px-4 py-2 text-xs font-semibold text-brand-pink transition-colors hover:bg-brand-pink hover:text-white"
+                >
+                  + Добавить тест
+                </button>
               </div>
-            </div>
-            ))}
-            {/* Кнопка добавления теста внизу списка */}
-            <div className="flex justify-center pt-4">
-              <button
-                type="button"
-                onClick={handleAddTest}
-                className="rounded-full border border-brand-pink px-4 py-2 text-xs font-semibold text-brand-pink transition-colors hover:bg-brand-pink hover:text-white"
-              >
-                + Добавить тест
-              </button>
-            </div>
-          </>
+            </>
+          </SortableContext>
         )}
       </section>
 
@@ -4116,6 +4361,12 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
           <div className="flex flex-col gap-3 rounded-xl border border-border/40 bg-white p-3 opacity-90 shadow-lg">
             <div className="text-xs font-semibold text-text-dark">
               Перемещение формы...
+            </div>
+          </div>
+        ) : activeTestId ? (
+          <div className="flex flex-col gap-3 rounded-3xl border border-border/60 bg-surface px-5 py-4 opacity-90 shadow-lg">
+            <div className="text-sm font-semibold text-text-dark">
+              Перемещение теста...
             </div>
           </div>
         ) : null}
