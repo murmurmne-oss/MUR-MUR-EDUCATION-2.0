@@ -1178,39 +1178,6 @@ function DraggableTestItem({
   );
 }
 
-// Компонент для перетаскиваемого теста
-function DraggableTestItem({
-  test,
-  children,
-}: {
-  test: TestState;
-  children: React.ReactNode;
-}) {
-  const testId = `test:::${test.tempId}`;
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({
-    id: testId,
-  });
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : 1,
-  };
-
-  return (
-    <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
-      {children}
-    </div>
-  );
-}
-
 export function CourseForm({ initialCourse }: CourseFormProps) {
   const router = useRouter();
   const [formState, setFormState] = useState<FormState>(() => ({
