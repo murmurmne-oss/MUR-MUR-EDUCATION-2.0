@@ -2849,8 +2849,8 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
                                               }
                                             : m,
                                         ),
-                                      )
-                                    }
+                                      );
+                                    }}
                                     className="rounded-full border border-border px-2 py-0.5 text-[10px] font-medium text-text-medium transition-colors hover:bg-surface"
                                   >
                                     + Вопрос
