@@ -1364,8 +1364,17 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
     }
 
     // Если форма перемещается в другой урок, перемещаем её
-    setModules((prev) =>
-      prev.map((m) => {
+    setModules((prev) => {
+      // Сначала находим форму для перемещения в исходном состоянии
+      const activeFormData = prev
+        .find((mod) => mod.tempId === activeForm.moduleTempId)
+        ?.lessons.find((les) => les.tempId === activeForm.lessonTempId)
+        ?.forms.find((f) => f.tempId === activeForm.formTempId);
+
+      if (!activeFormData) return prev;
+
+      // Теперь обновляем модули: удаляем из исходного и добавляем в целевой
+      return prev.map((m) => {
         // Удаляем форму из исходного урока
         if (m.tempId === activeForm.moduleTempId) {
           return {
@@ -1388,20 +1397,15 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
             ...m,
             lessons: m.lessons.map((l) => {
               if (l.tempId === overForm.lessonTempId) {
-                const activeFormData = prev
-                  .find((mod) => mod.tempId === activeForm.moduleTempId)
-                  ?.lessons.find((les) => les.tempId === activeForm.lessonTempId)
-                  ?.forms.find((f) => f.tempId === activeForm.formTempId);
-
-                if (!activeFormData) return l;
-
                 const overIndex = l.forms.findIndex(
                   (f) => f.tempId === overForm.formTempId,
                 );
                 const newForms = [...l.forms];
                 if (overIndex === -1) {
+                  // Если целевая форма не найдена, добавляем в конец
                   newForms.push(activeFormData);
                 } else {
+                  // Вставляем перед целевой формой
                   newForms.splice(overIndex, 0, activeFormData);
                 }
                 return {
@@ -1414,8 +1418,8 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
           };
         }
         return m;
-      }),
-    );
+      });
+    });
   };
 
   // Функция для обработки окончания перетаскивания тестов
