@@ -1371,11 +1371,57 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
         ?.lessons.find((les) => les.tempId === activeForm.lessonTempId)
         ?.forms.find((f) => f.tempId === activeForm.formTempId);
 
-      if (!activeFormData) return prev;
+      if (!activeFormData) {
+        console.error("Form not found for moving:", activeForm);
+        return prev;
+      }
+
+      // Создаем глубокую копию данных формы, чтобы избежать проблем с ссылками
+      const formToMove = JSON.parse(JSON.stringify(activeFormData));
 
       // Теперь обновляем модули: удаляем из исходного и добавляем в целевой
       return prev.map((m) => {
-        // Удаляем форму из исходного урока
+        // Если это и исходный, и целевой модуль одновременно
+        if (
+          m.tempId === activeForm.moduleTempId &&
+          m.tempId === overForm.moduleTempId
+        ) {
+          return {
+            ...m,
+            lessons: m.lessons.map((l) => {
+              // Если это исходный урок - удаляем форму
+              if (l.tempId === activeForm.lessonTempId) {
+                return {
+                  ...l,
+                  forms: l.forms.filter(
+                    (f) => f.tempId !== activeForm.formTempId,
+                  ),
+                };
+              }
+              // Если это целевой урок - добавляем форму
+              if (l.tempId === overForm.lessonTempId) {
+                const overIndex = l.forms.findIndex(
+                  (f) => f.tempId === overForm.formTempId,
+                );
+                const newForms = [...l.forms];
+                if (overIndex === -1) {
+                  // Если целевая форма не найдена, добавляем в конец
+                  newForms.push(formToMove);
+                } else {
+                  // Вставляем перед целевой формой
+                  newForms.splice(overIndex, 0, formToMove);
+                }
+                return {
+                  ...l,
+                  forms: newForms,
+                };
+              }
+              return l;
+            }),
+          };
+        }
+
+        // Удаляем форму из исходного модуля
         if (m.tempId === activeForm.moduleTempId) {
           return {
             ...m,
@@ -1391,7 +1437,8 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
             ),
           };
         }
-        // Добавляем форму в целевой урок
+
+        // Добавляем форму в целевой модуль
         if (m.tempId === overForm.moduleTempId) {
           return {
             ...m,
@@ -1403,10 +1450,10 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
                 const newForms = [...l.forms];
                 if (overIndex === -1) {
                   // Если целевая форма не найдена, добавляем в конец
-                  newForms.push(activeFormData);
+                  newForms.push(formToMove);
                 } else {
                   // Вставляем перед целевой формой
-                  newForms.splice(overIndex, 0, activeFormData);
+                  newForms.splice(overIndex, 0, formToMove);
                 }
                 return {
                   ...l,
@@ -1417,6 +1464,7 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
             }),
           };
         }
+
         return m;
       });
     });
