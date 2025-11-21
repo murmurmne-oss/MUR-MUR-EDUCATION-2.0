@@ -2530,10 +2530,10 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
                         ) : (
                           <>
                             {lesson.forms.map((form) => (
-                            <div
-                              key={form.tempId}
-                              className="flex flex-col gap-3 rounded-xl border border-border/40 bg-white p-3"
-                            >
+                              <div
+                                key={form.tempId}
+                                className="flex flex-col gap-3 rounded-xl border border-border/40 bg-white p-3"
+                              >
                               <div className="grid gap-3 md:grid-cols-2">
                                 <label className="flex flex-col gap-1 text-xs text-text-dark">
                                   <span className="text-[11px] font-medium text-text-light">
