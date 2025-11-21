@@ -3445,7 +3445,8 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
                     Добавьте первый вопрос, чтобы сформировать тест.
                   </p>
                 ) : (
-                  test.questions.map((question, questionIndex) => (
+                  <>
+                    {test.questions.map((question, questionIndex) => (
                     <div
                       key={question.tempId}
                       className="space-y-3 rounded-2xl border border-border/50 bg-surface px-4 py-3"
@@ -3621,9 +3622,8 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
                         </div>
                       )}
                     </div>
-                  ))}
-                  {/* Кнопка добавления вопроса внизу списка */}
-                  {test.questions.length > 0 && (
+                    ))}
+                    {/* Кнопка добавления вопроса внизу списка */}
                     <div className="flex justify-center pt-3">
                       <button
                         type="button"
@@ -3633,7 +3633,7 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
                         + Добавить вопрос
                       </button>
                     </div>
-                  )}
+                  </>
                 )}
               </div>
 
