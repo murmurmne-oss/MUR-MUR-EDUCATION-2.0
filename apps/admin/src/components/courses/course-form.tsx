@@ -3,6 +3,22 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
+  DndContext,
+  DragEndEvent,
+  DragOverlay,
+  DragStartEvent,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  closestCenter,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import {
   apiClient,
   CourseDetails,
   CourseModulePayload,
@@ -1061,6 +1077,44 @@ function mapCourseToForms(course?: CourseDetails | null): CourseFormState[] {
   );
 }
 
+// Компонент для перетаскиваемой формы
+function DraggableFormItem({
+  form,
+  moduleTempId,
+  lessonTempId,
+  children,
+}: {
+  form: CourseFormState;
+  moduleTempId: string;
+  lessonTempId: string;
+  children: React.ReactNode;
+}) {
+  // Используем специальный разделитель, который не встречается в tempId
+  const formId = `${moduleTempId}:::${lessonTempId}:::${form.tempId}`;
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
+    id: formId,
+  });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
+      {children}
+    </div>
+  );
+}
+
 export function CourseForm({ initialCourse }: CourseFormProps) {
   const router = useRouter();
   const [formState, setFormState] = useState<FormState>(() => ({
@@ -1095,6 +1149,139 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
     new Set(),
   );
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [activeFormId, setActiveFormId] = useState<string | null>(null);
+
+  // Настройка сенсоров для drag-and-drop
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8, // Минимальное расстояние для начала перетаскивания
+      },
+    }),
+  );
+
+  // Функция для обработки начала перетаскивания
+  const handleFormDragStart = (event: DragStartEvent) => {
+    setActiveFormId(event.active.id as string);
+  };
+
+  // Функция для обработки окончания перетаскивания
+  const handleFormDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    setActiveFormId(null);
+
+    if (!over) return;
+
+    const activeId = active.id as string;
+    const overId = over.id as string;
+
+    // Парсим идентификаторы: moduleTempId:::lessonTempId:::formTempId
+    const parseFormId = (id: string) => {
+      const parts = id.split(":::");
+      if (parts.length !== 3) return null;
+      return {
+        moduleTempId: parts[0],
+        lessonTempId: parts[1],
+        formTempId: parts[2],
+      };
+    };
+
+    const activeForm = parseFormId(activeId);
+    const overForm = parseFormId(overId);
+
+    if (!activeForm || !overForm) return;
+
+    // Если форма перемещается в тот же урок, просто меняем порядок
+    if (
+      activeForm.moduleTempId === overForm.moduleTempId &&
+      activeForm.lessonTempId === overForm.lessonTempId
+    ) {
+      setModules((prev) =>
+        prev.map((m) =>
+          m.tempId === activeForm.moduleTempId
+            ? {
+                ...m,
+                lessons: m.lessons.map((l) =>
+                  l.tempId === activeForm.lessonTempId
+                    ? {
+                        ...l,
+                        forms: (() => {
+                          const forms = [...l.forms];
+                          const activeIndex = forms.findIndex(
+                            (f) => f.tempId === activeForm.formTempId,
+                          );
+                          const overIndex = forms.findIndex(
+                            (f) => f.tempId === overForm.formTempId,
+                          );
+                          if (activeIndex === -1 || overIndex === -1) return forms;
+                          const [removed] = forms.splice(activeIndex, 1);
+                          forms.splice(overIndex, 0, removed);
+                          return forms;
+                        })(),
+                      }
+                    : l,
+                ),
+              }
+            : m,
+        ),
+      );
+      return;
+    }
+
+    // Если форма перемещается в другой урок, перемещаем её
+    setModules((prev) =>
+      prev.map((m) => {
+        // Удаляем форму из исходного урока
+        if (m.tempId === activeForm.moduleTempId) {
+          return {
+            ...m,
+            lessons: m.lessons.map((l) =>
+              l.tempId === activeForm.lessonTempId
+                ? {
+                    ...l,
+                    forms: l.forms.filter(
+                      (f) => f.tempId !== activeForm.formTempId,
+                    ),
+                  }
+                : l,
+            ),
+          };
+        }
+        // Добавляем форму в целевой урок
+        if (m.tempId === overForm.moduleTempId) {
+          return {
+            ...m,
+            lessons: m.lessons.map((l) => {
+              if (l.tempId === overForm.lessonTempId) {
+                const activeFormData = prev
+                  .find((mod) => mod.tempId === activeForm.moduleTempId)
+                  ?.lessons.find((les) => les.tempId === activeForm.lessonTempId)
+                  ?.forms.find((f) => f.tempId === activeForm.formTempId);
+
+                if (!activeFormData) return l;
+
+                const overIndex = l.forms.findIndex(
+                  (f) => f.tempId === overForm.formTempId,
+                );
+                const newForms = [...l.forms];
+                if (overIndex === -1) {
+                  newForms.push(activeFormData);
+                } else {
+                  newForms.splice(overIndex, 0, activeFormData);
+                }
+                return {
+                  ...l,
+                  forms: newForms,
+                };
+              }
+              return l;
+            }),
+          };
+        }
+        return m;
+      }),
+    );
+  };
 
   useEffect(() => {
     if (initialCourse) {
@@ -2008,9 +2195,16 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
     scrollToElement(elementId);
   };
 
+
   return (
-    <div className="relative">
-      {/* Сайдбар навигации - прижат к левому краю (после AdminNav 240px) */}
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCenter}
+      onDragStart={handleFormDragStart}
+      onDragEnd={handleFormDragEnd}
+    >
+      <div className="relative">
+        {/* Сайдбар навигации - прижат к левому краю (после AdminNav 240px) */}
       <div className="fixed left-[240px] top-0 z-10 hidden h-screen w-64 overflow-y-auto border-r border-border bg-white p-4 shadow-sm lg:block">
         <CourseNavigationSidebar
           modules={modules}
@@ -2530,13 +2724,27 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
                             Пока нет форм. Добавьте форму для опроса с результатами.
                           </p>
                         ) : (
-                          <>
-                            {lesson.forms.map((form) => (
-                              <div
-                                key={form.tempId}
-                                className="flex flex-col gap-3 rounded-xl border border-border/40 bg-white p-3"
-                              >
-                              <div className="grid gap-3 md:grid-cols-2">
+                          <SortableContext
+                            items={lesson.forms.map(
+                              (f) => `${module.tempId}:::${lesson.tempId}:::${f.tempId}`,
+                            )}
+                            strategy={verticalListSortingStrategy}
+                          >
+                            <>
+                              {lesson.forms.map((form) => (
+                                <DraggableFormItem
+                                  key={form.tempId}
+                                  form={form}
+                                  moduleTempId={module.tempId}
+                                  lessonTempId={lesson.tempId}
+                                >
+                                  <div className="flex flex-col gap-3 rounded-xl border border-border/40 bg-white p-3 cursor-move hover:border-brand-pink transition-colors">
+                                    {/* Индикатор перетаскивания */}
+                                    <div className="flex items-center gap-2 text-[10px] text-text-light mb-1">
+                                      <span>⋮⋮</span>
+                                      <span>Перетащите форму в другой урок</span>
+                                    </div>
+                              <div className="grid gap-3 md:grid-cols-2" onClick={(e) => e.stopPropagation()}>
                                 <label className="flex flex-col gap-1 text-xs text-text-dark">
                                   <span className="text-[11px] font-medium text-text-light">
                                     Название формы
@@ -2608,12 +2816,13 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
                               </div>
 
                               {/* Вопросы формы */}
-                              <div className="flex flex-col gap-2">
+                              <div className="flex flex-col gap-2" onClick={(e) => e.stopPropagation()}>
                                 <div className="flex items-center justify-between">
                                   <span className="text-xs font-medium text-text-dark">Вопросы</span>
                                   <button
                                     type="button"
-                                    onClick={() =>
+                                    onClick={(e) => {
+                                      e.stopPropagation();
                                       setModules((prev) =>
                                         prev.map((m) =>
                                           m.tempId === module.tempId
@@ -2997,7 +3206,8 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
                                   <span className="text-xs font-medium text-text-dark">Результаты</span>
                                   <button
                                     type="button"
-                                    onClick={() =>
+                                    onClick={(e) => {
+                                      e.stopPropagation();
                                       setModules((prev) =>
                                         prev.map((m) =>
                                           m.tempId === module.tempId
@@ -3024,8 +3234,8 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
                                               }
                                             : m,
                                         ),
-                                      )
-                                    }
+                                      );
+                                    }}
                                     className="rounded-full border border-border px-2 py-0.5 text-[10px] font-medium text-text-medium transition-colors hover:bg-surface"
                                   >
                                     + Результат
@@ -3292,12 +3502,17 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
                                   )
                                 }
                                 className="self-start rounded-full border border-brand-orange px-3 py-1 text-xs font-semibold text-brand-orange transition-colors hover:bg-brand-orange hover:text-white"
+                                onClick={(e) => e.stopPropagation()}
                               >
                                 Удалить форму
                               </button>
                             </div>
-                            ))}
-                            {/* Кнопка добавления формы внизу списка */}
+                                  </DraggableFormItem>
+                                ))}
+                              </>
+                            </SortableContext>
+                          )}
+                          {/* Кнопка добавления формы внизу списка */}
                             <div className="flex justify-center pt-2">
                               <button
                                 type="button"
@@ -3896,7 +4111,16 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
       </div>
     </form>
       </div>
-    </div>
+      <DragOverlay>
+        {activeFormId ? (
+          <div className="flex flex-col gap-3 rounded-xl border border-border/40 bg-white p-3 opacity-90 shadow-lg">
+            <div className="text-xs font-semibold text-text-dark">
+              Перемещение формы...
+            </div>
+          </div>
+        ) : null}
+      </DragOverlay>
+    </DndContext>
   );
 }
 
