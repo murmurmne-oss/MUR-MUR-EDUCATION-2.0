@@ -1386,38 +1386,53 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
           m.tempId === activeForm.moduleTempId &&
           m.tempId === overForm.moduleTempId
         ) {
+          // Сначала создаем новый массив уроков с обновленными формами
+          const updatedLessons = m.lessons.map((l) => {
+            // Если это исходный урок - удаляем форму
+            if (l.tempId === activeForm.lessonTempId) {
+              return {
+                ...l,
+                forms: l.forms.filter(
+                  (f) => f.tempId !== activeForm.formTempId,
+                ),
+              };
+            }
+            // Если это целевой урок - добавляем форму
+            if (l.tempId === overForm.lessonTempId) {
+              // Используем исходное состояние форм целевого урока
+              const targetLesson = prev
+                .find((mod) => mod.tempId === overForm.moduleTempId)
+                ?.lessons.find((les) => les.tempId === overForm.lessonTempId);
+              
+              if (!targetLesson) {
+                console.error("Target lesson not found:", overForm);
+                return l;
+              }
+
+              const overIndex = targetLesson.forms.findIndex(
+                (f) => f.tempId === overForm.formTempId,
+              );
+              const newForms = [...targetLesson.forms];
+              
+              if (overIndex === -1) {
+                // Если целевая форма не найдена, добавляем в конец
+                newForms.push(formToMove);
+              } else {
+                // Вставляем перед целевой формой
+                newForms.splice(overIndex, 0, formToMove);
+              }
+              
+              return {
+                ...l,
+                forms: newForms,
+              };
+            }
+            return l;
+          });
+
           return {
             ...m,
-            lessons: m.lessons.map((l) => {
-              // Если это исходный урок - удаляем форму
-              if (l.tempId === activeForm.lessonTempId) {
-                return {
-                  ...l,
-                  forms: l.forms.filter(
-                    (f) => f.tempId !== activeForm.formTempId,
-                  ),
-                };
-              }
-              // Если это целевой урок - добавляем форму
-              if (l.tempId === overForm.lessonTempId) {
-                const overIndex = l.forms.findIndex(
-                  (f) => f.tempId === overForm.formTempId,
-                );
-                const newForms = [...l.forms];
-                if (overIndex === -1) {
-                  // Если целевая форма не найдена, добавляем в конец
-                  newForms.push(formToMove);
-                } else {
-                  // Вставляем перед целевой формой
-                  newForms.splice(overIndex, 0, formToMove);
-                }
-                return {
-                  ...l,
-                  forms: newForms,
-                };
-              }
-              return l;
-            }),
+            lessons: updatedLessons,
           };
         }
 
