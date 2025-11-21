@@ -2223,7 +2223,8 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
             курс.
           </p>
         ) : (
-          modules.map((module, moduleIndex) => (
+          <>
+            {modules.map((module, moduleIndex) => (
             <div
               id={`module-${module.tempId}`}
               key={module.tempId}
@@ -3345,9 +3346,8 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
                 </>
               )}
             </div>
-          ))}
-          {/* Кнопка добавления модуля внизу списка */}
-          {modules.length > 0 && (
+            ))}
+            {/* Кнопка добавления модуля внизу списка */}
             <div className="flex justify-center pt-4">
               <button
                 type="button"
@@ -3357,7 +3357,7 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
                 + Добавить модуль
               </button>
             </div>
-          )}
+          </>
         )}
       </section>
 
