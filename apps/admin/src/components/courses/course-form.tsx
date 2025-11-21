@@ -2528,7 +2528,8 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
                             Пока нет форм. Добавьте форму для опроса с результатами.
                           </p>
                         ) : (
-                          lesson.forms.map((form) => (
+                          <>
+                            {lesson.forms.map((form) => (
                             <div
                               key={form.tempId}
                               className="flex flex-col gap-3 rounded-xl border border-border/40 bg-white p-3"
@@ -3293,9 +3294,8 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
                                 Удалить форму
                               </button>
                             </div>
-                          ))}
-                          {/* Кнопка добавления формы внизу списка */}
-                          {lesson.forms.length > 0 && (
+                            ))}
+                            {/* Кнопка добавления формы внизу списка */}
                             <div className="flex justify-center pt-2">
                               <button
                                 type="button"
@@ -3323,7 +3323,7 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
                                 + Добавить форму
                               </button>
                             </div>
-                          )}
+                          </>
                         )}
                       </div>
                     </div>
