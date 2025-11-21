@@ -3509,39 +3509,38 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
                             </div>
                                   </DraggableFormItem>
                                 ))}
+                                {/* Кнопка добавления формы внизу списка */}
+                                <div className="flex justify-center pt-2">
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setModules((prev) =>
+                                        prev.map((m) =>
+                                          m.tempId === module.tempId
+                                            ? {
+                                                ...m,
+                                                lessons: m.lessons.map((l) =>
+                                                  l.tempId === lesson.tempId
+                                                    ? {
+                                                        ...l,
+                                                        forms: [...l.forms, createFormState()],
+                                                      }
+                                                    : l,
+                                                ),
+                                              }
+                                            : m,
+                                        ),
+                                      );
+                                    }}
+                                    className="rounded-full border border-border px-3 py-1 text-[11px] font-medium text-text-medium transition-colors hover:bg-white"
+                                  >
+                                    + Добавить форму
+                                  </button>
+                                </div>
                               </>
                             </SortableContext>
                           )}
-                          {/* Кнопка добавления формы внизу списка */}
-                            <div className="flex justify-center pt-2">
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setModules((prev) =>
-                                    prev.map((m) =>
-                                      m.tempId === module.tempId
-                                        ? {
-                                            ...m,
-                                            lessons: m.lessons.map((l) =>
-                                              l.tempId === lesson.tempId
-                                                ? {
-                                                    ...l,
-                                                    forms: [...l.forms, createFormState()],
-                                                  }
-                                                : l,
-                                            ),
-                                          }
-                                        : m,
-                                    ),
-                                  );
-                                }}
-                                className="rounded-full border border-border px-3 py-1 text-[11px] font-medium text-text-medium transition-colors hover:bg-white"
-                              >
-                                + Добавить форму
-                              </button>
-                            </div>
-                          </>
-                        )}
                       </div>
                           </div>
                         ))}
