@@ -4110,6 +4110,7 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
       </div>
     </form>
       </div>
+      </div>
       <DragOverlay>
         {activeFormId ? (
           <div className="flex flex-col gap-3 rounded-xl border border-border/40 bg-white p-3 opacity-90 shadow-lg">
