@@ -3480,7 +3480,8 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
 
                               <button
                                 type="button"
-                                onClick={() =>
+                                onClick={(e) => {
+                                  e.stopPropagation();
                                   setModules((prev) =>
                                     prev.map((m) =>
                                       m.tempId === module.tempId
@@ -3499,10 +3500,9 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
                                           }
                                         : m,
                                     ),
-                                  )
-                                }
+                                  );
+                                }}
                                 className="self-start rounded-full border border-brand-orange px-3 py-1 text-xs font-semibold text-brand-orange transition-colors hover:bg-brand-orange hover:text-white"
-                                onClick={(e) => e.stopPropagation()}
                               >
                                 Удалить форму
                               </button>
