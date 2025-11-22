@@ -1591,10 +1591,16 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
     const { active, over } = event;
     setActiveTestId(null);
 
-    if (!over) return;
+    if (!over) {
+      console.log("[TestDrag] No over target");
+      return;
+    }
 
     const activeId = active.id as string;
     const overId = over.id as string;
+
+    console.log("[TestDrag] Active ID:", activeId);
+    console.log("[TestDrag] Over ID:", overId);
 
     // Парсим идентификаторы: test:::testTempId
     // или lesson-drop:::moduleTempId:::lessonTempId (для drop zone заголовка урока)
@@ -1619,17 +1625,25 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
     const activeTest = parseTestId(activeId);
     const overTarget = parseTestId(overId);
 
-    if (!activeTest || activeTest.type !== "test") return;
+    console.log("[TestDrag] Parsed activeTest:", activeTest);
+    console.log("[TestDrag] Parsed overTarget:", overTarget);
+
+    if (!activeTest || activeTest.type !== "test") {
+      console.error("[TestDrag] Failed to parse active test");
+      return;
+    }
 
     // Если перетаскиваем на drop zone урока
     if (overTarget?.type === "lesson-drop") {
+      console.log("[TestDrag] Dropping on lesson drop zone");
+      
       // Находим урок в состоянии modules по tempId
       const targetModule = modules.find(
         (m) => m.tempId === overTarget.moduleTempId,
       );
       
       if (!targetModule) {
-        console.error("Target module not found:", overTarget);
+        console.error("[TestDrag] Target module not found:", overTarget);
         return;
       }
 
@@ -1638,7 +1652,7 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
       );
 
       if (!targetLesson) {
-        console.error("Target lesson not found:", overTarget);
+        console.error("[TestDrag] Target lesson not found:", overTarget);
         return;
       }
 
@@ -1646,9 +1660,12 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
       const lessonId = targetLesson.sourceId ?? targetLesson.tempId;
       const moduleId = targetModule.sourceId ?? targetModule.tempId;
 
+      console.log("[TestDrag] Linking test to lesson:", lessonId);
+      console.log("[TestDrag] Module ID:", moduleId);
+
       // Обновляем unlockLessonId теста (это свяжет тест с уроком)
-      setTests((prev) =>
-        prev.map((test) =>
+      setTests((prev) => {
+        const updatedTests = prev.map((test) =>
           test.tempId === activeTest.testTempId
             ? {
                 ...test,
@@ -1656,13 +1673,16 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
                 unlockModuleId: null, // Сбрасываем ограничение по модулю при выборе урока
               }
             : test,
-        ),
-      );
+        );
+        console.log("[TestDrag] Updated test unlockLessonId");
+        return updatedTests;
+      });
       return;
     }
 
     // Если перетаскиваем на другой тест, меняем порядок
     if (overTarget?.type === "test") {
+      console.log("[TestDrag] Reordering tests");
       setTests((prev) => {
         const tests = [...prev];
         const activeIndex = tests.findIndex(
@@ -1671,13 +1691,24 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
         const overIndex = tests.findIndex(
           (t) => t.tempId === overTarget.testTempId,
         );
-        if (activeIndex === -1 || overIndex === -1) return prev;
+        
+        console.log("[TestDrag] Active index:", activeIndex, "Over index:", overIndex);
+        
+        if (activeIndex === -1 || overIndex === -1) {
+          console.error("[TestDrag] Test not found for reordering");
+          return prev;
+        }
+        
         const [removed] = tests.splice(activeIndex, 1);
         tests.splice(overIndex, 0, removed);
+        
+        console.log("[TestDrag] Tests reordered successfully");
         return tests;
       });
       return;
     }
+
+    console.warn("[TestDrag] Unknown drop target type");
   };
 
   // Общая функция для обработки окончания перетаскивания
@@ -4014,7 +4045,7 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
                     {/* Индикатор перетаскивания */}
                     <div className="flex items-center gap-2 text-[10px] text-text-light mb-2">
                       <span>⋮⋮</span>
-                      <span>Перетащите тест для изменения порядка</span>
+                      <span>Перетащите тест для изменения порядка или в другой урок</span>
                     </div>
                     <div className="flex items-center justify-between" onClick={(e) => e.stopPropagation()}>
                       <p className="text-sm font-semibold text-text-dark">
