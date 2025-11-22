@@ -247,7 +247,7 @@ export function LessonContentEditor({
       return (
         <div
           key={block.id}
-          className="space-y-3 rounded-2xl border border-border/50 bg-surface px-4 py-3"
+          className="space-y-3 rounded-2xl border border-border/50 bg-surface px-4 py-3 cursor-move hover:border-brand-pink transition-colors"
         >
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-semibold uppercase tracking-wide text-text-light">
@@ -356,7 +356,7 @@ export function LessonContentEditor({
       return (
         <div
           key={block.id}
-          className="space-y-3 rounded-2xl border border-border/50 bg-surface px-4 py-3"
+          className="space-y-3 rounded-2xl border border-border/50 bg-surface px-4 py-3 cursor-move hover:border-brand-pink transition-colors"
         >
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-semibold uppercase tracking-wide text-text-light">
@@ -430,7 +430,7 @@ export function LessonContentEditor({
       return (
         <div
           key={block.id}
-          className="space-y-3 rounded-2xl border border-border/50 bg-surface px-4 py-3"
+          className="space-y-3 rounded-2xl border border-border/50 bg-surface px-4 py-3 cursor-move hover:border-brand-pink transition-colors"
         >
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-semibold uppercase tracking-wide text-text-light">
@@ -538,7 +538,7 @@ export function LessonContentEditor({
     (block: Extract<LessonContentBlockState, { type: "video" }>) => (
       <div
         key={block.id}
-        className="space-y-3 rounded-2xl border border-border/50 bg-surface px-4 py-3"
+        className="space-y-3 rounded-2xl border border-border/50 bg-surface px-4 py-3 cursor-move hover:border-brand-pink transition-colors"
       >
         <div className="flex items-center justify-between">
           <span className="text-[11px] font-semibold uppercase tracking-wide text-text-light">
@@ -618,7 +618,7 @@ export function LessonContentEditor({
     (block: Extract<LessonContentBlockState, { type: "audio" }>) => (
       <div
         key={block.id}
-        className="space-y-3 rounded-2xl border border-border/50 bg-surface px-4 py-3"
+        className="space-y-3 rounded-2xl border border-border/50 bg-surface px-4 py-3 cursor-move hover:border-brand-pink transition-colors"
       >
         <div className="flex items-center justify-between">
           <span className="text-[11px] font-semibold uppercase tracking-wide text-text-light">
@@ -692,7 +692,7 @@ export function LessonContentEditor({
       return (
         <div
           key={block.id}
-          className="space-y-3 rounded-2xl border border-border/50 bg-surface px-4 py-3"
+          className="space-y-3 rounded-2xl border border-border/50 bg-surface px-4 py-3 cursor-move hover:border-brand-pink transition-colors"
         >
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-semibold uppercase tracking-wide text-text-light">
