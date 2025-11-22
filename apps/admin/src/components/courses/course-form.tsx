@@ -1111,10 +1111,10 @@ function DraggableFormItem({
 
   return (
     <div ref={setNodeRef} style={style} {...attributes} className="relative">
-      {/* Drag handle - значок в левом верхнем углу */}
+      {/* Drag handle - значок в левом верхнем углу, надпись типа блока справа от него */}
       <div
         {...listeners}
-        className="absolute left-2 top-2 z-10 flex h-8 w-8 cursor-move items-center justify-center rounded-full bg-brand-pink/10 text-brand-pink transition-colors hover:bg-brand-pink hover:text-white"
+        className="absolute left-2 top-2 z-10 flex h-7 w-7 cursor-move items-center justify-center rounded-full bg-brand-pink/10 text-brand-pink transition-colors hover:bg-brand-pink hover:text-white"
         style={{ touchAction: "none" }}
         onClick={(e) => e.stopPropagation()}
         title="Перетащите для перемещения"
@@ -1125,7 +1125,7 @@ function DraggableFormItem({
           viewBox="0 0 24 24"
           strokeWidth={2}
           stroke="currentColor"
-          className="h-5 w-5"
+          className="h-4 w-4"
         >
           <path
             strokeLinecap="round"
@@ -1196,10 +1196,10 @@ function DraggableTestItem({
 
   return (
     <div ref={setNodeRef} style={style} {...attributes} className="relative">
-      {/* Drag handle - значок в левом верхнем углу */}
+      {/* Drag handle - значок в левом верхнем углу, надпись типа блока справа от него */}
       <div
         {...listeners}
-        className="absolute left-2 top-2 z-10 flex h-8 w-8 cursor-move items-center justify-center rounded-full bg-brand-pink/10 text-brand-pink transition-colors hover:bg-brand-pink hover:text-white"
+        className="absolute left-2 top-2 z-10 flex h-7 w-7 cursor-move items-center justify-center rounded-full bg-brand-pink/10 text-brand-pink transition-colors hover:bg-brand-pink hover:text-white"
         style={{ touchAction: "none" }}
         onClick={(e) => e.stopPropagation()}
         title="Перетащите для перемещения"
@@ -1210,7 +1210,7 @@ function DraggableTestItem({
           viewBox="0 0 24 24"
           strokeWidth={2}
           stroke="currentColor"
-          className="h-5 w-5"
+          className="h-4 w-4"
         >
           <path
             strokeLinecap="round"
@@ -1256,10 +1256,10 @@ function DraggableContentBlock({
 
   return (
     <div ref={setNodeRef} style={style} {...attributes} className="relative">
-      {/* Drag handle - значок в левом верхнем углу */}
+      {/* Drag handle - значок в левом верхнем углу, надпись типа блока справа от него */}
       <div
         {...listeners}
-        className="absolute left-2 top-2 z-10 flex h-8 w-8 cursor-move items-center justify-center rounded-full bg-brand-pink/10 text-brand-pink transition-colors hover:bg-brand-pink hover:text-white"
+        className="absolute left-2 top-2 z-10 flex h-7 w-7 cursor-move items-center justify-center rounded-full bg-brand-pink/10 text-brand-pink transition-colors hover:bg-brand-pink hover:text-white"
         style={{ touchAction: "none" }}
         onClick={(e) => e.stopPropagation()}
         title="Перетащите для перемещения"
@@ -1270,7 +1270,7 @@ function DraggableContentBlock({
           viewBox="0 0 24 24"
           strokeWidth={2}
           stroke="currentColor"
-          className="h-5 w-5"
+          className="h-4 w-4"
         >
           <path
             strokeLinecap="round"
@@ -4521,7 +4521,7 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
               {tests.map((test, index) => (
                 <DraggableTestItem key={test.tempId} test={test}>
                   <div className="space-y-3 rounded-3xl border border-border/60 bg-surface px-5 py-4 hover:border-brand-pink transition-colors">
-                    <div className="flex items-center justify-between" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex items-center justify-between pl-10" onClick={(e) => e.stopPropagation()}>
                       <p className="text-sm font-semibold text-text-dark">
                         Тест {index + 1}
                       </p>

@@ -249,7 +249,7 @@ export function LessonContentEditor({
           key={block.id}
           className="space-y-3 rounded-2xl border border-border/50 bg-surface px-4 py-3 hover:border-brand-pink transition-colors"
         >
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between pl-10">
             <span className="text-[11px] font-semibold uppercase tracking-wide text-text-light">
               Текстовый блок
             </span>
@@ -358,7 +358,7 @@ export function LessonContentEditor({
           key={block.id}
           className="space-y-3 rounded-2xl border border-border/50 bg-surface px-4 py-3 hover:border-brand-pink transition-colors"
         >
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between pl-10">
             <span className="text-[11px] font-semibold uppercase tracking-wide text-text-light">
               Заголовок
             </span>
@@ -432,7 +432,7 @@ export function LessonContentEditor({
           key={block.id}
           className="space-y-3 rounded-2xl border border-border/50 bg-surface px-4 py-3 hover:border-brand-pink transition-colors"
         >
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between pl-10">
             <span className="text-[11px] font-semibold uppercase tracking-wide text-text-light">
               Изображение
             </span>
@@ -540,7 +540,7 @@ export function LessonContentEditor({
         key={block.id}
         className="space-y-3 rounded-2xl border border-border/50 bg-surface px-4 py-3 cursor-move hover:border-brand-pink transition-colors"
       >
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between pl-10">
           <span className="text-[11px] font-semibold uppercase tracking-wide text-text-light">
             Видео
           </span>
@@ -620,7 +620,7 @@ export function LessonContentEditor({
         key={block.id}
         className="space-y-3 rounded-2xl border border-border/50 bg-surface px-4 py-3 cursor-move hover:border-brand-pink transition-colors"
       >
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between pl-10">
           <span className="text-[11px] font-semibold uppercase tracking-wide text-text-light">
             Аудио
           </span>
@@ -694,7 +694,7 @@ export function LessonContentEditor({
           key={block.id}
           className="space-y-3 rounded-2xl border border-border/50 bg-surface px-4 py-3 hover:border-brand-pink transition-colors"
         >
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between pl-10">
             <span className="text-[11px] font-semibold uppercase tracking-wide text-text-light">
               Секция урока
             </span>
