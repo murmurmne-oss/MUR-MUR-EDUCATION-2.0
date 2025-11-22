@@ -575,18 +575,23 @@ function FormRunnerModal({
 
 function FormRunner({
   form,
+  courseSlug,
   onClose,
   t,
+  userProfilePayload,
 }: {
   form: PublicForm;
+  courseSlug: string;
   onClose: () => void;
   t: TranslateFn;
+  userProfilePayload: StartFormPayload;
 }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string | string[]>>({});
   const [isFinished, setIsFinished] = useState(false);
   const [formResult, setFormResult] = useState<SubmitFormResult | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isStarting, setIsStarting] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [attemptId, setAttemptId] = useState<string | null>(null);
 
