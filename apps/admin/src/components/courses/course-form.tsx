@@ -1178,6 +1178,43 @@ function DraggableTestItem({
   );
 }
 
+// Компонент для перетаскиваемого текстового блока
+function DraggableContentBlock({
+  block,
+  moduleTempId,
+  lessonTempId,
+  children,
+}: {
+  block: LessonContentBlockState;
+  moduleTempId: string;
+  lessonTempId: string;
+  children: React.ReactNode;
+}) {
+  const blockId = `block:::${moduleTempId}:::${lessonTempId}:::${block.id}`;
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
+    id: blockId,
+  });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
+      {children}
+    </div>
+  );
+}
+
 export function CourseForm({ initialCourse }: CourseFormProps) {
   const router = useRouter();
   const [formState, setFormState] = useState<FormState>(() => ({
@@ -1224,6 +1261,8 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
     }),
   );
 
+  const [activeBlockId, setActiveBlockId] = useState<string | null>(null);
+
   // Функция для обработки начала перетаскивания
   const handleDragStart = (event: DragStartEvent) => {
     const id = event.active.id as string;
@@ -1231,6 +1270,8 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
       setActiveFormId(id);
     } else if (id.startsWith("test:::")) {
       setActiveTestId(id);
+    } else if (id.startsWith("block:::")) {
+      setActiveBlockId(id);
     }
   };
 
@@ -1711,6 +1752,358 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
     console.warn("[TestDrag] Unknown drop target type");
   };
 
+  // Функция для обработки окончания перетаскивания текстовых блоков
+  const handleContentBlockDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    setActiveBlockId(null);
+
+    if (!over) {
+      console.log("[BlockDrag] No over target");
+      return;
+    }
+
+    const activeId = active.id as string;
+    const overId = over.id as string;
+
+    console.log("[BlockDrag] Active ID:", activeId);
+    console.log("[BlockDrag] Over ID:", overId);
+
+    // Парсим идентификаторы: block:::moduleTempId:::lessonTempId:::blockId
+    // или lesson-drop:::moduleTempId:::lessonTempId (для drop zone заголовка урока)
+    // или block:::moduleTempId:::lessonTempId:::blockId (для другого блока)
+    const parseBlockId = (id: string) => {
+      const parts = id.split(":::");
+      if (parts[0] === "lesson-drop" && parts.length === 3) {
+        return {
+          type: "lesson-drop" as const,
+          moduleTempId: parts[1],
+          lessonTempId: parts[2],
+        };
+      }
+      if (parts.length === 4 && parts[0] === "block") {
+        return {
+          type: "block" as const,
+          moduleTempId: parts[1],
+          lessonTempId: parts[2],
+          blockId: parts[3],
+        };
+      }
+      return null;
+    };
+
+    const activeBlock = parseBlockId(activeId);
+    const overTarget = parseBlockId(overId);
+
+    console.log("[BlockDrag] Parsed activeBlock:", activeBlock);
+    console.log("[BlockDrag] Parsed overTarget:", overTarget);
+
+    if (!activeBlock || activeBlock.type !== "block") {
+      console.error("[BlockDrag] Failed to parse active block");
+      return;
+    }
+
+    // Если перетаскиваем на drop zone урока
+    if (overTarget?.type === "lesson-drop") {
+      console.log("[BlockDrag] Dropping on lesson drop zone");
+      setModules((prev) => {
+        // Находим блок для перемещения
+        const sourceModule = prev.find((mod) => mod.tempId === activeBlock.moduleTempId);
+        const sourceLesson = sourceModule?.lessons.find(
+          (les) => les.tempId === activeBlock.lessonTempId,
+        );
+        const activeBlockData = sourceLesson?.contentBlocks.find(
+          (b) => b.id === activeBlock.blockId,
+        );
+
+        if (!activeBlockData) {
+          console.error("[BlockDrag] Block not found for moving to drop zone");
+          return prev;
+        }
+
+        console.log("[BlockDrag] Found block to move:", activeBlockData.type);
+
+        // Создаем глубокую копию данных блока
+        const blockToMove = JSON.parse(JSON.stringify(activeBlockData));
+
+        // Находим целевой урок в исходном состоянии
+        const targetModule = prev.find((mod) => mod.tempId === overTarget.moduleTempId);
+        const targetLesson = targetModule?.lessons.find(
+          (les) => les.tempId === overTarget.lessonTempId,
+        );
+
+        if (!targetLesson) {
+          console.error("[BlockDrag] Target lesson not found for drop zone:", overTarget);
+          return prev;
+        }
+
+        console.log("[BlockDrag] Target lesson found, blocks count:", targetLesson.contentBlocks.length);
+
+        // Создаем новый массив модулей
+        return prev.map((m) => {
+          // Если это исходный модуль
+          if (m.tempId === activeBlock.moduleTempId) {
+            // Если это также целевой модуль (перемещение внутри одного модуля)
+            if (m.tempId === overTarget.moduleTempId) {
+              const updatedLessons = m.lessons.map((l) => {
+                // Удаляем блок из исходного урока
+                if (l.tempId === activeBlock.lessonTempId) {
+                  const filteredBlocks = l.contentBlocks.filter(
+                    (b) => b.id !== activeBlock.blockId,
+                  );
+                  console.log("[BlockDrag] Removed block from source lesson, remaining:", filteredBlocks.length);
+                  return {
+                    ...l,
+                    contentBlocks: filteredBlocks,
+                  };
+                }
+                // Добавляем блок в начало целевого урока
+                if (l.tempId === overTarget.lessonTempId) {
+                  console.log("[BlockDrag] Adding block to target lesson in same module (drop zone)");
+                  console.log("[BlockDrag] Target lesson blocks before:", targetLesson.contentBlocks.length);
+                  const newBlocks = [blockToMove, ...targetLesson.contentBlocks];
+                  console.log("[BlockDrag] Target lesson blocks after:", newBlocks.length);
+                  return {
+                    ...l,
+                    contentBlocks: newBlocks,
+                  };
+                }
+                return l;
+              });
+              return {
+                ...m,
+                lessons: updatedLessons,
+              };
+            }
+            // Если это только исходный модуль (перемещение в другой модуль)
+            else {
+              const updatedLessons = m.lessons.map((l) => {
+                if (l.tempId === activeBlock.lessonTempId) {
+                  const filteredBlocks = l.contentBlocks.filter(
+                    (b) => b.id !== activeBlock.blockId,
+                  );
+                  console.log("[BlockDrag] Removed block from source lesson, remaining:", filteredBlocks.length);
+                  return {
+                    ...l,
+                    contentBlocks: filteredBlocks,
+                  };
+                }
+                return l;
+              });
+              return {
+                ...m,
+                lessons: updatedLessons,
+              };
+            }
+          }
+
+          // Если это целевой модуль (и не исходный)
+          if (m.tempId === overTarget.moduleTempId) {
+            const updatedLessons = m.lessons.map((l) => {
+              if (l.tempId === overTarget.lessonTempId) {
+                console.log("[BlockDrag] Adding block to target lesson in different module (drop zone)");
+                console.log("[BlockDrag] Target lesson blocks before:", targetLesson.contentBlocks.length);
+                const newBlocks = [blockToMove, ...targetLesson.contentBlocks];
+                console.log("[BlockDrag] Target lesson blocks after:", newBlocks.length);
+                return {
+                  ...l,
+                  contentBlocks: newBlocks,
+                };
+              }
+              return l;
+            });
+
+            return {
+              ...m,
+              lessons: updatedLessons,
+            };
+          }
+
+          return m;
+        });
+      });
+      return;
+    }
+
+    // Если перетаскиваем на другой блок
+    if (overTarget?.type === "block") {
+      const overBlock = overTarget;
+
+      // Если блок перемещается в тот же урок, просто меняем порядок
+      if (
+        activeBlock.moduleTempId === overBlock.moduleTempId &&
+        activeBlock.lessonTempId === overBlock.lessonTempId
+      ) {
+        setModules((prev) =>
+          prev.map((m) =>
+            m.tempId === activeBlock.moduleTempId
+              ? {
+                  ...m,
+                  lessons: m.lessons.map((l) =>
+                    l.tempId === activeBlock.lessonTempId
+                      ? {
+                          ...l,
+                          contentBlocks: (() => {
+                            const blocks = [...l.contentBlocks];
+                            const activeIndex = blocks.findIndex(
+                              (b) => b.id === activeBlock.blockId,
+                            );
+                            const overIndex = blocks.findIndex(
+                              (b) => b.id === overBlock.blockId,
+                            );
+                            if (activeIndex === -1 || overIndex === -1) return blocks;
+                            const [removed] = blocks.splice(activeIndex, 1);
+                            blocks.splice(overIndex, 0, removed);
+                            return blocks;
+                          })(),
+                        }
+                      : l,
+                  ),
+                }
+              : m,
+          ),
+        );
+        return;
+      }
+
+      // Если блок перемещается в другой урок, перемещаем его
+      setModules((prev) => {
+        console.log("[BlockDrag] Moving block between lessons/modules");
+        
+        // Находим блок для перемещения в исходном состоянии
+        const sourceModule = prev.find((mod) => mod.tempId === activeBlock.moduleTempId);
+        const sourceLesson = sourceModule?.lessons.find(
+          (les) => les.tempId === activeBlock.lessonTempId,
+        );
+        const activeBlockData = sourceLesson?.contentBlocks.find(
+          (b) => b.id === activeBlock.blockId,
+        );
+
+        if (!activeBlockData) {
+          console.error("[BlockDrag] Block not found for moving:", activeBlock);
+          return prev;
+        }
+
+        console.log("[BlockDrag] Found block to move:", activeBlockData.type);
+
+        // Создаем глубокую копию данных блока
+        const blockToMove = JSON.parse(JSON.stringify(activeBlockData));
+
+        // Находим целевой урок в исходном состоянии
+        const targetModule = prev.find((mod) => mod.tempId === overBlock.moduleTempId);
+        const targetLesson = targetModule?.lessons.find(
+          (les) => les.tempId === overBlock.lessonTempId,
+        );
+
+        if (!targetLesson) {
+          console.error("[BlockDrag] Target lesson not found:", overBlock);
+          return prev;
+        }
+
+        console.log("[BlockDrag] Target lesson found, blocks count:", targetLesson.contentBlocks.length);
+
+        // Определяем позицию для вставки
+        const overIndex = targetLesson.contentBlocks.findIndex(
+          (b) => b.id === overBlock.blockId,
+        );
+        const newTargetBlocks = [...targetLesson.contentBlocks];
+        
+        if (overIndex === -1) {
+          // Если целевой блок не найден, добавляем в конец
+          newTargetBlocks.push(blockToMove);
+          console.log("[BlockDrag] Adding block to end of target lesson");
+        } else {
+          // Вставляем перед целевым блоком
+          newTargetBlocks.splice(overIndex, 0, blockToMove);
+          console.log("[BlockDrag] Inserting block at index", overIndex);
+        }
+
+        // Создаем новый массив модулей
+        return prev.map((m) => {
+          // Если это исходный модуль
+          if (m.tempId === activeBlock.moduleTempId) {
+            // Если это также целевой модуль (перемещение внутри одного модуля)
+            if (m.tempId === overBlock.moduleTempId) {
+              const updatedLessons = m.lessons.map((l) => {
+                // Удаляем блок из исходного урока
+                if (l.tempId === activeBlock.lessonTempId) {
+                  const filteredBlocks = l.contentBlocks.filter(
+                    (b) => b.id !== activeBlock.blockId,
+                  );
+                  console.log("[BlockDrag] Removed block from source, remaining blocks:", filteredBlocks.length);
+                  return {
+                    ...l,
+                    contentBlocks: filteredBlocks,
+                  };
+                }
+                // Добавляем блок в целевой урок
+                if (l.tempId === overBlock.lessonTempId) {
+                  console.log("[BlockDrag] Adding block to target lesson in same module");
+                  console.log("[BlockDrag] Target lesson blocks before:", targetLesson.contentBlocks.length);
+                  console.log("[BlockDrag] Target lesson blocks after:", newTargetBlocks.length);
+                  return {
+                    ...l,
+                    contentBlocks: newTargetBlocks,
+                  };
+                }
+                return l;
+              });
+              return {
+                ...m,
+                lessons: updatedLessons,
+              };
+            }
+            // Если это только исходный модуль (перемещение в другой модуль)
+            else {
+              const updatedLessons = m.lessons.map((l) => {
+                if (l.tempId === activeBlock.lessonTempId) {
+                  const filteredBlocks = l.contentBlocks.filter(
+                    (b) => b.id !== activeBlock.blockId,
+                  );
+                  console.log("[BlockDrag] Removed block from source, remaining blocks:", filteredBlocks.length);
+                  return {
+                    ...l,
+                    contentBlocks: filteredBlocks,
+                  };
+                }
+                return l;
+              });
+              return {
+                ...m,
+                lessons: updatedLessons,
+              };
+            }
+          }
+
+          // Если это целевой модуль (и не исходный)
+          if (m.tempId === overBlock.moduleTempId) {
+            const updatedLessons = m.lessons.map((l) => {
+              if (l.tempId === overBlock.lessonTempId) {
+                console.log("[BlockDrag] Adding block to target lesson in different module");
+                console.log("[BlockDrag] Target lesson blocks before:", targetLesson.contentBlocks.length);
+                console.log("[BlockDrag] Target lesson blocks after:", newTargetBlocks.length);
+                return {
+                  ...l,
+                  contentBlocks: newTargetBlocks,
+                };
+              }
+              return l;
+            });
+
+            return {
+              ...m,
+              lessons: updatedLessons,
+            };
+          }
+
+          return m;
+        });
+      });
+      return;
+    }
+
+    console.warn("[BlockDrag] Unknown drop target type");
+  };
+
   // Общая функция для обработки окончания перетаскивания
   const handleDragEnd = (event: DragEndEvent) => {
     const activeId = event.active.id as string;
@@ -1718,6 +2111,8 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
       handleFormDragEnd(event);
     } else if (activeId.startsWith("test:::")) {
       handleTestDragEnd(event);
+    } else if (activeId.startsWith("block:::")) {
+      handleContentBlockDragEnd(event);
     }
   };
 
@@ -3048,49 +3443,68 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
 
                       {/* Раздел контента - на всю ширину */}
                       <div className="w-full">
-                        <LessonContentEditor
-                          mode={lesson.contentMode}
-                          onModeChange={(mode) =>
-                            handleLessonContentModeChange(
-                              module.tempId,
-                              lesson.tempId,
-                              mode,
-                            )
-                          }
-                          simpleText={lesson.contentText}
-                          onSimpleTextChange={(value) =>
-                            handleLessonChange(
-                              module.tempId,
-                              lesson.tempId,
-                              "contentText",
-                              value,
-                            )
-                          }
-                          blocks={lesson.contentBlocks}
-                          onAddBlock={(type) =>
-                            handleLessonAddContentBlock(
-                              module.tempId,
-                              lesson.tempId,
-                              type,
-                            )
-                          }
-                          onUpdateBlock={(blockId, patch) =>
-                            handleLessonUpdateContentBlock(
-                              module.tempId,
-                              lesson.tempId,
-                              blockId,
-                              patch,
-                            )
-                          }
-                          onRemoveBlock={(blockId) =>
-                            handleLessonRemoveContentBlock(
-                              module.tempId,
-                              lesson.tempId,
-                              blockId,
-                            )
-                          }
-                          onUploadImage={handleLessonUploadImage}
-                        />
+                        <SortableContext
+                          items={lesson.contentBlocks.map(
+                            (b) => `block:::${module.tempId}:::${lesson.tempId}:::${b.id}`,
+                          )}
+                          strategy={verticalListSortingStrategy}
+                        >
+                          <LessonContentEditor
+                            mode={lesson.contentMode}
+                            onModeChange={(mode) =>
+                              handleLessonContentModeChange(
+                                module.tempId,
+                                lesson.tempId,
+                                mode,
+                              )
+                            }
+                            simpleText={lesson.contentText}
+                            onSimpleTextChange={(value) =>
+                              handleLessonChange(
+                                module.tempId,
+                                lesson.tempId,
+                                "contentText",
+                                value,
+                              )
+                            }
+                            blocks={lesson.contentBlocks}
+                            onAddBlock={(type) =>
+                              handleLessonAddContentBlock(
+                                module.tempId,
+                                lesson.tempId,
+                                type,
+                              )
+                            }
+                            onUpdateBlock={(blockId, patch) =>
+                              handleLessonUpdateContentBlock(
+                                module.tempId,
+                                lesson.tempId,
+                                blockId,
+                                patch,
+                              )
+                            }
+                            onRemoveBlock={(blockId) =>
+                              handleLessonRemoveContentBlock(
+                                module.tempId,
+                                lesson.tempId,
+                                blockId,
+                              )
+                            }
+                            onUploadImage={handleLessonUploadImage}
+                            moduleTempId={module.tempId}
+                            lessonTempId={lesson.tempId}
+                            renderBlockWrapper={(block, children) => (
+                              <DraggableContentBlock
+                                key={block.id}
+                                block={block}
+                                moduleTempId={module.tempId}
+                                lessonTempId={lesson.tempId}
+                              >
+                                {children}
+                              </DraggableContentBlock>
+                            )}
+                          />
+                        </SortableContext>
                       </div>
 
                       {/* Длительность и превью - в отдельном grid */}

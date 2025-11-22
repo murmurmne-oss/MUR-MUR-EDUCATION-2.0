@@ -1,6 +1,6 @@
 'use client';
 
-import {
+import React, {
   ChangeEvent,
   Fragment,
   useCallback,
@@ -77,6 +77,10 @@ type LessonContentEditorProps = {
   ) => void;
   onRemoveBlock: (blockId: string) => void;
   onUploadImage?: (file: File) => Promise<{ url: string }>;
+  // Пропсы для drag-and-drop
+  moduleTempId?: string;
+  lessonTempId?: string;
+  renderBlockWrapper?: (block: LessonContentBlockState, children: React.ReactNode) => React.ReactNode;
 };
 
 const PARAGRAPH_FONT_FAMILIES = [
@@ -169,6 +173,9 @@ export function LessonContentEditor({
   onUpdateBlock,
   onRemoveBlock,
   onUploadImage,
+  moduleTempId,
+  lessonTempId,
+  renderBlockWrapper,
 }: LessonContentEditorProps) {
   const sectionId = useId();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -1011,9 +1018,12 @@ export function LessonContentEditor({
       ) : (
         <div className="space-y-3">
           {hasBlocks ? (
-            blocks.map((block) => (
-              <Fragment key={block.id}>{renderBlockEditor(block)}</Fragment>
-            ))
+            blocks.map((block) => {
+              const blockContent = <Fragment key={block.id}>{renderBlockEditor(block)}</Fragment>;
+              return renderBlockWrapper && moduleTempId && lessonTempId
+                ? renderBlockWrapper(block, blockContent)
+                : blockContent;
+            })
           ) : (
             <p className="rounded-2xl bg-card px-4 py-3 text-xs text-text-medium">
               Здесь появятся блоки контента. Добавьте первый блок, чтобы начать.
