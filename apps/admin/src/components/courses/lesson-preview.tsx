@@ -102,9 +102,18 @@ export function LessonPreview({
                   .prose ul, .prose ol {
                     margin: 0.5rem 0;
                     padding-left: 1.5rem;
+                    display: block;
+                    list-style-type: disc;
+                  }
+                  .prose ol {
+                    list-style-type: decimal;
+                  }
+                  .prose ul {
+                    list-style-type: disc;
                   }
                   .prose li {
                     margin: 0.25rem 0;
+                    display: list-item;
                   }
                   .prose strong {
                     font-weight: 600;
@@ -271,10 +280,10 @@ export function LessonPreview({
                       );
                     }
 
-                    // Проверяем, является ли текст HTML (начинается с <)
+                    // Проверяем, является ли текст HTML (содержит HTML теги)
                     const isHTML =
                       typeof block.text === "string" &&
-                      block.text.trim().startsWith("<");
+                      /<[a-z][\s\S]*>/i.test(block.text.trim());
 
                     if (isHTML) {
                       // Рендерим HTML с базовыми стилями

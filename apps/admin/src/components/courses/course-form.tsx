@@ -2830,11 +2830,12 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
       const blocks = lesson.contentBlocks
         .map((block) => {
           if (block.type === "paragraph") {
-            const text = block.text.trim();
-            if (!text) return null;
+            // Для HTML контента не обрезаем пробелы, чтобы сохранить форматирование
+            const text = block.text;
+            if (!text || text.trim().length === 0) return null;
             return {
               type: "paragraph",
-              text,
+              text, // Сохраняем HTML как есть (может содержать <ol>, <ul>, <li> и т.д.)
               fontFamily: block.fontFamily,
               fontSize: block.fontSize,
               fontWeight: block.fontWeight,
