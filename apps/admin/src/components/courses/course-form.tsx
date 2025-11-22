@@ -35,6 +35,7 @@ import {
 } from "./lesson-content-editor";
 import { CourseNavigationSidebar } from "./course-navigation-sidebar";
 import { CoursePreview } from "./course-preview";
+import { LessonPreview } from "./lesson-preview";
 import { ImageUploadField } from "./image-upload-field";
 
 const CATEGORY_OPTIONS = [
@@ -1342,6 +1343,10 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
     new Set(),
   );
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [selectedLessonPreview, setSelectedLessonPreview] = useState<{
+    lesson: LessonState;
+    moduleTitle: string;
+  } | null>(null);
   const [activeFormId, setActiveFormId] = useState<string | null>(null);
   const [activeTestId, setActiveTestId] = useState<string | null>(null);
 
@@ -3171,19 +3176,50 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
             }`}
           >
             <div className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-white px-6 py-4">
-              <h3 className="text-lg font-semibold text-text-dark">
-                Превью курса
-              </h3>
+              <div className="flex items-center gap-3">
+                {selectedLessonPreview && (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedLessonPreview(null)}
+                    className="rounded-full p-1.5 text-text-medium hover:bg-surface hover:text-text-dark"
+                    title="Назад к курсу"
+                  >
+                    ←
+                  </button>
+                )}
+                <h3 className="text-lg font-semibold text-text-dark">
+                  {selectedLessonPreview
+                    ? `Превью: ${selectedLessonPreview.lesson.title || "Урок"}`
+                    : "Превью курса"}
+                </h3>
+              </div>
               <button
                 type="button"
-                onClick={() => setIsPreviewOpen(false)}
+                onClick={() => {
+                  setIsPreviewOpen(false);
+                  setSelectedLessonPreview(null);
+                }}
                 className="rounded-full p-2 text-text-medium hover:bg-surface hover:text-text-dark"
               >
                 ✕
               </button>
             </div>
             <div className="p-6">
-              <CoursePreview formState={formState} modules={modules} />
+              {selectedLessonPreview ? (
+                <LessonPreview
+                  lesson={selectedLessonPreview.lesson}
+                  moduleTitle={selectedLessonPreview.moduleTitle}
+                  onClose={() => setSelectedLessonPreview(null)}
+                />
+              ) : (
+                <CoursePreview
+                  formState={formState}
+                  modules={modules}
+                  onLessonClick={(lesson, moduleTitle) => {
+                    setSelectedLessonPreview({ lesson, moduleTitle });
+                  }}
+                />
+              )}
             </div>
           </div>
         </>

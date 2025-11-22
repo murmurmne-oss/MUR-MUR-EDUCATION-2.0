@@ -1,14 +1,19 @@
 "use client";
 
 import { useMemo } from "react";
-import type { FormState, ModuleState } from "./course-form";
+import type { FormState, ModuleState, LessonState } from "./course-form";
 
 type CoursePreviewProps = {
   formState: FormState;
   modules: ModuleState[];
+  onLessonClick?: (lesson: LessonState, moduleTitle: string) => void;
 };
 
-export function CoursePreview({ formState, modules }: CoursePreviewProps) {
+export function CoursePreview({
+  formState,
+  modules,
+  onLessonClick,
+}: CoursePreviewProps) {
   const totalLessons = useMemo(() => {
     return modules.reduce((sum, module) => sum + module.lessons.length, 0);
   }, [modules]);
@@ -96,14 +101,18 @@ export function CoursePreview({ formState, modules }: CoursePreviewProps) {
                             {sortedLessons.length > 0 && (
                               <div className="space-y-1">
                                 {sortedLessons.slice(0, 2).map((lesson) => (
-                                  <div
+                                  <button
                                     key={lesson.tempId}
-                                    className="rounded-lg bg-surface px-2 py-1.5 text-[9px]"
+                                    type="button"
+                                    onClick={() =>
+                                      onLessonClick?.(lesson, module.title || `Модуль ${moduleIndex + 1}`)
+                                    }
+                                    className="w-full rounded-lg bg-surface px-2 py-1.5 text-left text-[9px] transition-colors hover:bg-brand-pink/10 hover:text-brand-pink"
                                   >
                                     <p className="font-medium text-text-dark">
                                       {lesson.title || "Урок"}
                                     </p>
-                                  </div>
+                                  </button>
                                 ))}
                                 {sortedLessons.length > 2 && (
                                   <p className="text-[9px] text-text-light">
