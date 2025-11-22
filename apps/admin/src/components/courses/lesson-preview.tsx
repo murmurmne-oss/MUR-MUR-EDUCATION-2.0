@@ -92,6 +92,50 @@ export function LessonPreview({
 
               {/* Main content */}
               <main className="mt-4 flex flex-1 flex-col gap-4 px-4 pb-6">
+                <style jsx global>{`
+                  .prose {
+                    color: inherit;
+                  }
+                  .prose p {
+                    margin: 0.5rem 0;
+                  }
+                  .prose ul, .prose ol {
+                    margin: 0.5rem 0;
+                    padding-left: 1.5rem;
+                  }
+                  .prose li {
+                    margin: 0.25rem 0;
+                  }
+                  .prose strong {
+                    font-weight: 600;
+                  }
+                  .prose em {
+                    font-style: italic;
+                  }
+                  .prose u {
+                    text-decoration: underline;
+                  }
+                  .prose s {
+                    text-decoration: line-through;
+                  }
+                  .prose a {
+                    color: #ec4899;
+                    text-decoration: underline;
+                  }
+                  .prose h1, .prose h2, .prose h3 {
+                    font-weight: 600;
+                    margin: 0.75rem 0;
+                  }
+                  .prose h1 {
+                    font-size: 1.5rem;
+                  }
+                  .prose h2 {
+                    font-size: 1.25rem;
+                  }
+                  .prose h3 {
+                    font-size: 1.125rem;
+                  }
+                `}</style>
                 {blocks.length === 0 ? (
                   <p className="rounded-2xl bg-card px-4 py-3 text-sm text-text-medium">
                     Контент урока появится совсем скоро.
@@ -250,23 +294,6 @@ export function LessonPreview({
                                     : block.fontFamily === "handwriting"
                                       ? "cursive"
                                       : "sans-serif",
-                            fontSize:
-                              block.fontSize === "sm"
-                                ? "0.875rem"
-                                : block.fontSize === "lg"
-                                  ? "1.125rem"
-                                  : block.fontSize === "xl"
-                                    ? "1.25rem"
-                                    : block.fontSize === "2xl"
-                                      ? "1.5rem"
-                                      : "1rem",
-                            fontWeight:
-                              block.fontWeight === "bold"
-                                ? "600"
-                                : block.fontWeight === "medium"
-                                  ? "500"
-                                  : "400",
-                            textAlign: block.align || "left",
                           }}
                         />
                       );
