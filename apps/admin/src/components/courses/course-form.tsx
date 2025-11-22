@@ -1239,10 +1239,16 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
     const { active, over } = event;
     setActiveFormId(null);
 
-    if (!over) return;
+    if (!over) {
+      console.log("[FormDrag] No over target");
+      return;
+    }
 
     const activeId = active.id as string;
     const overId = over.id as string;
+
+    console.log("[FormDrag] Active ID:", activeId);
+    console.log("[FormDrag] Over ID:", overId);
 
     // Парсим идентификаторы: form:::moduleTempId:::lessonTempId:::formTempId
     // или lesson-drop:::moduleTempId:::lessonTempId (для drop zone заголовка урока)
@@ -1269,18 +1275,38 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
     const activeForm = parseFormId(activeId);
     const overTarget = parseFormId(overId);
 
-    if (!activeForm || !overTarget || activeForm.type !== "form") return;
+    console.log("[FormDrag] Parsed activeForm:", activeForm);
+    console.log("[FormDrag] Parsed overTarget:", overTarget);
+
+    if (!activeForm || !overTarget) {
+      console.error("[FormDrag] Failed to parse IDs");
+      return;
+    }
+
+    if (activeForm.type !== "form") {
+      console.error("[FormDrag] Active is not a form");
+      return;
+    }
 
     // Если перетаскиваем на drop zone урока
     if (overTarget.type === "lesson-drop") {
+      console.log("[FormDrag] Dropping on lesson drop zone");
       setModules((prev) => {
         // Находим форму для перемещения
-        const activeFormData = prev
-          .find((mod) => mod.tempId === activeForm.moduleTempId)
-          ?.lessons.find((les) => les.tempId === activeForm.lessonTempId)
-          ?.forms.find((f) => f.tempId === activeForm.formTempId);
+        const sourceModule = prev.find((mod) => mod.tempId === activeForm.moduleTempId);
+        const sourceLesson = sourceModule?.lessons.find(
+          (les) => les.tempId === activeForm.lessonTempId,
+        );
+        const activeFormData = sourceLesson?.forms.find(
+          (f) => f.tempId === activeForm.formTempId,
+        );
 
-        if (!activeFormData) return prev;
+        if (!activeFormData) {
+          console.error("[FormDrag] Form not found for moving to drop zone");
+          return prev;
+        }
+
+        console.log("[FormDrag] Found form to move to drop zone:", activeFormData.title || activeFormData.tempId);
 
         // Создаем глубокую копию данных формы
         const formToMove = JSON.parse(JSON.stringify(activeFormData));
@@ -1292,41 +1318,73 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
         );
 
         if (!targetLesson) {
-          console.error("Target lesson not found:", overTarget);
+          console.error("[FormDrag] Target lesson not found for drop zone:", overTarget);
           return prev;
         }
 
+        console.log("[FormDrag] Target lesson found, forms count:", targetLesson.forms.length);
+
+        // Создаем новый массив модулей
         return prev.map((m) => {
           // Удаляем форму из исходного урока
           if (m.tempId === activeForm.moduleTempId) {
+            const updatedLessons = m.lessons.map((l) => {
+              if (l.tempId === activeForm.lessonTempId) {
+                const filteredForms = l.forms.filter(
+                  (f) => f.tempId !== activeForm.formTempId,
+                );
+                console.log("[FormDrag] Removed form from source lesson, remaining:", filteredForms.length);
+                return {
+                  ...l,
+                  forms: filteredForms,
+                };
+              }
+              return l;
+            });
+
+            // Если это также целевой модуль, добавляем форму в целевой урок
+            if (m.tempId === overTarget.moduleTempId) {
+              const finalLessons = updatedLessons.map((l) => {
+                if (l.tempId === overTarget.lessonTempId) {
+                  console.log("[FormDrag] Adding form to target lesson in same module (drop zone)");
+                  return {
+                    ...l,
+                    forms: [formToMove, ...targetLesson.forms],
+                  };
+                }
+                return l;
+              });
+              return {
+                ...m,
+                lessons: finalLessons,
+              };
+            }
+
             return {
               ...m,
-              lessons: m.lessons.map((l) =>
-                l.tempId === activeForm.lessonTempId
-                  ? {
-                      ...l,
-                      forms: l.forms.filter(
-                        (f) => f.tempId !== activeForm.formTempId,
-                      ),
-                    }
-                  : l,
-              ),
+              lessons: updatedLessons,
             };
           }
-          // Добавляем форму в начало целевого урока
+
+          // Добавляем форму в начало целевого урока (если это не исходный модуль)
           if (m.tempId === overTarget.moduleTempId) {
+            const updatedLessons = m.lessons.map((l) => {
+              if (l.tempId === overTarget.lessonTempId) {
+                console.log("[FormDrag] Adding form to target lesson in different module (drop zone)");
+                return {
+                  ...l,
+                  forms: [formToMove, ...targetLesson.forms],
+                };
+              }
+              return l;
+            });
+
             return {
               ...m,
-              lessons: m.lessons.map((l) =>
-                l.tempId === overTarget.lessonTempId
-                  ? {
-                      ...l,
-                      forms: [formToMove, ...targetLesson.forms],
-                    }
-                  : l,
-              ),
+              lessons: updatedLessons,
             };
           }
+
           return m;
         });
       });
@@ -1376,66 +1434,106 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
 
     // Если форма перемещается в другой урок, перемещаем её
     setModules((prev) => {
+      console.log("[FormDrag] Moving form between lessons/modules");
+      
       // Сначала находим форму для перемещения в исходном состоянии
-      const activeFormData = prev
-        .find((mod) => mod.tempId === activeForm.moduleTempId)
-        ?.lessons.find((les) => les.tempId === activeForm.lessonTempId)
-        ?.forms.find((f) => f.tempId === activeForm.formTempId);
+      const sourceModule = prev.find((mod) => mod.tempId === activeForm.moduleTempId);
+      const sourceLesson = sourceModule?.lessons.find(
+        (les) => les.tempId === activeForm.lessonTempId,
+      );
+      const activeFormData = sourceLesson?.forms.find(
+        (f) => f.tempId === activeForm.formTempId,
+      );
 
       if (!activeFormData) {
-        console.error("Form not found for moving:", activeForm);
+        console.error("[FormDrag] Form not found for moving:", activeForm);
         return prev;
       }
+
+      console.log("[FormDrag] Found form to move:", activeFormData.title || activeFormData.tempId);
 
       // Создаем глубокую копию данных формы, чтобы избежать проблем с ссылками
       const formToMove = JSON.parse(JSON.stringify(activeFormData));
 
-      // Теперь обновляем модули: удаляем из исходного и добавляем в целевой
+      // Находим целевой урок в исходном состоянии
+      const targetModule = prev.find((mod) => mod.tempId === overForm.moduleTempId);
+      const targetLesson = targetModule?.lessons.find(
+        (les) => les.tempId === overForm.lessonTempId,
+      );
+
+      if (!targetLesson) {
+        console.error("[FormDrag] Target lesson not found:", overForm);
+        return prev;
+      }
+
+      console.log("[FormDrag] Target lesson found, forms count:", targetLesson.forms.length);
+
+      // Определяем позицию для вставки
+      const overIndex = targetLesson.forms.findIndex(
+        (f) => f.tempId === overForm.formTempId,
+      );
+      const newTargetForms = [...targetLesson.forms];
+      
+      if (overIndex === -1) {
+        // Если целевая форма не найдена, добавляем в конец
+        newTargetForms.push(formToMove);
+        console.log("[FormDrag] Adding form to end of target lesson");
+      } else {
+        // Вставляем перед целевой формой
+        newTargetForms.splice(overIndex, 0, formToMove);
+        console.log("[FormDrag] Inserting form at index", overIndex);
+      }
+
+      // Создаем новый массив модулей
       return prev.map((m) => {
-        // Если это и исходный, и целевой модуль одновременно
-        if (
-          m.tempId === activeForm.moduleTempId &&
-          m.tempId === overForm.moduleTempId
-        ) {
-          // Сначала создаем новый массив уроков с обновленными формами
+        // Удаляем форму из исходного урока
+        if (m.tempId === activeForm.moduleTempId) {
           const updatedLessons = m.lessons.map((l) => {
-            // Если это исходный урок - удаляем форму
             if (l.tempId === activeForm.lessonTempId) {
+              const filteredForms = l.forms.filter(
+                (f) => f.tempId !== activeForm.formTempId,
+              );
+              console.log("[FormDrag] Removed form from source, remaining forms:", filteredForms.length);
               return {
                 ...l,
-                forms: l.forms.filter(
-                  (f) => f.tempId !== activeForm.formTempId,
-                ),
+                forms: filteredForms,
               };
             }
-            // Если это целевой урок - добавляем форму
-            if (l.tempId === overForm.lessonTempId) {
-              // Используем исходное состояние форм целевого урока
-              const targetLesson = prev
-                .find((mod) => mod.tempId === overForm.moduleTempId)
-                ?.lessons.find((les) => les.tempId === overForm.lessonTempId);
-              
-              if (!targetLesson) {
-                console.error("Target lesson not found:", overForm);
-                return l;
-              }
+            return l;
+          });
 
-              const overIndex = targetLesson.forms.findIndex(
-                (f) => f.tempId === overForm.formTempId,
-              );
-              const newForms = [...targetLesson.forms];
-              
-              if (overIndex === -1) {
-                // Если целевая форма не найдена, добавляем в конец
-                newForms.push(formToMove);
-              } else {
-                // Вставляем перед целевой формой
-                newForms.splice(overIndex, 0, formToMove);
+          // Если это также целевой модуль, добавляем форму в целевой урок
+          if (m.tempId === overForm.moduleTempId) {
+            const finalLessons = updatedLessons.map((l) => {
+              if (l.tempId === overForm.lessonTempId) {
+                console.log("[FormDrag] Adding form to target lesson in same module");
+                return {
+                  ...l,
+                  forms: newTargetForms,
+                };
               }
-              
+              return l;
+            });
+            return {
+              ...m,
+              lessons: finalLessons,
+            };
+          }
+
+          return {
+            ...m,
+            lessons: updatedLessons,
+          };
+        }
+
+        // Добавляем форму в целевой модуль (если это не исходный модуль)
+        if (m.tempId === overForm.moduleTempId) {
+          const updatedLessons = m.lessons.map((l) => {
+            if (l.tempId === overForm.lessonTempId) {
+              console.log("[FormDrag] Adding form to target lesson in different module");
               return {
                 ...l,
-                forms: newForms,
+                forms: newTargetForms,
               };
             }
             return l;
@@ -1444,62 +1542,6 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
           return {
             ...m,
             lessons: updatedLessons,
-          };
-        }
-
-        // Удаляем форму из исходного модуля
-        if (m.tempId === activeForm.moduleTempId) {
-          return {
-            ...m,
-            lessons: m.lessons.map((l) =>
-              l.tempId === activeForm.lessonTempId
-                ? {
-                    ...l,
-                    forms: l.forms.filter(
-                      (f) => f.tempId !== activeForm.formTempId,
-                    ),
-                  }
-                : l,
-            ),
-          };
-        }
-
-        // Добавляем форму в целевой модуль
-        if (m.tempId === overForm.moduleTempId) {
-          // Используем исходное состояние целевого урока
-          const targetModule = prev.find((mod) => mod.tempId === overForm.moduleTempId);
-          const targetLesson = targetModule?.lessons.find(
-            (les) => les.tempId === overForm.lessonTempId,
-          );
-
-          if (!targetLesson) {
-            console.error("Target lesson not found:", overForm);
-            return m;
-          }
-
-          const overIndex = targetLesson.forms.findIndex(
-            (f) => f.tempId === overForm.formTempId,
-          );
-          const newForms = [...targetLesson.forms];
-          
-          if (overIndex === -1) {
-            // Если целевая форма не найдена, добавляем в конец
-            newForms.push(formToMove);
-          } else {
-            // Вставляем перед целевой формой
-            newForms.splice(overIndex, 0, formToMove);
-          }
-
-          return {
-            ...m,
-            lessons: m.lessons.map((l) =>
-              l.tempId === overForm.lessonTempId
-                ? {
-                    ...l,
-                    forms: newForms,
-                  }
-                : l,
-            ),
           };
         }
 
