@@ -135,7 +135,6 @@ export type CourseDetails = {
       videoUrl: string | null;
       order: number;
       isPreview: boolean;
-      status?: LessonStatus;
     }>;
   }>;
   tests: Array<{
@@ -209,8 +208,6 @@ export type CoursePayload = {
   forms?: CourseFormPayload[];
 };
 
-export type LessonStatus = "PUBLISHED" | "DRAFT" | "HIDDEN";
-
 export type LessonPayload = {
   id?: string;
   title: string;
@@ -221,7 +218,6 @@ export type LessonPayload = {
   durationMinutes?: number | null;
   order: number;
   isPreview?: boolean;
-  status?: LessonStatus;
 };
 
 export type CourseModulePayload = {

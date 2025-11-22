@@ -15,7 +15,6 @@ import {
   Currency,
   LessonContentType,
   LessonProgressStatus,
-  LessonStatus,
   Prisma,
   TestAttemptStatus,
   FormAttemptStatus,
@@ -32,7 +31,6 @@ export type LessonInput = {
   durationMinutes?: number | null;
   order: number;
   isPreview?: boolean;
-  status?: LessonStatus;
 };
 
 export type CourseModuleInput = {
@@ -277,7 +275,6 @@ export class CoursesService {
                 contentType: true,
                 isPreview: true,
                 videoUrl: true,
-                status: true,
               },
             },
           },
@@ -1500,7 +1497,6 @@ export class CoursesService {
                 ? lesson.order
                 : lessonIndex + 1,
             isPreview: lesson.isPreview ?? false,
-            status: lesson.status ?? LessonStatus.DRAFT,
           })),
         },
       };

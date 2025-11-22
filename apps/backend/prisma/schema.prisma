@@ -103,7 +103,6 @@ model Lesson {
   durationMinutes Int?
   order           Int
   isPreview       Boolean           @default(false)
-  status          LessonStatus      @default(DRAFT)
   createdAt       DateTime          @default(now())
   updatedAt       DateTime          @updatedAt
 
@@ -416,8 +415,3 @@ enum ActivityActorType {
   ADMIN
 }
 
-enum LessonStatus {
-  PUBLISHED
-  DRAFT
-  HIDDEN
-}
