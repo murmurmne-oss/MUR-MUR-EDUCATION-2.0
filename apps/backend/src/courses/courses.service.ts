@@ -277,8 +277,7 @@ export class CoursesService {
                 contentType: true,
                 isPreview: true,
                 videoUrl: true,
-                // status будет добавлено после применения миграции
-                // status: true,
+                status: true,
               },
             },
           },
@@ -1501,8 +1500,7 @@ export class CoursesService {
                 ? lesson.order
                 : lessonIndex + 1,
             isPreview: lesson.isPreview ?? false,
-            // status будет добавлено после применения миграции
-            // status: lesson.status ?? LessonStatus.DRAFT,
+            status: lesson.status ?? LessonStatus.DRAFT,
           })),
         },
       };
