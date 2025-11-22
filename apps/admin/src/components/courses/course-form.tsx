@@ -85,6 +85,8 @@ export type FormState = {
   isPublished: boolean;
 };
 
+export type LessonStatus = "PUBLISHED" | "DRAFT" | "HIDDEN";
+
 export type LessonState = {
   tempId: string;
   sourceId: string | null;
@@ -94,6 +96,7 @@ export type LessonState = {
   durationMinutes: string;
   contentType: string;
   isPreview: boolean;
+  status: LessonStatus;
   contentText: string;
   contentMode: LessonContentMode;
   contentBlocks: LessonContentBlockState[];
@@ -190,6 +193,7 @@ function createLessonState(partial?: Partial<LessonState>): LessonState {
     durationMinutes: partial?.durationMinutes ?? "",
     contentType: partial?.contentType ?? "TEXT",
     isPreview: partial?.isPreview ?? false,
+    status: partial?.status ?? "DRAFT",
     contentText: partial?.contentText ?? "",
     contentMode: partial?.contentMode ?? "rich",
     contentBlocks: partial?.contentBlocks ?? [],
@@ -883,6 +887,7 @@ function mapCourseToModules(course?: CourseDetails | null): ModuleState[] {
             durationMinutes: lesson.durationMinutes?.toString() ?? "",
             contentType: lesson.contentType,
             isPreview: lesson.isPreview,
+            status: lesson.status ?? "DRAFT",
             contentText: parsed.text,
             contentMode: parsed.mode,
             contentBlocks: parsed.blocks,
@@ -2914,6 +2919,7 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
         duration.length === 0 ? null : Math.round(Number(duration)),
       order,
       isPreview: lesson.isPreview,
+      status: lesson.status,
     };
   };
 
@@ -3577,8 +3583,8 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
                         </SortableContext>
                       </div>
 
-                      {/* Длительность и превью - в отдельном grid */}
-                      <div className="grid gap-3 md:grid-cols-2">
+                      {/* Длительность, статус и превью - в отдельном grid */}
+                      <div className="grid gap-3 md:grid-cols-3">
                         <label className="flex flex-col gap-2 text-xs text-text-dark">
                           Длительность (мин)
                           <input
@@ -3595,6 +3601,25 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
                             }
                             className="rounded-2xl border border-border bg-surface px-3 py-2 text-sm text-text-dark outline-none focus:border-brand-pink"
                           />
+                        </label>
+                        <label className="flex flex-col gap-2 text-xs text-text-dark">
+                          Статус урока
+                          <select
+                            value={lesson.status}
+                            onChange={(event) =>
+                              handleLessonChange(
+                                module.tempId,
+                                lesson.tempId,
+                                "status",
+                                event.target.value,
+                              )
+                            }
+                            className="rounded-2xl border border-border bg-surface px-3 py-2 text-sm text-text-dark outline-none focus:border-brand-pink"
+                          >
+                            <option value="PUBLISHED">Опубликован</option>
+                            <option value="DRAFT">В разработке</option>
+                            <option value="HIDDEN">Скрыт</option>
+                          </select>
                         </label>
                         <label className="flex items-center gap-2 text-xs text-text-dark">
                           <input
