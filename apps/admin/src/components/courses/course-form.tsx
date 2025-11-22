@@ -2,6 +2,11 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+
+// Условное логирование только в development режиме
+const DEBUG = process.env.NODE_ENV === "development";
+const debugLog = DEBUG ? console.log : () => {};
+const debugError = DEBUG ? console.error : () => {};
 import {
   DndContext,
   DragEndEvent,
@@ -1281,15 +1286,11 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
     setActiveFormId(null);
 
     if (!over) {
-      console.log("[FormDrag] No over target");
       return;
     }
 
     const activeId = active.id as string;
     const overId = over.id as string;
-
-    console.log("[FormDrag] Active ID:", activeId);
-    console.log("[FormDrag] Over ID:", overId);
 
     // Парсим идентификаторы: form:::moduleTempId:::lessonTempId:::formTempId
     // или lesson-drop:::moduleTempId:::lessonTempId (для drop zone заголовка урока)
@@ -1316,22 +1317,16 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
     const activeForm = parseFormId(activeId);
     const overTarget = parseFormId(overId);
 
-    console.log("[FormDrag] Parsed activeForm:", activeForm);
-    console.log("[FormDrag] Parsed overTarget:", overTarget);
-
     if (!activeForm || !overTarget) {
-      console.error("[FormDrag] Failed to parse IDs");
       return;
     }
 
     if (activeForm.type !== "form") {
-      console.error("[FormDrag] Active is not a form");
       return;
     }
 
     // Если перетаскиваем на drop zone урока
     if (overTarget.type === "lesson-drop") {
-      console.log("[FormDrag] Dropping on lesson drop zone");
       setModules((prev) => {
         // Находим форму для перемещения
         const sourceModule = prev.find((mod) => mod.tempId === activeForm.moduleTempId);
@@ -1343,11 +1338,9 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
         );
 
         if (!activeFormData) {
-          console.error("[FormDrag] Form not found for moving to drop zone");
+          debugError("[FormDrag] Form not found for moving to drop zone");
           return prev;
         }
-
-        console.log("[FormDrag] Found form to move to drop zone:", activeFormData.title || activeFormData.tempId);
 
         // Создаем глубокую копию данных формы
         const formToMove = JSON.parse(JSON.stringify(activeFormData));
@@ -1359,11 +1352,9 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
         );
 
         if (!targetLesson) {
-          console.error("[FormDrag] Target lesson not found for drop zone:", overTarget);
+          debugError("[FormDrag] Target lesson not found for drop zone:", overTarget);
           return prev;
         }
-
-        console.log("[FormDrag] Target lesson found, forms count:", targetLesson.forms.length);
 
         // Создаем новый массив модулей
         return prev.map((m) => {
@@ -1377,7 +1368,6 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
                   const filteredForms = l.forms.filter(
                     (f) => f.tempId !== activeForm.formTempId,
                   );
-                  console.log("[FormDrag] Removed form from source lesson, remaining:", filteredForms.length);
                   return {
                     ...l,
                     forms: filteredForms,
@@ -1385,10 +1375,7 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
                 }
                 // Добавляем форму в целевой урок
                 if (l.tempId === overTarget.lessonTempId) {
-                  console.log("[FormDrag] Adding form to target lesson in same module (drop zone)");
-                  console.log("[FormDrag] Target lesson forms before:", targetLesson.forms.length);
                   const newForms = [formToMove, ...targetLesson.forms];
-                  console.log("[FormDrag] Target lesson forms after:", newForms.length);
                   return {
                     ...l,
                     forms: newForms,
@@ -1408,7 +1395,6 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
                   const filteredForms = l.forms.filter(
                     (f) => f.tempId !== activeForm.formTempId,
                   );
-                  console.log("[FormDrag] Removed form from source lesson, remaining:", filteredForms.length);
                   return {
                     ...l,
                     forms: filteredForms,
@@ -1427,10 +1413,7 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
           if (m.tempId === overTarget.moduleTempId) {
             const updatedLessons = m.lessons.map((l) => {
               if (l.tempId === overTarget.lessonTempId) {
-                console.log("[FormDrag] Adding form to target lesson in different module (drop zone)");
-                console.log("[FormDrag] Target lesson forms before:", targetLesson.forms.length);
                 const newForms = [formToMove, ...targetLesson.forms];
-                console.log("[FormDrag] Target lesson forms after:", newForms.length);
                 return {
                   ...l,
                   forms: newForms,
@@ -1494,8 +1477,6 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
 
     // Если форма перемещается в другой урок, перемещаем её
     setModules((prev) => {
-      console.log("[FormDrag] Moving form between lessons/modules");
-      
       // Сначала находим форму для перемещения в исходном состоянии
       const sourceModule = prev.find((mod) => mod.tempId === activeForm.moduleTempId);
       const sourceLesson = sourceModule?.lessons.find(
@@ -1506,11 +1487,9 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
       );
 
       if (!activeFormData) {
-        console.error("[FormDrag] Form not found for moving:", activeForm);
+        debugError("[FormDrag] Form not found for moving:", activeForm);
         return prev;
       }
-
-      console.log("[FormDrag] Found form to move:", activeFormData.title || activeFormData.tempId);
 
       // Создаем глубокую копию данных формы, чтобы избежать проблем с ссылками
       const formToMove = JSON.parse(JSON.stringify(activeFormData));
@@ -1522,11 +1501,9 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
       );
 
       if (!targetLesson) {
-        console.error("[FormDrag] Target lesson not found:", overForm);
+        debugError("[FormDrag] Target lesson not found:", overForm);
         return prev;
       }
-
-      console.log("[FormDrag] Target lesson found, forms count:", targetLesson.forms.length);
 
       // Определяем позицию для вставки
       const overIndex = targetLesson.forms.findIndex(
@@ -1537,11 +1514,9 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
       if (overIndex === -1) {
         // Если целевая форма не найдена, добавляем в конец
         newTargetForms.push(formToMove);
-        console.log("[FormDrag] Adding form to end of target lesson");
       } else {
         // Вставляем перед целевой формой
         newTargetForms.splice(overIndex, 0, formToMove);
-        console.log("[FormDrag] Inserting form at index", overIndex);
       }
 
       // Создаем новый массив модулей
@@ -1556,7 +1531,6 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
                 const filteredForms = l.forms.filter(
                   (f) => f.tempId !== activeForm.formTempId,
                 );
-                console.log("[FormDrag] Removed form from source, remaining forms:", filteredForms.length);
                 return {
                   ...l,
                   forms: filteredForms,
@@ -1564,9 +1538,6 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
               }
               // Добавляем форму в целевой урок
               if (l.tempId === overForm.lessonTempId) {
-                console.log("[FormDrag] Adding form to target lesson in same module");
-                console.log("[FormDrag] Target lesson forms before:", targetLesson.forms.length);
-                console.log("[FormDrag] Target lesson forms after:", newTargetForms.length);
                 return {
                   ...l,
                   forms: newTargetForms,
@@ -1586,7 +1557,6 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
                 const filteredForms = l.forms.filter(
                   (f) => f.tempId !== activeForm.formTempId,
                 );
-                console.log("[FormDrag] Removed form from source, remaining forms:", filteredForms.length);
                 return {
                   ...l,
                   forms: filteredForms,
@@ -1605,9 +1575,6 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
         if (m.tempId === overForm.moduleTempId) {
           const updatedLessons = m.lessons.map((l) => {
             if (l.tempId === overForm.lessonTempId) {
-              console.log("[FormDrag] Adding form to target lesson in different module");
-              console.log("[FormDrag] Target lesson forms before:", targetLesson.forms.length);
-              console.log("[FormDrag] Target lesson forms after:", newTargetForms.length);
               return {
                 ...l,
                 forms: newTargetForms,
@@ -1633,15 +1600,12 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
     setActiveTestId(null);
 
     if (!over) {
-      console.log("[TestDrag] No over target");
       return;
     }
 
     const activeId = active.id as string;
     const overId = over.id as string;
 
-    console.log("[TestDrag] Active ID:", activeId);
-    console.log("[TestDrag] Over ID:", overId);
 
     // Парсим идентификаторы: test:::testTempId
     // или lesson-drop:::moduleTempId:::lessonTempId (для drop zone заголовка урока)
@@ -1666,17 +1630,14 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
     const activeTest = parseTestId(activeId);
     const overTarget = parseTestId(overId);
 
-    console.log("[TestDrag] Parsed activeTest:", activeTest);
-    console.log("[TestDrag] Parsed overTarget:", overTarget);
 
     if (!activeTest || activeTest.type !== "test") {
-      console.error("[TestDrag] Failed to parse active test");
+      debugError("[TestDrag] Failed to parse active test");
       return;
     }
 
     // Если перетаскиваем на drop zone урока
     if (overTarget?.type === "lesson-drop") {
-      console.log("[TestDrag] Dropping on lesson drop zone");
       
       // Находим урок в состоянии modules по tempId
       const targetModule = modules.find(
@@ -1684,7 +1645,7 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
       );
       
       if (!targetModule) {
-        console.error("[TestDrag] Target module not found:", overTarget);
+        debugError("[TestDrag] Target module not found:", overTarget);
         return;
       }
 
@@ -1693,7 +1654,7 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
       );
 
       if (!targetLesson) {
-        console.error("[TestDrag] Target lesson not found:", overTarget);
+        debugError("[TestDrag] Target lesson not found:", overTarget);
         return;
       }
 
@@ -1701,8 +1662,6 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
       const lessonId = targetLesson.sourceId ?? targetLesson.tempId;
       const moduleId = targetModule.sourceId ?? targetModule.tempId;
 
-      console.log("[TestDrag] Linking test to lesson:", lessonId);
-      console.log("[TestDrag] Module ID:", moduleId);
 
       // Обновляем unlockLessonId теста (это свяжет тест с уроком)
       setTests((prev) => {
@@ -1715,7 +1674,6 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
               }
             : test,
         );
-        console.log("[TestDrag] Updated test unlockLessonId");
         return updatedTests;
       });
       return;
@@ -1723,7 +1681,6 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
 
     // Если перетаскиваем на другой тест, меняем порядок
     if (overTarget?.type === "test") {
-      console.log("[TestDrag] Reordering tests");
       setTests((prev) => {
         const tests = [...prev];
         const activeIndex = tests.findIndex(
@@ -1733,23 +1690,20 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
           (t) => t.tempId === overTarget.testTempId,
         );
         
-        console.log("[TestDrag] Active index:", activeIndex, "Over index:", overIndex);
         
         if (activeIndex === -1 || overIndex === -1) {
-          console.error("[TestDrag] Test not found for reordering");
+          debugError("[TestDrag] Test not found for reordering");
           return prev;
         }
         
         const [removed] = tests.splice(activeIndex, 1);
         tests.splice(overIndex, 0, removed);
         
-        console.log("[TestDrag] Tests reordered successfully");
         return tests;
       });
       return;
     }
 
-    console.warn("[TestDrag] Unknown drop target type");
   };
 
   // Функция для обработки окончания перетаскивания текстовых блоков
@@ -1758,15 +1712,12 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
     setActiveBlockId(null);
 
     if (!over) {
-      console.log("[BlockDrag] No over target");
       return;
     }
 
     const activeId = active.id as string;
     const overId = over.id as string;
 
-    console.log("[BlockDrag] Active ID:", activeId);
-    console.log("[BlockDrag] Over ID:", overId);
 
     // Парсим идентификаторы: block:::moduleTempId:::lessonTempId:::blockId
     // или lesson-drop:::moduleTempId:::lessonTempId (для drop zone заголовка урока)
@@ -1794,17 +1745,14 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
     const activeBlock = parseBlockId(activeId);
     const overTarget = parseBlockId(overId);
 
-    console.log("[BlockDrag] Parsed activeBlock:", activeBlock);
-    console.log("[BlockDrag] Parsed overTarget:", overTarget);
 
     if (!activeBlock || activeBlock.type !== "block") {
-      console.error("[BlockDrag] Failed to parse active block");
+      debugError("[BlockDrag] Failed to parse active block");
       return;
     }
 
     // Если перетаскиваем на drop zone урока
     if (overTarget?.type === "lesson-drop") {
-      console.log("[BlockDrag] Dropping on lesson drop zone");
       setModules((prev) => {
         // Находим блок для перемещения
         const sourceModule = prev.find((mod) => mod.tempId === activeBlock.moduleTempId);
@@ -1816,11 +1764,10 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
         );
 
         if (!activeBlockData) {
-          console.error("[BlockDrag] Block not found for moving to drop zone");
+          debugError("[BlockDrag] Block not found for moving to drop zone");
           return prev;
         }
 
-        console.log("[BlockDrag] Found block to move:", activeBlockData.type);
 
         // Создаем глубокую копию данных блока
         const blockToMove = JSON.parse(JSON.stringify(activeBlockData));
@@ -1832,11 +1779,10 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
         );
 
         if (!targetLesson) {
-          console.error("[BlockDrag] Target lesson not found for drop zone:", overTarget);
+          debugError("[BlockDrag] Target lesson not found for drop zone:", overTarget);
           return prev;
         }
 
-        console.log("[BlockDrag] Target lesson found, blocks count:", targetLesson.contentBlocks.length);
 
         // Создаем новый массив модулей
         return prev.map((m) => {
@@ -1850,7 +1796,6 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
                   const filteredBlocks = l.contentBlocks.filter(
                     (b) => b.id !== activeBlock.blockId,
                   );
-                  console.log("[BlockDrag] Removed block from source lesson, remaining:", filteredBlocks.length);
                   return {
                     ...l,
                     contentBlocks: filteredBlocks,
@@ -1858,10 +1803,7 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
                 }
                 // Добавляем блок в начало целевого урока
                 if (l.tempId === overTarget.lessonTempId) {
-                  console.log("[BlockDrag] Adding block to target lesson in same module (drop zone)");
-                  console.log("[BlockDrag] Target lesson blocks before:", targetLesson.contentBlocks.length);
                   const newBlocks = [blockToMove, ...targetLesson.contentBlocks];
-                  console.log("[BlockDrag] Target lesson blocks after:", newBlocks.length);
                   return {
                     ...l,
                     contentBlocks: newBlocks,
@@ -1881,7 +1823,6 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
                   const filteredBlocks = l.contentBlocks.filter(
                     (b) => b.id !== activeBlock.blockId,
                   );
-                  console.log("[BlockDrag] Removed block from source lesson, remaining:", filteredBlocks.length);
                   return {
                     ...l,
                     contentBlocks: filteredBlocks,
@@ -1900,10 +1841,7 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
           if (m.tempId === overTarget.moduleTempId) {
             const updatedLessons = m.lessons.map((l) => {
               if (l.tempId === overTarget.lessonTempId) {
-                console.log("[BlockDrag] Adding block to target lesson in different module (drop zone)");
-                console.log("[BlockDrag] Target lesson blocks before:", targetLesson.contentBlocks.length);
                 const newBlocks = [blockToMove, ...targetLesson.contentBlocks];
-                console.log("[BlockDrag] Target lesson blocks after:", newBlocks.length);
                 return {
                   ...l,
                   contentBlocks: newBlocks,
@@ -1967,7 +1905,6 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
 
       // Если блок перемещается в другой урок, перемещаем его
       setModules((prev) => {
-        console.log("[BlockDrag] Moving block between lessons/modules");
         
         // Находим блок для перемещения в исходном состоянии
         const sourceModule = prev.find((mod) => mod.tempId === activeBlock.moduleTempId);
@@ -1979,11 +1916,10 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
         );
 
         if (!activeBlockData) {
-          console.error("[BlockDrag] Block not found for moving:", activeBlock);
+          debugError("[BlockDrag] Block not found for moving:", activeBlock);
           return prev;
         }
 
-        console.log("[BlockDrag] Found block to move:", activeBlockData.type);
 
         // Создаем глубокую копию данных блока
         const blockToMove = JSON.parse(JSON.stringify(activeBlockData));
@@ -1995,11 +1931,10 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
         );
 
         if (!targetLesson) {
-          console.error("[BlockDrag] Target lesson not found:", overBlock);
+          debugError("[BlockDrag] Target lesson not found:", overBlock);
           return prev;
         }
 
-        console.log("[BlockDrag] Target lesson found, blocks count:", targetLesson.contentBlocks.length);
 
         // Определяем позицию для вставки
         const overIndex = targetLesson.contentBlocks.findIndex(
@@ -2010,11 +1945,9 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
         if (overIndex === -1) {
           // Если целевой блок не найден, добавляем в конец
           newTargetBlocks.push(blockToMove);
-          console.log("[BlockDrag] Adding block to end of target lesson");
         } else {
           // Вставляем перед целевым блоком
           newTargetBlocks.splice(overIndex, 0, blockToMove);
-          console.log("[BlockDrag] Inserting block at index", overIndex);
         }
 
         // Создаем новый массив модулей
@@ -2029,7 +1962,6 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
                   const filteredBlocks = l.contentBlocks.filter(
                     (b) => b.id !== activeBlock.blockId,
                   );
-                  console.log("[BlockDrag] Removed block from source, remaining blocks:", filteredBlocks.length);
                   return {
                     ...l,
                     contentBlocks: filteredBlocks,
@@ -2037,9 +1969,6 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
                 }
                 // Добавляем блок в целевой урок
                 if (l.tempId === overBlock.lessonTempId) {
-                  console.log("[BlockDrag] Adding block to target lesson in same module");
-                  console.log("[BlockDrag] Target lesson blocks before:", targetLesson.contentBlocks.length);
-                  console.log("[BlockDrag] Target lesson blocks after:", newTargetBlocks.length);
                   return {
                     ...l,
                     contentBlocks: newTargetBlocks,
@@ -2059,7 +1988,6 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
                   const filteredBlocks = l.contentBlocks.filter(
                     (b) => b.id !== activeBlock.blockId,
                   );
-                  console.log("[BlockDrag] Removed block from source, remaining blocks:", filteredBlocks.length);
                   return {
                     ...l,
                     contentBlocks: filteredBlocks,
@@ -2078,9 +2006,6 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
           if (m.tempId === overBlock.moduleTempId) {
             const updatedLessons = m.lessons.map((l) => {
               if (l.tempId === overBlock.lessonTempId) {
-                console.log("[BlockDrag] Adding block to target lesson in different module");
-                console.log("[BlockDrag] Target lesson blocks before:", targetLesson.contentBlocks.length);
-                console.log("[BlockDrag] Target lesson blocks after:", newTargetBlocks.length);
                 return {
                   ...l,
                   contentBlocks: newTargetBlocks,
@@ -2101,7 +2026,6 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
       return;
     }
 
-    console.warn("[BlockDrag] Unknown drop target type");
   };
 
   // Общая функция для обработки окончания перетаскивания
@@ -2177,7 +2101,7 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
     );
   }, [unlockModuleOptions]);
 
-  const handleFormChange = <Field extends keyof FormState>(
+  const handleFormChange = useCallback(<Field extends keyof FormState>(
     field: Field,
     value: FormState[Field],
   ) => {
@@ -2185,27 +2109,29 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
       ...prev,
       [field]: value,
     }));
-  };
+  }, []);
 
-  const handleGenerateSlug = () => {
-    if (formState.title.length === 0) return;
-    const newSlug = slugify(formState.title);
-    setFormState((prev) => ({
-      ...prev,
-      slug: newSlug,
-    }));
-  };
+  const handleGenerateSlug = useCallback(() => {
+    setFormState((prev) => {
+      if (prev.title.length === 0) return prev;
+      const newSlug = slugify(prev.title);
+      return {
+        ...prev,
+        slug: newSlug,
+      };
+    });
+  }, []);
 
-  const handleAddModule = () => {
+  const handleAddModule = useCallback(() => {
     setModules((prev) => [
       ...prev,
       createModuleState({
         order: (prev.length + 1).toString(),
       }),
     ]);
-  };
+  }, []);
 
-  const toggleModuleCollapse = (moduleId: string) => {
+  const toggleModuleCollapse = useCallback((moduleId: string) => {
     setCollapsedModules((prev) => {
       const next = new Set(prev);
       if (next.has(moduleId)) {
@@ -2215,13 +2141,13 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
       }
       return next;
     });
-  };
+  }, []);
 
-  const handleRemoveModule = (moduleId: string) => {
+  const handleRemoveModule = useCallback((moduleId: string) => {
     setModules((prev) => prev.filter((module) => module.tempId !== moduleId));
-  };
+  }, []);
 
-  const handleModuleChange = (
+  const handleModuleChange = useCallback((
     moduleId: string,
     field: keyof ModuleState,
     value: string,
@@ -2236,9 +2162,9 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
           : module,
       ),
     );
-  };
+  }, []);
 
-  const handleAddLesson = (moduleId: string) => {
+  const handleAddLesson = useCallback((moduleId: string) => {
     setModules((prev) =>
       prev.map((module) =>
         module.tempId === moduleId
@@ -2254,9 +2180,9 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
           : module,
       ),
     );
-  };
+  }, []);
 
-  const handleRemoveLesson = (moduleId: string, lessonId: string) => {
+  const handleRemoveLesson = useCallback((moduleId: string, lessonId: string) => {
     setModules((prev) =>
       prev.map((module) =>
         module.tempId === moduleId
@@ -2269,9 +2195,28 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
           : module,
       ),
     );
-  };
+  }, []);
 
-  const handleLessonChange = (
+  const updateLessonState = useCallback((
+    moduleId: string,
+    lessonId: string,
+    updater: (lesson: LessonState) => LessonState,
+  ) => {
+    setModules((prev) =>
+      prev.map((module) =>
+        module.tempId === moduleId
+          ? {
+              ...module,
+              lessons: module.lessons.map((lesson) =>
+                lesson.tempId === lessonId ? updater(lesson) : lesson,
+              ),
+            }
+          : module,
+      ),
+    );
+  }, []);
+
+  const handleLessonChange = useCallback((
     moduleId: string,
     lessonId: string,
     field: keyof LessonState,
@@ -2291,28 +2236,9 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
 
       return nextLesson;
     });
-  };
+  }, [updateLessonState]);
 
-  const updateLessonState = (
-    moduleId: string,
-    lessonId: string,
-    updater: (lesson: LessonState) => LessonState,
-  ) => {
-    setModules((prev) =>
-      prev.map((module) =>
-        module.tempId === moduleId
-          ? {
-              ...module,
-              lessons: module.lessons.map((lesson) =>
-                lesson.tempId === lessonId ? updater(lesson) : lesson,
-              ),
-            }
-          : module,
-      ),
-    );
-  };
-
-  const handleLessonContentModeChange = (
+  const handleLessonContentModeChange = useCallback((
     moduleId: string,
     lessonId: string,
     mode: LessonContentMode,
@@ -2361,9 +2287,9 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
         contentText: aggregatedText,
       };
     });
-  };
+  }, [updateLessonState]);
 
-  const handleLessonAddContentBlock = (
+  const handleLessonAddContentBlock = useCallback((
     moduleId: string,
     lessonId: string,
     type: LessonContentBlockState["type"],
@@ -2374,9 +2300,9 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
       contentBlocks: [...lesson.contentBlocks, newBlock],
     }));
     return newBlock.id;
-  };
+  }, [updateLessonState]);
 
-  const handleLessonUpdateContentBlock = (
+  const handleLessonUpdateContentBlock = useCallback((
     moduleId: string,
     lessonId: string,
     blockId: string,
@@ -2393,9 +2319,9 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
           : block,
       ),
     }));
-  };
+  }, [updateLessonState]);
 
-  const handleLessonRemoveContentBlock = (
+  const handleLessonRemoveContentBlock = useCallback((
     moduleId: string,
     lessonId: string,
     blockId: string,
@@ -2406,7 +2332,7 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
         (block) => block.id !== blockId,
       ),
     }));
-  };
+  }, [updateLessonState]);
 
   const handleAddTest = () => {
     setTests((prev) => [
@@ -2717,6 +2643,103 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
     (file: File) => apiClient.uploadImage(file),
     [],
   );
+
+  // Универсальный обработчик для обновления формы в уроке
+  const updateFormInLesson = useCallback((
+    moduleId: string,
+    lessonId: string,
+    formId: string,
+    updater: (form: CourseFormState) => CourseFormState,
+  ) => {
+    setModules((prev) =>
+      prev.map((m) =>
+        m.tempId === moduleId
+          ? {
+              ...m,
+              lessons: m.lessons.map((l) =>
+                l.tempId === lessonId
+                  ? {
+                      ...l,
+                      forms: l.forms.map((f) =>
+                        f.tempId === formId ? updater(f) : f,
+                      ),
+                    }
+                  : l,
+              ),
+            }
+          : m,
+      ),
+    );
+  }, []);
+
+  // Обработчики для форм
+  const handleFormTitleChange = useCallback((
+    moduleId: string,
+    lessonId: string,
+    formId: string,
+    value: string,
+  ) => {
+    updateFormInLesson(moduleId, lessonId, formId, (form) => ({
+      ...form,
+      title: value,
+    }));
+  }, [updateFormInLesson]);
+
+  const handleFormDescriptionChange = useCallback((
+    moduleId: string,
+    lessonId: string,
+    formId: string,
+    value: string,
+  ) => {
+    updateFormInLesson(moduleId, lessonId, formId, (form) => ({
+      ...form,
+      description: value,
+    }));
+  }, [updateFormInLesson]);
+
+  const handleAddFormQuestion = useCallback((
+    moduleId: string,
+    lessonId: string,
+    formId: string,
+  ) => {
+    updateFormInLesson(moduleId, lessonId, formId, (form) => ({
+      ...form,
+      questions: [...form.questions, createFormQuestionState()],
+    }));
+  }, [updateFormInLesson]);
+
+  const handleRemoveFormQuestion = useCallback((
+    moduleId: string,
+    lessonId: string,
+    formId: string,
+    questionId: string,
+  ) => {
+    updateFormInLesson(moduleId, lessonId, formId, (form) => ({
+      ...form,
+      questions: form.questions.filter((q) => q.tempId !== questionId),
+    }));
+  }, [updateFormInLesson]);
+
+  const handleFormQuestionChange = useCallback((
+    moduleId: string,
+    lessonId: string,
+    formId: string,
+    questionId: string,
+    field: keyof FormQuestionState,
+    value: string,
+  ) => {
+    updateFormInLesson(moduleId, lessonId, formId, (form) => ({
+      ...form,
+      questions: form.questions.map((q) =>
+        q.tempId === questionId
+          ? {
+              ...q,
+              [field]: value,
+            }
+          : q,
+      ),
+    }));
+  }, [updateFormInLesson]);
 
   const buildLessonPayload = (lesson: LessonState): LessonPayload => {
     const duration = lesson.durationMinutes.trim();
@@ -3609,26 +3632,11 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
                                     type="text"
                                     value={form.title}
                                     onChange={(event) =>
-                                      setModules((prev) =>
-                                        prev.map((m) =>
-                                          m.tempId === module.tempId
-                                            ? {
-                                                ...m,
-                                                lessons: m.lessons.map((l) =>
-                                                  l.tempId === lesson.tempId
-                                                    ? {
-                                                        ...l,
-                                                        forms: l.forms.map((f) =>
-                                                          f.tempId === form.tempId
-                                                            ? { ...f, title: event.target.value }
-                                                            : f,
-                                                        ),
-                                                      }
-                                                    : l,
-                                                ),
-                                              }
-                                            : m,
-                                        ),
+                                      handleFormTitleChange(
+                                        module.tempId,
+                                        lesson.tempId,
+                                        form.tempId,
+                                        event.target.value,
                                       )
                                     }
                                     placeholder="Название формы"
@@ -3643,26 +3651,11 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
                                     type="text"
                                     value={form.description}
                                     onChange={(event) =>
-                                      setModules((prev) =>
-                                        prev.map((m) =>
-                                          m.tempId === module.tempId
-                                            ? {
-                                                ...m,
-                                                lessons: m.lessons.map((l) =>
-                                                  l.tempId === lesson.tempId
-                                                    ? {
-                                                        ...l,
-                                                        forms: l.forms.map((f) =>
-                                                          f.tempId === form.tempId
-                                                            ? { ...f, description: event.target.value }
-                                                            : f,
-                                                        ),
-                                                      }
-                                                    : l,
-                                                ),
-                                              }
-                                            : m,
-                                        ),
+                                      handleFormDescriptionChange(
+                                        module.tempId,
+                                        lesson.tempId,
+                                        form.tempId,
+                                        event.target.value,
                                       )
                                     }
                                     placeholder="Описание формы"
@@ -3679,32 +3672,10 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
                                     type="button"
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      setModules((prev) =>
-                                        prev.map((m) =>
-                                          m.tempId === module.tempId
-                                            ? {
-                                                ...m,
-                                                lessons: m.lessons.map((l) =>
-                                                  l.tempId === lesson.tempId
-                                                    ? {
-                                                        ...l,
-                                                        forms: l.forms.map((f) =>
-                                                          f.tempId === form.tempId
-                                                            ? {
-                                                                ...f,
-                                                                questions: [
-                                                                  ...f.questions,
-                                                                  createFormQuestionState(),
-                                                                ],
-                                                              }
-                                                            : f,
-                                                        ),
-                                                      }
-                                                    : l,
-                                                ),
-                                              }
-                                            : m,
-                                        ),
+                                      handleAddFormQuestion(
+                                        module.tempId,
+                                        lesson.tempId,
+                                        form.tempId,
                                       );
                                     }}
                                     className="rounded-full border border-border px-2 py-0.5 text-[10px] font-medium text-text-medium transition-colors hover:bg-surface"
@@ -3728,38 +3699,13 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
                                             type="text"
                                             value={question.text}
                                             onChange={(event) =>
-                                              setModules((prev) =>
-                                                prev.map((m) =>
-                                                  m.tempId === module.tempId
-                                                    ? {
-                                                        ...m,
-                                                        lessons: m.lessons.map((l) =>
-                                                          l.tempId === lesson.tempId
-                                                            ? {
-                                                                ...l,
-                                                                forms: l.forms.map((f) =>
-                                                                  f.tempId === form.tempId
-                                                                    ? {
-                                                                        ...f,
-                                                                        questions: f.questions.map(
-                                                                          (q) =>
-                                                                            q.tempId ===
-                                                                            question.tempId
-                                                                              ? {
-                                                                                  ...q,
-                                                                                  text: event.target.value,
-                                                                                }
-                                                                              : q,
-                                                                        ),
-                                                                      }
-                                                                    : f,
-                                                                ),
-                                                              }
-                                                            : l,
-                                                        ),
-                                                      }
-                                                    : m,
-                                                ),
+                                              handleFormQuestionChange(
+                                                module.tempId,
+                                                lesson.tempId,
+                                                form.tempId,
+                                                question.tempId,
+                                                "text",
+                                                event.target.value,
                                               )
                                             }
                                             placeholder="Текст вопроса"
