@@ -1532,6 +1532,34 @@ export default function MyCourseDetailsPage({
                           );
                         }
 
+                        // Проверяем, является ли текст HTML (начинается с <)
+                        const isHTML = typeof block.text === 'string' && block.text.trim().startsWith('<');
+                        
+                        if (isHTML) {
+                          // Рендерим HTML с базовыми стилями
+                          return (
+                            <div
+                              key={`paragraph-${index}`}
+                              className="prose prose-sm max-w-none"
+                              dangerouslySetInnerHTML={{ __html: block.text }}
+                              style={{
+                                fontFamily: block.fontFamily === 'serif' ? 'serif' : 
+                                           block.fontFamily === 'mono' ? 'monospace' :
+                                           block.fontFamily === 'display' ? 'display' :
+                                           block.fontFamily === 'handwriting' ? 'cursive' : 'sans-serif',
+                                fontSize: block.fontSize === 'sm' ? '0.875rem' :
+                                         block.fontSize === 'lg' ? '1.125rem' :
+                                         block.fontSize === 'xl' ? '1.25rem' :
+                                         block.fontSize === '2xl' ? '1.5rem' : '1rem',
+                                fontWeight: block.fontWeight === 'bold' ? '600' :
+                                           block.fontWeight === 'medium' ? '500' : '400',
+                                textAlign: block.align || 'left',
+                              }}
+                            />
+                          );
+                        }
+
+                        // Обратная совместимость: plain text с применением стилей
                         const fontFamily =
                           FONT_FAMILY_CLASSES[block.fontFamily ?? 'sans'];
                         const fontSize =

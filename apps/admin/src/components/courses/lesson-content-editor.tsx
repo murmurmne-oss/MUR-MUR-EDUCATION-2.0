@@ -9,6 +9,7 @@ import React, {
   useRef,
   useState,
 } from "react";
+import { RichTextEditor } from "./rich-text-editor";
 
 export type LessonContentMode = "simple" | "rich";
 
@@ -261,89 +262,11 @@ export function LessonContentEditor({
               Удалить
             </button>
           </div>
-          <textarea
-            value={block.text}
-            onChange={(event) =>
-              onUpdateBlock(block.id, { text: event.target.value })
-            }
-            rows={4}
-            className="w-full rounded-2xl border border-border bg-white px-3 py-2 text-sm text-text-dark outline-none focus:border-brand-pink"
-            placeholder="Введите текст"
+          <RichTextEditor
+            content={block.text || ""}
+            onChange={(html) => onUpdateBlock(block.id, { text: html })}
+            placeholder="Введите текст..."
           />
-          <div className="grid gap-3 md:grid-cols-2">
-            <label className="flex flex-col gap-2 text-[11px] text-text-dark">
-              Шрифт
-              <select
-                value={defaults.fontFamily}
-                onChange={(event) =>
-                  onUpdateBlock(block.id, {
-                    fontFamily: event.target.value as (typeof PARAGRAPH_FONT_FAMILIES)[number]["value"],
-                  })
-                }
-                className="rounded-2xl border border-border bg-white px-3 py-2 text-sm text-text-dark outline-none focus:border-brand-pink"
-              >
-                {PARAGRAPH_FONT_FAMILIES.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="flex flex-col gap-2 text-[11px] text-text-dark">
-              Размер
-              <select
-                value={defaults.fontSize}
-                onChange={(event) =>
-                  onUpdateBlock(block.id, {
-                    fontSize: event.target.value as (typeof PARAGRAPH_FONT_SIZES)[number]["value"],
-                  })
-                }
-                className="rounded-2xl border border-border bg-white px-3 py-2 text-sm text-text-dark outline-none focus:border-brand-pink"
-              >
-                {PARAGRAPH_FONT_SIZES.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="flex flex-col gap-2 text-[11px] text-text-dark">
-              Толщина
-              <select
-                value={defaults.fontWeight}
-                onChange={(event) =>
-                  onUpdateBlock(block.id, {
-                    fontWeight: event.target.value as (typeof PARAGRAPH_FONT_WEIGHTS)[number]["value"],
-                  })
-                }
-                className="rounded-2xl border border-border bg-white px-3 py-2 text-sm text-text-dark outline-none focus:border-brand-pink"
-              >
-                {PARAGRAPH_FONT_WEIGHTS.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="flex flex-col gap-2 text-[11px] text-text-dark">
-              Выравнивание
-              <select
-                value={defaults.align}
-                onChange={(event) =>
-                  onUpdateBlock(block.id, {
-                    align: event.target.value as (typeof ALIGN_OPTIONS)[number]["value"],
-                  })
-                }
-                className="rounded-2xl border border-border bg-white px-3 py-2 text-sm text-text-dark outline-none focus:border-brand-pink"
-              >
-                {ALIGN_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
         </div>
       );
     },
