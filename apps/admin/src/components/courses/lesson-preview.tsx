@@ -50,6 +50,7 @@ export function LessonPreview({
       }
       return [
         {
+          id: "simple-text-block",
           type: "paragraph" as const,
           text: lesson.contentText,
         },
