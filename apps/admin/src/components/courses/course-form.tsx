@@ -1282,6 +1282,20 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
 
         if (!activeFormData) return prev;
 
+        // Создаем глубокую копию данных формы
+        const formToMove = JSON.parse(JSON.stringify(activeFormData));
+
+        // Находим целевой урок в исходном состоянии
+        const targetModule = prev.find((mod) => mod.tempId === overTarget.moduleTempId);
+        const targetLesson = targetModule?.lessons.find(
+          (les) => les.tempId === overTarget.lessonTempId,
+        );
+
+        if (!targetLesson) {
+          console.error("Target lesson not found:", overTarget);
+          return prev;
+        }
+
         return prev.map((m) => {
           // Удаляем форму из исходного урока
           if (m.tempId === activeForm.moduleTempId) {
@@ -1300,17 +1314,14 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
             };
           }
           // Добавляем форму в начало целевого урока
-          if (
-            m.tempId === overTarget.moduleTempId &&
-            m.lessons.some((l) => l.tempId === overTarget.lessonTempId)
-          ) {
+          if (m.tempId === overTarget.moduleTempId) {
             return {
               ...m,
               lessons: m.lessons.map((l) =>
                 l.tempId === overTarget.lessonTempId
                   ? {
                       ...l,
-                      forms: [activeFormData, ...l.forms],
+                      forms: [formToMove, ...targetLesson.forms],
                     }
                   : l,
               ),
@@ -1455,28 +1466,40 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
 
         // Добавляем форму в целевой модуль
         if (m.tempId === overForm.moduleTempId) {
+          // Используем исходное состояние целевого урока
+          const targetModule = prev.find((mod) => mod.tempId === overForm.moduleTempId);
+          const targetLesson = targetModule?.lessons.find(
+            (les) => les.tempId === overForm.lessonTempId,
+          );
+
+          if (!targetLesson) {
+            console.error("Target lesson not found:", overForm);
+            return m;
+          }
+
+          const overIndex = targetLesson.forms.findIndex(
+            (f) => f.tempId === overForm.formTempId,
+          );
+          const newForms = [...targetLesson.forms];
+          
+          if (overIndex === -1) {
+            // Если целевая форма не найдена, добавляем в конец
+            newForms.push(formToMove);
+          } else {
+            // Вставляем перед целевой формой
+            newForms.splice(overIndex, 0, formToMove);
+          }
+
           return {
             ...m,
-            lessons: m.lessons.map((l) => {
-              if (l.tempId === overForm.lessonTempId) {
-                const overIndex = l.forms.findIndex(
-                  (f) => f.tempId === overForm.formTempId,
-                );
-                const newForms = [...l.forms];
-                if (overIndex === -1) {
-                  // Если целевая форма не найдена, добавляем в конец
-                  newForms.push(formToMove);
-                } else {
-                  // Вставляем перед целевой формой
-                  newForms.splice(overIndex, 0, formToMove);
-                }
-                return {
-                  ...l,
-                  forms: newForms,
-                };
-              }
-              return l;
-            }),
+            lessons: m.lessons.map((l) =>
+              l.tempId === overForm.lessonTempId
+                ? {
+                    ...l,
+                    forms: newForms,
+                  }
+                : l,
+            ),
           };
         }
 
@@ -1496,31 +1519,81 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
     const overId = over.id as string;
 
     // Парсим идентификаторы: test:::testTempId
+    // или lesson-drop:::moduleTempId:::lessonTempId (для drop zone заголовка урока)
     const parseTestId = (id: string) => {
       const parts = id.split(":::");
-      if (parts.length !== 2 || parts[0] !== "test") return null;
-      return { testTempId: parts[1] };
+      if (parts[0] === "lesson-drop" && parts.length === 3) {
+        return {
+          type: "lesson-drop" as const,
+          moduleTempId: parts[1],
+          lessonTempId: parts[2],
+        };
+      }
+      if (parts.length === 2 && parts[0] === "test") {
+        return {
+          type: "test" as const,
+          testTempId: parts[1],
+        };
+      }
+      return null;
     };
 
     const activeTest = parseTestId(activeId);
-    const overTest = parseTestId(overId);
+    const overTarget = parseTestId(overId);
 
-    if (!activeTest || !overTest) return;
+    if (!activeTest || activeTest.type !== "test") return;
 
-    // Меняем порядок тестов
-    setTests((prev) => {
-      const tests = [...prev];
-      const activeIndex = tests.findIndex(
-        (t) => t.tempId === activeTest.testTempId,
+    // Если перетаскиваем на drop zone урока
+    if (overTarget?.type === "lesson-drop") {
+      // Находим урок в состоянии modules по tempId
+      const targetModule = modules.find(
+        (m) => m.tempId === overTarget.moduleTempId,
       );
-      const overIndex = tests.findIndex(
-        (t) => t.tempId === overTest.testTempId,
+      const targetLesson = targetModule?.lessons.find(
+        (l) => l.tempId === overTarget.lessonTempId,
       );
-      if (activeIndex === -1 || overIndex === -1) return prev;
-      const [removed] = tests.splice(activeIndex, 1);
-      tests.splice(overIndex, 0, removed);
-      return tests;
-    });
+
+      if (!targetLesson) {
+        console.error("Target lesson not found:", overTarget);
+        return;
+      }
+
+      // Используем sourceId если урок уже сохранен, иначе tempId
+      const lessonId = targetLesson.sourceId ?? targetLesson.tempId;
+      const moduleId = targetModule.sourceId ?? targetModule.tempId;
+
+      // Обновляем unlockLessonId теста (это свяжет тест с уроком)
+      setTests((prev) =>
+        prev.map((test) =>
+          test.tempId === activeTest.testTempId
+            ? {
+                ...test,
+                unlockLessonId: lessonId,
+                unlockModuleId: null, // Сбрасываем ограничение по модулю при выборе урока
+              }
+            : test,
+        ),
+      );
+      return;
+    }
+
+    // Если перетаскиваем на другой тест, меняем порядок
+    if (overTarget?.type === "test") {
+      setTests((prev) => {
+        const tests = [...prev];
+        const activeIndex = tests.findIndex(
+          (t) => t.tempId === activeTest.testTempId,
+        );
+        const overIndex = tests.findIndex(
+          (t) => t.tempId === overTarget.testTempId,
+        );
+        if (activeIndex === -1 || overIndex === -1) return prev;
+        const [removed] = tests.splice(activeIndex, 1);
+        tests.splice(overIndex, 0, removed);
+        return tests;
+      });
+      return;
+    }
   };
 
   // Общая функция для обработки окончания перетаскивания
