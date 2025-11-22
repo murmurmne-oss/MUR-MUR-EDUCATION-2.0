@@ -1549,7 +1549,13 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
       const targetModule = modules.find(
         (m) => m.tempId === overTarget.moduleTempId,
       );
-      const targetLesson = targetModule?.lessons.find(
+      
+      if (!targetModule) {
+        console.error("Target module not found:", overTarget);
+        return;
+      }
+
+      const targetLesson = targetModule.lessons.find(
         (l) => l.tempId === overTarget.lessonTempId,
       );
 
