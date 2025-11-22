@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, startTransition } from "react";
 import { useRouter } from "next/navigation";
 
 // Условное логирование только в development режиме
@@ -2152,16 +2152,30 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
     field: keyof ModuleState,
     value: string,
   ) => {
-    setModules((prev) =>
-      prev.map((module) =>
-        module.tempId === moduleId
-          ? {
-              ...module,
-              [field]: value,
-            }
-          : module,
-      ),
-    );
+    // Для текстовых полей используем startTransition
+    const isCritical = field === "order";
+    const updateFn = () => {
+      setModules((prev) => {
+        let hasChanges = false;
+        const newModules = prev.map((module) => {
+          if (module.tempId !== moduleId) {
+            return module;
+          }
+          hasChanges = true;
+          return {
+            ...module,
+            [field]: value,
+          };
+        });
+        return hasChanges ? newModules : prev;
+      });
+    };
+    
+    if (isCritical) {
+      updateFn();
+    } else {
+      startTransition(updateFn);
+    }
   }, []);
 
   const handleAddLesson = useCallback((moduleId: string) => {
@@ -2201,19 +2215,47 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
     moduleId: string,
     lessonId: string,
     updater: (lesson: LessonState) => LessonState,
+    immediate = false,
   ) => {
-    setModules((prev) =>
-      prev.map((module) =>
-        module.tempId === moduleId
-          ? {
-              ...module,
-              lessons: module.lessons.map((lesson) =>
-                lesson.tempId === lessonId ? updater(lesson) : lesson,
-              ),
+    const updateFn = () => {
+      setModules((prev) => {
+        // Оптимизация: создаем новый массив только если действительно нужно обновить
+        let hasChanges = false;
+        const newModules = prev.map((module) => {
+          if (module.tempId !== moduleId) {
+            return module; // Возвращаем тот же объект, если модуль не изменился
+          }
+          
+          let lessonChanged = false;
+          const newLessons = module.lessons.map((lesson) => {
+            if (lesson.tempId !== lessonId) {
+              return lesson; // Возвращаем тот же объект, если урок не изменился
             }
-          : module,
-      ),
-    );
+            lessonChanged = true;
+            return updater(lesson);
+          });
+          
+          if (!lessonChanged) {
+            return module; // Возвращаем тот же объект, если урок не найден
+          }
+          
+          hasChanges = true;
+          return {
+            ...module,
+            lessons: newLessons,
+          };
+        });
+        
+        // Если ничего не изменилось, возвращаем предыдущее состояние
+        return hasChanges ? newModules : prev;
+      });
+    };
+    
+    if (immediate) {
+      updateFn();
+    } else {
+      startTransition(updateFn);
+    }
   }, []);
 
   const handleLessonChange = useCallback((
@@ -2222,6 +2264,9 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
     field: keyof LessonState,
     value: string | boolean,
   ) => {
+    // Для критичных полей (например, порядок) обновляем сразу
+    // Для текстовых полей используем startTransition для лучшей производительности
+    const isCritical = field === "order" || field === "isPreview";
     updateLessonState(moduleId, lessonId, (lesson) => {
       const nextLesson = {
         ...lesson,
@@ -2235,7 +2280,7 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
       }
 
       return nextLesson;
-    });
+    }, isCritical);
   }, [updateLessonState]);
 
   const handleLessonContentModeChange = useCallback((
@@ -2343,32 +2388,45 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
     ]);
   };
 
-  const updateTestState = (
+  const updateTestState = useCallback((
     testId: string,
     updater: (test: TestState) => TestState,
-    options?: { syncJson?: boolean },
+    options?: { syncJson?: boolean; immediate?: boolean },
   ) => {
     const syncJson = options?.syncJson ?? true;
-    setTests((prev) =>
-      prev.map((test) => {
-        if (test.tempId !== testId) {
-          return test;
-        }
-        const updated = updater(test);
-        if (!syncJson) {
-          return updated;
-        }
-        return {
-          ...updated,
-          rawJson: JSON.stringify(
-            serializeTestQuestions(updated.questions),
-            null,
-            2,
-          ),
-        };
-      }),
-    );
-  };
+    const immediate = options?.immediate ?? false;
+    
+    const updateFn = () => {
+      setTests((prev) => {
+        let hasChanges = false;
+        const newTests = prev.map((test) => {
+          if (test.tempId !== testId) {
+            return test;
+          }
+          hasChanges = true;
+          const updated = updater(test);
+          if (!syncJson) {
+            return updated;
+          }
+          return {
+            ...updated,
+            rawJson: JSON.stringify(
+              serializeTestQuestions(updated.questions),
+              null,
+              2,
+            ),
+          };
+        });
+        return hasChanges ? newTests : prev;
+      });
+    };
+    
+    if (immediate) {
+      updateFn();
+    } else {
+      startTransition(updateFn);
+    }
+  }, []);
 
   const handleRemoveTest = (testId: string) => {
     setTests((prev) => prev.filter((test) => test.tempId !== testId));
@@ -2651,25 +2709,52 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
     formId: string,
     updater: (form: CourseFormState) => CourseFormState,
   ) => {
-    setModules((prev) =>
-      prev.map((m) =>
-        m.tempId === moduleId
-          ? {
-              ...m,
-              lessons: m.lessons.map((l) =>
-                l.tempId === lessonId
-                  ? {
-                      ...l,
-                      forms: l.forms.map((f) =>
-                        f.tempId === formId ? updater(f) : f,
-                      ),
-                    }
-                  : l,
-              ),
+    startTransition(() => {
+      setModules((prev) => {
+        let hasChanges = false;
+        const newModules = prev.map((m) => {
+          if (m.tempId !== moduleId) {
+            return m;
+          }
+          
+          let formChanged = false;
+          const newLessons = m.lessons.map((l) => {
+            if (l.tempId !== lessonId) {
+              return l;
             }
-          : m,
-      ),
-    );
+            
+            const newForms = l.forms.map((f) => {
+              if (f.tempId !== formId) {
+                return f;
+              }
+              formChanged = true;
+              return updater(f);
+            });
+            
+            if (!formChanged) {
+              return l;
+            }
+            
+            hasChanges = true;
+            return {
+              ...l,
+              forms: newForms,
+            };
+          });
+          
+          if (!formChanged) {
+            return m;
+          }
+          
+          return {
+            ...m,
+            lessons: newLessons,
+          };
+        });
+        
+        return hasChanges ? newModules : prev;
+      });
+    });
   }, []);
 
   // Обработчики для форм
