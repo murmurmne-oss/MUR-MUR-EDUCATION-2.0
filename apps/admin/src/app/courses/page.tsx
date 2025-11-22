@@ -9,6 +9,7 @@ export default function CoursesAdminPage() {
   const [courses, setCourses] = useState<CourseSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [duplicatingCourseId, setDuplicatingCourseId] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -50,6 +51,87 @@ export default function CoursesAdminPage() {
     [courses],
   );
 
+  const handleDuplicateCourse = async (course: CourseSummary, e: React.MouseEvent) => {
+    e.stopPropagation(); // Предотвращаем переход на страницу курса
+    setDuplicatingCourseId(course.id);
+    setError(null);
+
+    try {
+      // Загружаем детали курса
+      const courseDetails = await apiClient.getCourse(course.slug);
+
+      // Создаем новое название и slug
+      const newTitle = `${courseDetails.title} (копия)`;
+      const newSlug = `${courseDetails.slug}-copy-${Date.now()}`;
+
+      // Создаем payload для нового курса
+      const duplicatePayload = {
+        title: newTitle,
+        slug: newSlug,
+        shortDescription: courseDetails.shortDescription,
+        description: courseDetails.description,
+        coverImageUrl: courseDetails.coverImageUrl,
+        promoVideoUrl: courseDetails.promoVideoUrl,
+        category: courseDetails.category,
+        language: courseDetails.language,
+        level: courseDetails.level,
+        priceAmount: courseDetails.priceAmount,
+        priceCurrency: courseDetails.priceCurrency,
+        isFree: courseDetails.isFree,
+        isPublished: false, // Новый курс не опубликован по умолчанию
+        modules: courseDetails.modules?.map((module) => ({
+          title: module.title,
+          description: module.description,
+          order: module.order,
+          lessons: module.lessons?.map((lesson) => ({
+            title: lesson.title,
+            summary: lesson.summary,
+            content: lesson.content,
+            contentType: lesson.contentType,
+            videoUrl: lesson.videoUrl,
+            durationMinutes: lesson.durationMinutes,
+            order: lesson.order,
+            isPreview: lesson.isPreview,
+          })),
+        })),
+        tests: courseDetails.tests?.map((test) => ({
+          title: test.title,
+          description: test.description,
+          questions: test.questions,
+          unlockModuleId: test.unlockModuleId,
+          unlockLessonId: test.unlockLessonId,
+        })),
+        forms: courseDetails.forms?.map((form) => ({
+          title: form.title,
+          description: form.description,
+          questions: form.questions,
+          results: form.results,
+          unlockModuleId: form.unlockModuleId,
+          unlockLessonId: form.unlockLessonId,
+        })),
+      };
+
+      // Создаем новый курс
+      const newCourse = await apiClient.createCourse(duplicatePayload);
+
+      // Обновляем список курсов
+      const updatedCourses = await apiClient.getCourses();
+      setCourses(updatedCourses);
+
+      // Перенаправляем на страницу редактирования нового курса
+      router.push(`/courses/${newCourse.slug}`);
+    } catch (duplicateError) {
+      console.error("Failed to duplicate course", duplicateError);
+      setError(
+        duplicateError instanceof Error
+          ? duplicateError.message
+          : "Не удалось дублировать курс. Попробуйте позже.",
+      );
+    } finally {
+      setDuplicatingCourseId(null);
+    }
+  };
+
   return (
     <div className="flex flex-1 flex-col gap-6">
       <header className="flex items-center justify-between">
@@ -74,11 +156,12 @@ export default function CoursesAdminPage() {
         </section>
       ) : (
         <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-border/40">
-          <div className="grid grid-cols-[2fr_1fr_1fr_1fr] gap-4 border-b border-border/60 pb-3 text-xs font-semibold uppercase text-text-light">
+          <div className="grid grid-cols-[2fr_1fr_1fr_1fr_auto] gap-4 border-b border-border/60 pb-3 text-xs font-semibold uppercase text-text-light">
             <span>Название</span>
             <span>Цена</span>
             <span>Категория</span>
             <span>Ученики</span>
+            <span></span>
           </div>
 
           <div className="divide-y divide-border/60">
@@ -90,25 +173,56 @@ export default function CoursesAdminPage() {
                   />
                 ))
               : sortedCourses.map((course) => (
-                  <button
+                  <div
                     key={course.id}
-                    type="button"
-                    onClick={() => router.push(`/courses/${course.slug}`)}
-                    className="grid w-full grid-cols-[2fr_1fr_1fr_1fr] gap-4 py-4 text-left text-sm transition-colors hover:bg-card/60"
+                    className="grid grid-cols-[2fr_1fr_1fr_1fr_auto] gap-4 items-center py-4"
                   >
-                    <span className="font-medium text-text-dark">
-                      {course.title}
-                    </span>
-                    <span className="text-text-medium">
-                      {course.isFree
-                        ? "Бесплатно"
-                        : formatRevenue(course.priceAmount, course.priceCurrency)}
-                    </span>
-                    <span className="text-text-medium">{course.category}</span>
-                    <span className="text-text-dark">
-                      {course._count?.enrollments ?? 0}
-                    </span>
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() => router.push(`/courses/${course.slug}`)}
+                      className="text-left text-sm transition-colors hover:bg-card/60 rounded px-2 py-1 -mx-2 -my-1"
+                    >
+                      <span className="font-medium text-text-dark">
+                        {course.title}
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => router.push(`/courses/${course.slug}`)}
+                      className="text-left text-sm transition-colors hover:bg-card/60 rounded px-2 py-1 -mx-2 -my-1"
+                    >
+                      <span className="text-text-medium">
+                        {course.isFree
+                          ? "Бесплатно"
+                          : formatRevenue(course.priceAmount, course.priceCurrency)}
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => router.push(`/courses/${course.slug}`)}
+                      className="text-left text-sm transition-colors hover:bg-card/60 rounded px-2 py-1 -mx-2 -my-1"
+                    >
+                      <span className="text-text-medium">{course.category}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => router.push(`/courses/${course.slug}`)}
+                      className="text-left text-sm transition-colors hover:bg-card/60 rounded px-2 py-1 -mx-2 -my-1"
+                    >
+                      <span className="text-text-dark">
+                        {course._count?.enrollments ?? 0}
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => handleDuplicateCourse(course, e)}
+                      disabled={duplicatingCourseId === course.id}
+                      className="rounded-full border border-brand-pink px-3 py-1 text-xs font-semibold text-brand-pink transition-colors hover:bg-brand-pink hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                      title="Дублировать курс"
+                    >
+                      {duplicatingCourseId === course.id ? "..." : "Дублировать"}
+                    </button>
+                  </div>
                 ))}
           </div>
         </section>
