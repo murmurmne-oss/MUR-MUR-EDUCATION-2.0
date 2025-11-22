@@ -1110,7 +1110,30 @@ function DraggableFormItem({
   };
 
   return (
-    <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
+    <div ref={setNodeRef} style={style} {...attributes} className="relative">
+      {/* Drag handle - значок в правом верхнем углу */}
+      <div
+        {...listeners}
+        className="absolute right-2 top-2 z-10 flex h-8 w-8 cursor-move items-center justify-center rounded-full bg-brand-pink/10 text-brand-pink transition-colors hover:bg-brand-pink hover:text-white"
+        style={{ touchAction: "none" }}
+        onClick={(e) => e.stopPropagation()}
+        title="Перетащите для перемещения"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          fill="none"
+          viewBox="0 0 24 24"
+          strokeWidth={2}
+          stroke="currentColor"
+          className="h-5 w-5"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M3.75 9h16.5m-16.5 6.75h16.5m-7.5-11.25v12m-7.5-12v12"
+          />
+        </svg>
+      </div>
       {children}
     </div>
   );
@@ -1172,7 +1195,30 @@ function DraggableTestItem({
   };
 
   return (
-    <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
+    <div ref={setNodeRef} style={style} {...attributes} className="relative">
+      {/* Drag handle - значок в правом верхнем углу */}
+      <div
+        {...listeners}
+        className="absolute right-2 top-2 z-10 flex h-8 w-8 cursor-move items-center justify-center rounded-full bg-brand-pink/10 text-brand-pink transition-colors hover:bg-brand-pink hover:text-white"
+        style={{ touchAction: "none" }}
+        onClick={(e) => e.stopPropagation()}
+        title="Перетащите для перемещения"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          fill="none"
+          viewBox="0 0 24 24"
+          strokeWidth={2}
+          stroke="currentColor"
+          className="h-5 w-5"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M3.75 9h16.5m-16.5 6.75h16.5m-7.5-11.25v12m-7.5-12v12"
+          />
+        </svg>
+      </div>
       {children}
     </div>
   );
@@ -1209,7 +1255,30 @@ function DraggableContentBlock({
   };
 
   return (
-    <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
+    <div ref={setNodeRef} style={style} {...attributes} className="relative">
+      {/* Drag handle - значок в правом верхнем углу */}
+      <div
+        {...listeners}
+        className="absolute right-2 top-2 z-10 flex h-8 w-8 cursor-move items-center justify-center rounded-full bg-brand-pink/10 text-brand-pink transition-colors hover:bg-brand-pink hover:text-white"
+        style={{ touchAction: "none" }}
+        onClick={(e) => e.stopPropagation()}
+        title="Перетащите для перемещения"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          fill="none"
+          viewBox="0 0 24 24"
+          strokeWidth={2}
+          stroke="currentColor"
+          className="h-5 w-5"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M3.75 9h16.5m-16.5 6.75h16.5m-7.5-11.25v12m-7.5-12v12"
+          />
+        </svg>
+      </div>
       {children}
     </div>
   );
@@ -1257,6 +1326,7 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
     useSensor(PointerSensor, {
       activationConstraint: {
         distance: 8, // Минимальное расстояние для начала перетаскивания
+        delay: 200, // Задержка перед началом перетаскивания (в миллисекундах) - позволяет выделять текст
       },
     }),
   );
@@ -3594,12 +3664,7 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
                                   moduleTempId={module.tempId}
                                   lessonTempId={lesson.tempId}
                                 >
-                                  <div className="flex flex-col gap-3 rounded-xl border border-border/40 bg-white p-3 cursor-move hover:border-brand-pink transition-colors">
-                                    {/* Индикатор перетаскивания */}
-                                    <div className="flex items-center gap-2 text-[10px] text-text-light mb-1">
-                                      <span>⋮⋮</span>
-                                      <span>Перетащите форму в другой урок</span>
-                                    </div>
+                                  <div className="flex flex-col gap-3 rounded-xl border border-border/40 bg-white p-3 hover:border-brand-pink transition-colors">
                               <div className="grid gap-3 md:grid-cols-2" onClick={(e) => e.stopPropagation()}>
                                 <label className="flex flex-col gap-1 text-xs text-text-dark">
                                   <span className="text-[11px] font-medium text-text-light">
@@ -4455,12 +4520,7 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
             <>
               {tests.map((test, index) => (
                 <DraggableTestItem key={test.tempId} test={test}>
-                  <div className="space-y-3 rounded-3xl border border-border/60 bg-surface px-5 py-4 cursor-move hover:border-brand-pink transition-colors">
-                    {/* Индикатор перетаскивания */}
-                    <div className="flex items-center gap-2 text-[10px] text-text-light mb-2">
-                      <span>⋮⋮</span>
-                      <span>Перетащите тест для изменения порядка или в другой урок</span>
-                    </div>
+                  <div className="space-y-3 rounded-3xl border border-border/60 bg-surface px-5 py-4 hover:border-brand-pink transition-colors">
                     <div className="flex items-center justify-between" onClick={(e) => e.stopPropagation()}>
                       <p className="text-sm font-semibold text-text-dark">
                         Тест {index + 1}
