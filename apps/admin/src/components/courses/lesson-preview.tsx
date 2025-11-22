@@ -45,18 +45,18 @@ export function LessonPreview({
 }: LessonPreviewProps) {
   const blocks = useMemo(() => {
     if (lesson.contentMode === "simple") {
-      if (!lesson.simpleText || lesson.simpleText.trim().length === 0) {
+      if (!lesson.contentText || lesson.contentText.trim().length === 0) {
         return [];
       }
       return [
         {
           type: "paragraph" as const,
-          text: lesson.simpleText,
+          text: lesson.contentText,
         },
       ];
     }
     return lesson.contentBlocks || [];
-  }, [lesson.contentMode, lesson.simpleText, lesson.contentBlocks]);
+  }, [lesson.contentMode, lesson.contentText, lesson.contentBlocks]);
 
   return (
     <div className="flex h-full flex-col">
