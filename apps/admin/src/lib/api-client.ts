@@ -160,6 +160,8 @@ export type CourseDetails = {
     id: string;
     title: string;
     description: string | null;
+    type?: "CHOICE" | "RATING";
+    maxRating?: number | null;
     questions: unknown;
     results: unknown;
     lessonId: string | null;
@@ -239,6 +241,8 @@ export type CourseTestPayload = {
 export type CourseFormPayload = {
   title: string;
   description?: string | null;
+  type?: "CHOICE" | "RATING";
+  maxRating?: number | null;
   questions?: unknown;
   results?: unknown;
   unlockModuleId?: string | null;

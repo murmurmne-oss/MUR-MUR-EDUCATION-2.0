@@ -16,6 +16,11 @@ import {
   CourseDetails,
   UpdateLessonProgressPayload,
   UserEnrollment,
+  PublicForm,
+  StartFormPayload,
+  StartFormResponse,
+  SubmitFormPayload,
+  SubmitFormResult,
 } from '@/lib/api-client';
 import {
   LessonContentBlock,
@@ -540,6 +545,352 @@ function TestRunner({
   );
 }
 
+function FormRunnerModal({
+  form,
+  courseSlug,
+  onClose,
+  t,
+  userProfilePayload,
+}: {
+  form: PublicForm;
+  courseSlug: string;
+  onClose: () => void;
+  t: TranslateFn;
+  userProfilePayload: StartFormPayload;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 py-6">
+      <div className="w-full max-w-md rounded-3xl bg-white p-5 shadow-lg">
+        <FormRunner
+          form={form}
+          courseSlug={courseSlug}
+          onClose={onClose}
+          t={t}
+          userProfilePayload={userProfilePayload}
+        />
+      </div>
+    </div>
+  );
+}
+
+function FormRunner({
+  form,
+  onClose,
+  t,
+}: {
+  form: PublicForm;
+  onClose: () => void;
+  t: TranslateFn;
+}) {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [answers, setAnswers] = useState<Record<string, string | string[]>>({});
+  const [isFinished, setIsFinished] = useState(false);
+  const [formResult, setFormResult] = useState<SubmitFormResult | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [attemptId, setAttemptId] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    setIsStarting(true);
+    setCurrentIndex(0);
+    setAnswers({});
+    setIsFinished(false);
+    setFormResult(null);
+    setError(null);
+    setAttemptId(null);
+
+    // Начинаем форму при монтировании
+    apiClient
+      .startCourseForm(courseSlug, form.id, userProfilePayload)
+      .then((response) => {
+        if (!active) return;
+        setAttemptId(response.attemptId);
+        setIsStarting(false);
+      })
+      .catch((startError) => {
+        if (!active) return;
+        console.error("Failed to start form", startError);
+        setError(
+          startError instanceof Error
+            ? t(startError.message)
+            : t("Не удалось начать форму. Попробуйте позже."),
+        );
+        setIsStarting(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [form, courseSlug, userProfilePayload, t]);
+
+  const currentQuestion = form.questions[currentIndex];
+  const totalQuestions = form.questions.length;
+  const isLastQuestion = currentIndex === totalQuestions - 1;
+
+  const currentValue = answers[currentQuestion?.id ?? ''];
+
+  if (totalQuestions === 0) {
+    return (
+      <div className="space-y-4">
+        <p className="text-sm text-text-medium">
+          {t("Эта форма ещё не содержит вопросов.")}
+        </p>
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-full bg-brand-pink px-4 py-2 text-xs font-semibold text-white transition-transform active:scale-95"
+          >
+            {t("Закрыть")}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const allAnswered = useMemo(() => {
+    return form.questions.every((question) => {
+      const answer = answers[question.id];
+      if (form.type === "RATING") {
+        // Для рейтинговых форм ответ должен быть числом от 1 до maxRating
+        const rating = typeof answer === "string" ? parseFloat(answer) : (typeof answer === "number" ? answer : 0);
+        return !Number.isNaN(rating) && rating >= 1 && rating <= (form.maxRating ?? 5);
+      }
+      // Для форм с выбором вариантов
+      const selected = Array.isArray(answer) ? answer : (answer ? [answer] : []);
+      return selected.length > 0;
+    });
+  }, [answers, form.questions, form.type, form.maxRating]);
+
+  const handleSelectOption = (questionId: string, optionId: string, isMultiple: boolean) => {
+    setAnswers((prev) => {
+      if (isMultiple) {
+        const current = Array.isArray(prev[questionId]) ? [...(prev[questionId] as string[])] : [];
+        const next = current.includes(optionId)
+          ? current.filter((id) => id !== optionId)
+          : [...current, optionId];
+        return { ...prev, [questionId]: next };
+      }
+      return { ...prev, [questionId]: [optionId] };
+    });
+  };
+
+  const handleRatingChange = (questionId: string, rating: number) => {
+    setAnswers((prev) => ({
+      ...prev,
+      [questionId]: rating.toString(),
+    }));
+  };
+
+  const handleNext = () => {
+    if (isLastQuestion) {
+      handleSubmit();
+    } else {
+      setCurrentIndex((prev) => prev + 1);
+    }
+  };
+
+  const handleSubmit = async () => {
+    if (!attemptId) {
+      setError(t("Не удалось отправить форму. Попробуйте начать заново."));
+      return;
+    }
+
+    setIsSubmitting(true);
+    setError(null);
+
+    try {
+      const payload: SubmitFormPayload = {
+        attemptId,
+        responses: answers,
+      };
+
+      const result = await apiClient.submitCourseForm(courseSlug, form.id, payload);
+      setFormResult(result);
+      setIsFinished(true);
+    } catch (submitError) {
+      console.error("Failed to submit form", submitError);
+      setError(
+        submitError instanceof Error
+          ? t(submitError.message)
+          : t("Не удалось отправить форму. Попробуйте позже."),
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  if (isStarting) {
+    return (
+      <div className="space-y-4">
+        <p className="text-sm text-text-medium">{t("Загрузка формы...")}</p>
+      </div>
+    );
+  }
+
+  if (isFinished && formResult) {
+    return (
+      <div className="space-y-4">
+        <h3 className="text-lg font-semibold text-text-dark">{t("Результат")}</h3>
+        {formResult.result ? (
+          <div className="space-y-2 rounded-xl bg-surface p-4">
+            <h4 className="font-semibold text-text-dark">{formResult.result.title}</h4>
+            {formResult.result.description && (
+              <p className="text-sm text-text-medium">{formResult.result.description}</p>
+            )}
+          </div>
+        ) : (
+          <p className="text-sm text-text-medium">{t("Спасибо за прохождение формы!")}</p>
+        )}
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-full bg-brand-pink px-4 py-2 text-xs font-semibold text-white transition-transform active:scale-95"
+          >
+            {t("Закрыть")}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!currentQuestion) {
+    return null;
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="text-lg font-semibold text-text-dark">{form.title}</h3>
+        <button
+          type="button"
+          onClick={onClose}
+          className="text-text-light hover:text-text-dark"
+        >
+          ✕
+        </button>
+      </div>
+
+      {form.description && (
+        <p className="text-sm text-text-medium">{form.description}</p>
+      )}
+
+      <div className="space-y-4">
+        <div className="flex items-center justify-between text-xs text-text-light">
+          <span>
+            {t("Вопрос {current} из {total}", {
+              current: currentIndex + 1,
+              total: totalQuestions,
+            })}
+          </span>
+        </div>
+
+        <div className="space-y-3">
+          <h4 className="font-medium text-text-dark">{currentQuestion.text}</h4>
+
+          {form.type === "RATING" ? (
+            <div className="space-y-2">
+              <div className="flex items-center justify-center gap-2">
+                {Array.from({ length: form.maxRating ?? 5 }, (_, i) => i + 1).map((rating) => {
+                  const isSelected = currentValue === rating.toString();
+                  return (
+                    <button
+                      key={rating}
+                      type="button"
+                      onClick={() => handleRatingChange(currentQuestion.id, rating)}
+                      className={`flex h-12 w-12 items-center justify-center rounded-full text-lg font-semibold transition-all ${
+                        isSelected
+                          ? "bg-brand-pink text-white scale-110"
+                          : "bg-surface text-text-medium hover:bg-gray-100"
+                      }`}
+                    >
+                      {rating}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="text-center text-xs text-text-light">
+                {t("Оцените от 1 до {max}", { max: form.maxRating ?? 5 })}
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {currentQuestion.options.map((option) => {
+                const selected = Array.isArray(currentValue)
+                  ? currentValue.includes(option.id)
+                  : currentValue === option.id;
+                const isMultiple = false; // Можно определить по типу вопроса, если нужно
+
+                return (
+                  <button
+                    key={option.id}
+                    type="button"
+                    onClick={() => handleSelectOption(currentQuestion.id, option.id, isMultiple)}
+                    className={`w-full rounded-xl border-2 p-3 text-left transition-all ${
+                      selected
+                        ? "border-brand-pink bg-brand-pink/10"
+                        : "border-border bg-surface hover:border-brand-pink/50"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <div
+                        className={`flex h-5 w-5 items-center justify-center rounded-full border-2 ${
+                          selected
+                            ? "border-brand-pink bg-brand-pink"
+                            : "border-text-light"
+                        }`}
+                      >
+                        {selected && <span className="text-xs text-white">✓</span>}
+                      </div>
+                      <span className="text-sm text-text-dark">{option.text}</span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {error && (
+        <div className="rounded-xl bg-red-50 p-3 text-sm text-red-600">{error}</div>
+      )}
+
+      <div className="flex justify-end gap-2">
+        {currentIndex > 0 && (
+          <button
+            type="button"
+            onClick={() => setCurrentIndex((prev) => prev - 1)}
+            className="rounded-full border border-border px-4 py-2 text-xs font-medium text-text-medium transition-colors hover:bg-surface"
+          >
+            {t("Назад")}
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={handleNext}
+          disabled={!allAnswered || isSubmitting}
+          className="rounded-full bg-brand-pink px-4 py-2 text-xs font-semibold text-white transition-transform active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {isSubmitting
+            ? t("Отправка...")
+            : isLastQuestion
+              ? t("Завершить")
+              : t("Следующий")}
+        </button>
+      </div>
+
+      {!isLastQuestion && !allAnswered ? (
+        <p className="text-[10px] text-text-light">
+          {t("Чтобы продолжить, ответьте на вопрос.")}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
 export default function MyCourseDetailsPage({
   params,
 }: {
@@ -567,9 +918,22 @@ export default function MyCourseDetailsPage({
     [course],
   );
   const [selectedTest, setSelectedTest] = useState<ParsedCourseTest | null>(null);
+  const [selectedForm, setSelectedForm] = useState<PublicForm | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isProgressUpdating, setIsProgressUpdating] = useState(false);
+
+  const userProfilePayload = useMemo<StartFormPayload>(
+    () => ({
+      userId,
+      firstName: user?.first_name ?? null,
+      lastName: user?.last_name ?? null,
+      username: user?.username ?? null,
+      languageCode: profile?.languageCode ?? null,
+      avatarUrl: user?.photo_url ?? null,
+    }),
+    [userId, user, profile],
+  );
 
   useEffect(() => {
     let active = true;
@@ -849,6 +1213,22 @@ export default function MyCourseDetailsPage({
       setIsProgressUpdating(false);
     }
   }, [course, refreshEnrollment, selectedLesson, updateLessonProgress]);
+
+  const handleStartForm = useCallback(async (formId: string) => {
+    if (!course) return;
+
+    try {
+      const response = await apiClient.startCourseForm(
+        courseSlug,
+        formId,
+        userProfilePayload,
+      );
+      setSelectedForm(response.form);
+    } catch (startError) {
+      console.error('Failed to start form', startError);
+      // Ошибка будет обработана в FormRunner
+    }
+  }, [course, courseSlug, userProfilePayload]);
 
   const handleResetLesson = useCallback(async () => {
     if (!course || !selectedLesson) return;
@@ -1288,6 +1668,69 @@ export default function MyCourseDetailsPage({
               </section>
             ) : null}
 
+            {course.forms && course.forms.length > 0 ? (
+              <section className="space-y-3 rounded-3xl bg-white p-5 shadow-sm">
+                <h2 className="text-lg font-semibold text-text-dark">
+                  {t('Формы')}
+                </h2>
+                <ul className="space-y-3">
+                  {course.forms.map((form) => {
+                    // Преобразуем форму в PublicForm для отображения
+                    const questions = Array.isArray(form.questions) ? form.questions : [];
+                    const publicForm: PublicForm = {
+                      id: form.id,
+                      title: form.title,
+                      description: form.description,
+                      type: form.type === "RATING" ? "RATING" : "CHOICE",
+                      maxRating: form.maxRating ?? null,
+                      questionCount: questions.length,
+                      questions: questions.map((q: any, index: number) => ({
+                        id: q.id || `q-${index}`,
+                        text: q.text || "",
+                        options: Array.isArray(q.options) ? q.options.map((opt: any, optIndex: number) => ({
+                          id: opt.id || `opt-${optIndex}`,
+                          text: opt.text || "",
+                          category: opt.category || "",
+                        })) : [],
+                      })),
+                    };
+
+                    return (
+                      <li
+                        key={form.id}
+                        className="rounded-2xl border border-card bg-surface px-4 py-3 text-sm text-text-medium"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="space-y-1">
+                            <p className="font-medium text-text-dark">{form.title}</p>
+                            {form.description ? (
+                              <p className="text-xs text-text-light">{form.description}</p>
+                            ) : null}
+                            <p className="text-xs text-text-light">
+                              {t('Вопросов: {count}', {
+                                count: publicForm.questionCount,
+                              })}
+                              {form.type === "RATING" && form.maxRating && (
+                                <> · {t("Оценка от 1 до {max}", { max: form.maxRating })}</>
+                              )}
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleStartForm(form.id)}
+                            disabled={publicForm.questionCount === 0}
+                            className="rounded-full bg-brand-pink px-4 py-2 text-xs font-semibold text-white transition-transform active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            {t('Пройти форму')}
+                          </button>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </section>
+            ) : null}
+
             <section className="space-y-3">
               <h2 className="text-lg font-semibold text-text-dark">
                 {t('Программа курса')}
@@ -1434,6 +1877,27 @@ export default function MyCourseDetailsPage({
             }
           }}
           t={t}
+        />
+      ) : null}
+
+      {selectedForm ? (
+        <FormRunnerModal
+          form={selectedForm}
+          courseSlug={courseSlug}
+          onClose={async () => {
+            setSelectedForm(null);
+            // Обновляем курс после закрытия формы, чтобы проверить разблокировку модулей
+            if (course) {
+              try {
+                const updatedCourse = await apiClient.getCourse(courseSlug, userId);
+                setCourse(updatedCourse);
+              } catch (refreshError) {
+                console.error('Failed to refresh course after form', refreshError);
+              }
+            }
+          }}
+          t={t}
+          userProfilePayload={userProfilePayload}
         />
       ) : null}
     </div>

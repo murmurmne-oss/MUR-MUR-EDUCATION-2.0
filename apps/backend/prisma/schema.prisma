@@ -255,15 +255,17 @@ model TestAttempt {
   user User       @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
-/// Формы / опросники в курсах (с результатами на основе выбора вариантов).
+/// Формы / опросники в курсах (с результатами на основе выбора вариантов или оценок).
 model CourseForm {
   id          String   @id @default(cuid())
   courseId    String
   lessonId    String?  // Если указан, форма принадлежит конкретному уроку
   title       String
   description String?
-  questions   Json     // Вопросы с вариантами ответов, помеченными категориями (A, B, C...)
-  results     Json     // Результаты с условиями (больше A, больше B и т.д.)
+  type        FormType @default(CHOICE) // Тип формы: CHOICE (выбор вариантов) или RATING (оценка)
+  maxRating   Int?     // Максимальная оценка для рейтинговых форм (по умолчанию 5)
+  questions   Json     // Вопросы с вариантами ответов (CHOICE) или только текст (RATING)
+  results     Json     // Результаты с условиями (CHOICE) или диапазонами баллов (RATING)
   unlockModuleId String?
   unlockLessonId String?
   createdAt   DateTime @default(now())
@@ -413,5 +415,10 @@ enum ActivityActorType {
   SYSTEM
   USER
   ADMIN
+}
+
+enum FormType {
+  CHOICE
+  RATING
 }
 

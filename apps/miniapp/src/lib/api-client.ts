@@ -187,6 +187,18 @@ export type CourseDetails = {
     content: string | null;
     createdAt: string;
   }>;
+  forms: Array<{
+    id: string;
+    title: string;
+    description: string | null;
+    type?: "CHOICE" | "RATING";
+    maxRating?: number | null;
+    questions: unknown;
+    results: unknown;
+    lessonId: string | null;
+    unlockModuleId: string | null;
+    unlockLessonId: string | null;
+  }>;
   _count: {
     enrollments: number;
     reviews: number;
@@ -323,6 +335,63 @@ export type SubmitTestResult = {
   }>;
 };
 
+export type PublicFormQuestion = {
+  id: string;
+  text: string;
+  options: Array<{
+    id: string;
+    text: string;
+    category: string;
+  }>;
+};
+
+export type PublicForm = {
+  id: string;
+  title: string;
+  description: string | null;
+  type: "CHOICE" | "RATING";
+  maxRating: number | null;
+  questionCount: number;
+  questions: PublicFormQuestion[];
+  unlockLesson?: {
+    id: string;
+    title: string;
+  };
+  unlockModule?: {
+    id: string;
+    title: string;
+  };
+};
+
+export type StartFormPayload = {
+  userId: string;
+  firstName?: string | null;
+  lastName?: string | null;
+  username?: string | null;
+  languageCode?: string | null;
+  avatarUrl?: string | null;
+};
+
+export type StartFormResponse = {
+  attemptId: string;
+  form: PublicForm;
+};
+
+export type SubmitFormPayload = {
+  attemptId: string;
+  responses: Record<string, string | string[]>; // questionId -> selected optionId(s) для CHOICE или rating (число как строка) для RATING
+};
+
+export type SubmitFormResult = {
+  attemptId: string;
+  resultId?: string;
+  result?: {
+    id: string;
+    title: string;
+    description?: string;
+  };
+};
+
 export type TelegramStarsInvoiceUser = {
   id: string;
   firstName?: string | null;
@@ -416,6 +485,24 @@ export const apiClient = {
     payload: SubmitTestPayload,
   ) =>
     request<SubmitTestResult>(`/courses/${idOrSlug}/tests/${testId}/submit`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  startCourseForm: (
+    idOrSlug: string,
+    formId: string,
+    payload: StartFormPayload,
+  ) =>
+    request<StartFormResponse>(`/courses/${idOrSlug}/forms/${formId}/start`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  submitCourseForm: (
+    idOrSlug: string,
+    formId: string,
+    payload: SubmitFormPayload,
+  ) =>
+    request<SubmitFormResult>(`/courses/${idOrSlug}/forms/${formId}/submit`, {
       method: "POST",
       body: JSON.stringify(payload),
     }),

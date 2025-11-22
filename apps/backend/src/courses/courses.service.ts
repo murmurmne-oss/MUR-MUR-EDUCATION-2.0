@@ -18,6 +18,7 @@ import {
   Prisma,
   TestAttemptStatus,
   FormAttemptStatus,
+  FormType,
 } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -52,6 +53,8 @@ export type CourseTestInput = {
 export type CourseFormInput = {
   title: string;
   description?: string | null;
+  type?: "CHOICE" | "RATING";
+  maxRating?: number | null;
   questions?: Prisma.InputJsonValue | null;
   results?: Prisma.InputJsonValue | null;
   lessonId?: string | null;
@@ -199,6 +202,8 @@ export type PublicForm = {
   id: string;
   title: string;
   description: string | null;
+  type: "CHOICE" | "RATING";
+  maxRating: number | null;
   questionCount: number;
   questions: PublicFormQuestion[];
   unlockLesson?: {
@@ -1545,6 +1550,8 @@ export class CoursesService {
       return {
         title: form.title,
         description: form.description ?? null,
+        type: form.type === "RATING" ? FormType.RATING : FormType.CHOICE,
+        maxRating: form.type === "RATING" && typeof form.maxRating === "number" ? form.maxRating : null,
         questions: form.questions ?? Prisma.JsonNull,
         results: form.results ?? Prisma.JsonNull,
         lessonId: lessonId.length > 0 ? lessonId : null,
@@ -1571,6 +1578,8 @@ export class CoursesService {
             id: true,
             title: true,
             description: true,
+            type: true,
+            maxRating: true,
             questions: true,
             results: true,
             unlockLessonId: true,
@@ -1662,6 +1671,8 @@ export class CoursesService {
           select: {
             id: true,
             courseId: true,
+            type: true,
+            maxRating: true,
             questions: true,
             results: true,
             course: {
@@ -1690,8 +1701,14 @@ export class CoursesService {
       };
     }
 
-    // Подсчитываем результаты на основе выбранных вариантов
-    const resultId = this.calculateFormResult(attempt.form.questions, attempt.form.results, payload.responses);
+    // Подсчитываем результаты на основе выбранных вариантов или оценок
+    const resultId = this.calculateFormResult(
+      attempt.form.type,
+      attempt.form.maxRating,
+      attempt.form.questions,
+      attempt.form.results,
+      payload.responses,
+    );
 
     await this.prisma.formAttempt.update({
       where: { id: attempt.id },
@@ -1729,6 +1746,8 @@ export class CoursesService {
   }
 
   private calculateFormResult(
+    formType: FormType,
+    maxRating: number | null,
     questions: Prisma.JsonValue,
     results: Prisma.JsonValue,
     responses: Record<string, string | string[]>,
@@ -1737,6 +1756,53 @@ export class CoursesService {
       return null;
     }
 
+    // Для рейтинговых форм подсчитываем сумму баллов
+    if (formType === FormType.RATING) {
+      let totalScore = 0;
+
+      for (const question of questions) {
+        if (!question || typeof question !== 'object') continue;
+        const q = question as Record<string, unknown>;
+        const questionId = typeof q.id === 'string' ? q.id : '';
+        const response = responses[questionId];
+
+        if (!response) continue;
+
+        // Для рейтинговых форм response - это число (оценка)
+        const rating = Array.isArray(response) 
+          ? parseFloat(response[0] || '0')
+          : parseFloat(response as string || '0');
+
+        if (!Number.isNaN(rating) && rating >= 1) {
+          const max = maxRating ?? 5;
+          totalScore += Math.max(1, Math.min(max, Math.round(rating)));
+        }
+      }
+
+      // Находим результат на основе диапазонов баллов
+      for (const result of results) {
+        if (!result || typeof result !== 'object') continue;
+        const r = result as Record<string, unknown>;
+        const resultId = typeof r.id === 'string' ? r.id : '';
+        const minScore = typeof r.minScore === 'number' ? r.minScore : undefined;
+        const maxScore = typeof r.maxScore === 'number' ? r.maxScore : undefined;
+
+        if (!resultId) continue;
+
+        // Проверяем, попадает ли сумма баллов в диапазон
+        const inRange = 
+          (minScore === undefined || totalScore >= minScore) &&
+          (maxScore === undefined || totalScore <= maxScore);
+
+        if (inRange) {
+          return resultId;
+        }
+      }
+
+      return null;
+    }
+
+    // Для форм с выбором вариантов (CHOICE) - существующая логика
     // Подсчитываем количество выбранных вариантов по категориям
     const categoryCounts: Record<string, number> = {};
 
@@ -1838,6 +1904,8 @@ export class CoursesService {
     id: string;
     title: string;
     description: string | null;
+    type: FormType;
+    maxRating: number | null;
     questions: Prisma.JsonValue;
     results: Prisma.JsonValue;
     unlockModuleId?: string | null;
@@ -1891,6 +1959,8 @@ export class CoursesService {
       id: form.id,
       title: form.title,
       description: form.description,
+      type: form.type === FormType.RATING ? "RATING" : "CHOICE",
+      maxRating: form.maxRating,
       questionCount: publicQuestions.length,
       questions: publicQuestions,
       unlockLesson: form.unlockLessonId

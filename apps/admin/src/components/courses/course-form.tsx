@@ -152,15 +152,21 @@ type FormQuestionState = {
 type FormResultState = {
   tempId: string;
   id: string;
-  condition: string; // "more_A", "more_B", "equal_A_B" и т.д.
+  condition: string; // "more_A", "more_B" для CHOICE или "score_range" для RATING
   title: string;
   description: string;
+  minScore?: number; // Минимальный балл для RATING форм
+  maxScore?: number; // Максимальный балл для RATING форм
 };
+
+type FormType = "CHOICE" | "RATING";
 
 type CourseFormState = {
   tempId: string;
   title: string;
   description: string;
+  type: FormType;
+  maxRating: number; // Максимальная оценка для рейтинговых форм (1-10)
   questions: FormQuestionState[];
   results: FormResultState[];
   unlockModuleId: string | null;
@@ -919,12 +925,15 @@ function mapCourseToTests(course?: CourseDetails | null): TestState[] {
 }
 
 function createFormState(partial?: Partial<CourseFormState>): CourseFormState {
+  const formType = partial?.type ?? "CHOICE";
   const questions = partial?.questions ?? [createFormQuestionState()];
   const results = partial?.results ?? [createFormResultState()];
   return {
     tempId: partial?.tempId ?? createTempId("form"),
     title: partial?.title ?? "",
     description: partial?.description ?? "",
+    type: formType,
+    maxRating: partial?.maxRating ?? (formType === "RATING" ? 5 : 5),
     questions,
     results,
     unlockModuleId: partial?.unlockModuleId ?? null,
@@ -975,6 +984,8 @@ function createFormResultState(
     condition: partial?.condition ?? "more_A",
     title: partial?.title ?? "",
     description: partial?.description ?? "",
+    minScore: partial?.minScore,
+    maxScore: partial?.maxScore,
   };
 }
 
@@ -996,6 +1007,8 @@ function serializeFormResults(results: FormResultState[]): unknown[] {
     condition: result.condition,
     title: result.title,
     description: result.description,
+    minScore: result.minScore,
+    maxScore: result.maxScore,
   }));
 }
 
@@ -1050,6 +1063,8 @@ function parseFormResultsToState(results: unknown): FormResultState[] {
       condition: typeof result.condition === "string" ? result.condition : "more_A",
       title: typeof result.title === "string" ? result.title : "",
       description: typeof result.description === "string" ? result.description : "",
+      minScore: typeof result.minScore === "number" ? result.minScore : undefined,
+      maxScore: typeof result.maxScore === "number" ? result.maxScore : undefined,
     });
   });
 }
@@ -1059,11 +1074,15 @@ function mapCourseToForms(course?: CourseDetails | null): CourseFormState[] {
     return [];
   }
 
-  return course.forms.map((form) =>
-    createFormState({
+  return course.forms.map((form) => {
+    const formType = (form as any).type === "RATING" ? "RATING" : "CHOICE";
+    const maxRating = formType === "RATING" ? ((form as any).maxRating ?? 5) : 5;
+    return createFormState({
       tempId: createTempId("form"),
       title: form.title,
       description: form.description ?? "",
+      type: formType,
+      maxRating,
       questions: (() => {
         const parsed = parseFormQuestionsToState(form.questions);
         return parsed.length > 0 ? parsed : [createFormQuestionState()];
@@ -1074,8 +1093,8 @@ function mapCourseToForms(course?: CourseDetails | null): CourseFormState[] {
       })(),
       unlockModuleId: form.unlockModuleId ?? null,
       unlockLessonId: form.unlockLessonId ?? null,
-    }),
-  );
+    });
+  });
 }
 
 // Компонент для перетаскиваемой формы
@@ -1313,6 +1332,11 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
     mapCourseToTests(initialCourse),
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showFormTypeModal, setShowFormTypeModal] = useState(false);
+  const [pendingFormLocation, setPendingFormLocation] = useState<{
+    moduleTempId: string;
+    lessonTempId: string;
+  } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [collapsedModules, setCollapsedModules] = useState<Set<string>>(
     new Set(),
@@ -3011,6 +3035,8 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
         return lessonForms.map(({ form, lessonId }) => ({
           title: form.title,
           description: form.description || null,
+          type: form.type,
+          maxRating: form.type === "RATING" ? form.maxRating : null,
           questions: serializeFormQuestions(form.questions),
           results: serializeFormResults(form.results),
           lessonId: lessonId || null,
@@ -3623,23 +3649,11 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
                           <button
                             type="button"
                             onClick={() => {
-                              setModules((prev) =>
-                                prev.map((m) =>
-                                  m.tempId === module.tempId
-                                    ? {
-                                        ...m,
-                                        lessons: m.lessons.map((l) =>
-                                          l.tempId === lesson.tempId
-                                            ? {
-                                                ...l,
-                                                forms: [...l.forms, createFormState()],
-                                              }
-                                            : l,
-                                        ),
-                                      }
-                                    : m,
-                                ),
-                              );
+                              setPendingFormLocation({
+                                moduleTempId: module.tempId,
+                                lessonTempId: lesson.tempId,
+                              });
+                              setShowFormTypeModal(true);
                             }}
                             className="rounded-full border border-border px-3 py-1 text-[11px] font-medium text-text-medium transition-colors hover:bg-white"
                           >
@@ -3736,6 +3750,49 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
                                     className="rounded-xl border border-border bg-surface px-3 py-1.5 text-xs text-text-dark outline-none focus:border-brand-pink"
                                   />
                                 </label>
+                                {form.type === "RATING" && (
+                                  <label className="flex flex-col gap-1 text-xs text-text-dark">
+                                    <span className="text-[11px] font-medium text-text-light">
+                                      Максимальная оценка (1-10)
+                                    </span>
+                                    <input
+                                      type="number"
+                                      min="1"
+                                      max="10"
+                                      value={form.maxRating}
+                                      onChange={(event) =>
+                                        setModules((prev) =>
+                                          prev.map((m) =>
+                                            m.tempId === module.tempId
+                                              ? {
+                                                  ...m,
+                                                  lessons: m.lessons.map((l) =>
+                                                    l.tempId === lesson.tempId
+                                                      ? {
+                                                          ...l,
+                                                          forms: l.forms.map((f) =>
+                                                            f.tempId === form.tempId
+                                                              ? {
+                                                                  ...f,
+                                                                  maxRating: Math.max(
+                                                                    1,
+                                                                    Math.min(10, parseInt(event.target.value) || 5),
+                                                                  ),
+                                                                }
+                                                              : f,
+                                                          ),
+                                                        }
+                                                      : l,
+                                                  ),
+                                                }
+                                              : m,
+                                          ),
+                                        )
+                                      }
+                                      className="rounded-xl border border-border bg-surface px-3 py-1.5 text-xs text-text-dark outline-none focus:border-brand-pink"
+                                    />
+                                  </label>
+                                )}
                               </div>
 
                               {/* Вопросы формы */}
@@ -3834,8 +3891,9 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
                                           />
                                         </label>
 
-                                        <div className="space-y-1">
-                                          {question.options.map((option, optionIndex) => (
+                                        {form.type === "CHOICE" && (
+                                          <div className="space-y-1">
+                                            {question.options.map((option, optionIndex) => (
                                             <div
                                               key={option.tempId}
                                               className="flex items-center gap-2"
@@ -4038,6 +4096,12 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
                                             + Вариант
                                           </button>
                                         </div>
+                                        )}
+                                        {form.type === "RATING" && (
+                                          <div className="text-xs text-text-medium bg-blue-50 border border-blue-200 rounded-lg p-2">
+                                            Ученик будет оценивать этот вопрос от 1 до {form.maxRating} баллов
+                                          </div>
+                                        )}
                                       </div>
                                       {form.questions.length > 1 && (
                                         <button
@@ -4173,56 +4237,159 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
                                     <div className="flex items-start justify-between gap-2">
                                       <div className="flex-1 space-y-2">
                                         <div className="grid gap-2 md:grid-cols-2">
-                                          <label className="flex flex-col gap-1 text-xs text-text-dark">
-                                            <span className="text-[11px] font-medium text-text-light">
-                                              Условие
-                                            </span>
-                                            <select
-                                              value={result.condition}
-                                              onChange={(event) =>
-                                                setModules((prev) =>
-                                                  prev.map((m) =>
-                                                    m.tempId === module.tempId
-                                                      ? {
-                                                          ...m,
-                                                          lessons: m.lessons.map((l) =>
-                                                            l.tempId === lesson.tempId
-                                                              ? {
-                                                                  ...l,
-                                                                  forms: l.forms.map((f) =>
-                                                                    f.tempId === form.tempId
-                                                                      ? {
-                                                                          ...f,
-                                                                          results: f.results.map(
-                                                                            (r) =>
-                                                                              r.tempId ===
-                                                                              result.tempId
-                                                                                ? {
-                                                                                    ...r,
-                                                                                    condition: event.target.value,
-                                                                                  }
-                                                                                : r,
-                                                                          ),
-                                                                        }
-                                                                      : f,
-                                                                  ),
-                                                                }
-                                                              : l,
-                                                          ),
-                                                        }
-                                                      : m,
-                                                  ),
-                                                )
-                                              }
-                                              className="rounded-lg border border-border bg-white px-2 py-1 text-xs text-text-dark outline-none focus:border-brand-pink"
-                                            >
-                                              <option value="more_A">Больше вариантов A</option>
-                                              <option value="more_B">Больше вариантов B</option>
-                                              <option value="more_C">Больше вариантов C</option>
-                                              <option value="more_D">Больше вариантов D</option>
-                                              <option value="equal_A_B">Равно A и B</option>
-                                            </select>
-                                          </label>
+                                          {form.type === "CHOICE" ? (
+                                            <label className="flex flex-col gap-1 text-xs text-text-dark">
+                                              <span className="text-[11px] font-medium text-text-light">
+                                                Условие
+                                              </span>
+                                              <select
+                                                value={result.condition}
+                                                onChange={(event) =>
+                                                  setModules((prev) =>
+                                                    prev.map((m) =>
+                                                      m.tempId === module.tempId
+                                                        ? {
+                                                            ...m,
+                                                            lessons: m.lessons.map((l) =>
+                                                              l.tempId === lesson.tempId
+                                                                ? {
+                                                                    ...l,
+                                                                    forms: l.forms.map((f) =>
+                                                                      f.tempId === form.tempId
+                                                                        ? {
+                                                                            ...f,
+                                                                            results: f.results.map(
+                                                                              (r) =>
+                                                                                r.tempId ===
+                                                                                result.tempId
+                                                                                  ? {
+                                                                                      ...r,
+                                                                                      condition: event.target.value,
+                                                                                    }
+                                                                                  : r,
+                                                                            ),
+                                                                          }
+                                                                        : f,
+                                                                    ),
+                                                                  }
+                                                                : l,
+                                                            ),
+                                                          }
+                                                        : m,
+                                                    ),
+                                                  )
+                                                }
+                                                className="rounded-lg border border-border bg-white px-2 py-1 text-xs text-text-dark outline-none focus:border-brand-pink"
+                                              >
+                                                <option value="more_A">Больше вариантов A</option>
+                                                <option value="more_B">Больше вариантов B</option>
+                                                <option value="more_C">Больше вариантов C</option>
+                                                <option value="more_D">Больше вариантов D</option>
+                                                <option value="equal_A_B">Равно A и B</option>
+                                              </select>
+                                            </label>
+                                          ) : (
+                                            <>
+                                              <label className="flex flex-col gap-1 text-xs text-text-dark">
+                                                <span className="text-[11px] font-medium text-text-light">
+                                                  Минимальный балл
+                                                </span>
+                                                <input
+                                                  type="number"
+                                                  min="0"
+                                                  value={result.minScore ?? ""}
+                                                  onChange={(event) =>
+                                                    setModules((prev) =>
+                                                      prev.map((m) =>
+                                                        m.tempId === module.tempId
+                                                          ? {
+                                                              ...m,
+                                                              lessons: m.lessons.map((l) =>
+                                                                l.tempId === lesson.tempId
+                                                                  ? {
+                                                                      ...l,
+                                                                      forms: l.forms.map((f) =>
+                                                                        f.tempId === form.tempId
+                                                                          ? {
+                                                                              ...f,
+                                                                              results: f.results.map(
+                                                                                (r) =>
+                                                                                  r.tempId ===
+                                                                                  result.tempId
+                                                                                    ? {
+                                                                                        ...r,
+                                                                                        minScore: event.target.value
+                                                                                          ? parseInt(event.target.value)
+                                                                                          : undefined,
+                                                                                      }
+                                                                                    : r,
+                                                                              ),
+                                                                            }
+                                                                          : f,
+                                                                      ),
+                                                                    }
+                                                                  : l,
+                                                              ),
+                                                            }
+                                                          : m,
+                                                      ),
+                                                    )
+                                                  }
+                                                  placeholder="0"
+                                                  className="rounded-lg border border-border bg-white px-2 py-1 text-xs text-text-dark outline-none focus:border-brand-pink"
+                                                />
+                                              </label>
+                                              <label className="flex flex-col gap-1 text-xs text-text-dark">
+                                                <span className="text-[11px] font-medium text-text-light">
+                                                  Максимальный балл
+                                                </span>
+                                                <input
+                                                  type="number"
+                                                  min="0"
+                                                  value={result.maxScore ?? ""}
+                                                  onChange={(event) =>
+                                                    setModules((prev) =>
+                                                      prev.map((m) =>
+                                                        m.tempId === module.tempId
+                                                          ? {
+                                                              ...m,
+                                                              lessons: m.lessons.map((l) =>
+                                                                l.tempId === lesson.tempId
+                                                                  ? {
+                                                                      ...l,
+                                                                      forms: l.forms.map((f) =>
+                                                                        f.tempId === form.tempId
+                                                                          ? {
+                                                                              ...f,
+                                                                              results: f.results.map(
+                                                                                (r) =>
+                                                                                  r.tempId ===
+                                                                                  result.tempId
+                                                                                    ? {
+                                                                                        ...r,
+                                                                                        maxScore: event.target.value
+                                                                                          ? parseInt(event.target.value)
+                                                                                          : undefined,
+                                                                                      }
+                                                                                    : r,
+                                                                              ),
+                                                                            }
+                                                                          : f,
+                                                                      ),
+                                                                    }
+                                                                  : l,
+                                                              ),
+                                                            }
+                                                          : m,
+                                                      ),
+                                                    )
+                                                  }
+                                                  placeholder="Не ограничено"
+                                                  className="rounded-lg border border-border bg-white px-2 py-1 text-xs text-text-dark outline-none focus:border-brand-pink"
+                                                />
+                                              </label>
+                                            </>
+                                          )}
                                           <label className="flex flex-col gap-1 text-xs text-text-dark">
                                             <span className="text-[11px] font-medium text-text-light">
                                               Название результата
@@ -4438,23 +4605,11 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
                                     type="button"
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      setModules((prev) =>
-                                        prev.map((m) =>
-                                          m.tempId === module.tempId
-                                            ? {
-                                                ...m,
-                                                lessons: m.lessons.map((l) =>
-                                                  l.tempId === lesson.tempId
-                                                    ? {
-                                                        ...l,
-                                                        forms: [...l.forms, createFormState()],
-                                                      }
-                                                    : l,
-                                                ),
-                                              }
-                                            : m,
-                                        ),
-                                      );
+                                      setPendingFormLocation({
+                                        moduleTempId: module.tempId,
+                                        lessonTempId: lesson.tempId,
+                                      });
+                                      setShowFormTypeModal(true);
                                     }}
                                     className="rounded-full border border-border px-3 py-1 text-[11px] font-medium text-text-medium transition-colors hover:bg-white"
                                   >
@@ -5069,6 +5224,99 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
           </div>
         ) : null}
       </DragOverlay>
+
+      {/* Модальное окно выбора типа формы */}
+      {showFormTypeModal && pendingFormLocation && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="rounded-2xl bg-white p-6 shadow-xl max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold text-text-dark mb-4">
+              Выберите тип формы
+            </h3>
+            <div className="flex flex-col gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setModules((prev) =>
+                    prev.map((m) =>
+                      m.tempId === pendingFormLocation.moduleTempId
+                        ? {
+                            ...m,
+                            lessons: m.lessons.map((l) =>
+                              l.tempId === pendingFormLocation.lessonTempId
+                                ? {
+                                    ...l,
+                                    forms: [
+                                      ...l.forms,
+                                      createFormState({ type: "CHOICE" }),
+                                    ],
+                                  }
+                                : l,
+                            ),
+                          }
+                        : m,
+                    ),
+                  );
+                  setShowFormTypeModal(false);
+                  setPendingFormLocation(null);
+                }}
+                className="rounded-xl border-2 border-border bg-surface p-4 text-left hover:border-brand-pink transition-colors"
+              >
+                <div className="font-semibold text-text-dark mb-1">
+                  Форма с выбором ответа
+                </div>
+                <div className="text-sm text-text-medium">
+                  Ученик выбирает один или несколько вариантов ответа. Результат определяется по тому, что было выбрано больше.
+                </div>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setModules((prev) =>
+                    prev.map((m) =>
+                      m.tempId === pendingFormLocation.moduleTempId
+                        ? {
+                            ...m,
+                            lessons: m.lessons.map((l) =>
+                              l.tempId === pendingFormLocation.lessonTempId
+                                ? {
+                                    ...l,
+                                    forms: [
+                                      ...l.forms,
+                                      createFormState({ type: "RATING", maxRating: 5 }),
+                                    ],
+                                  }
+                                : l,
+                            ),
+                          }
+                        : m,
+                    ),
+                  );
+                  setShowFormTypeModal(false);
+                  setPendingFormLocation(null);
+                }}
+                className="rounded-xl border-2 border-border bg-surface p-4 text-left hover:border-brand-pink transition-colors"
+              >
+                <div className="font-semibold text-text-dark mb-1">
+                  Форма с оценкой
+                </div>
+                <div className="text-sm text-text-medium">
+                  Ученик оценивает каждый вопрос от 1 до 5 (или до 10). Результат определяется по сумме набранных баллов.
+                </div>
+              </button>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setShowFormTypeModal(false);
+                setPendingFormLocation(null);
+              }}
+              className="mt-4 w-full rounded-xl border border-border bg-surface px-4 py-2 text-sm font-medium text-text-dark hover:bg-gray-50 transition-colors"
+            >
+              Отмена
+            </button>
+          </div>
+        </div>
+      )}
     </DndContext>
   );
 }
