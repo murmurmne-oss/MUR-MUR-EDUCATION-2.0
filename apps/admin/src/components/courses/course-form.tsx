@@ -1111,10 +1111,10 @@ function DraggableFormItem({
 
   return (
     <div ref={setNodeRef} style={style} {...attributes} className="relative">
-      {/* Drag handle - значок в правом верхнем углу */}
+      {/* Drag handle - значок в левом верхнем углу */}
       <div
         {...listeners}
-        className="absolute right-2 top-2 z-10 flex h-8 w-8 cursor-move items-center justify-center rounded-full bg-brand-pink/10 text-brand-pink transition-colors hover:bg-brand-pink hover:text-white"
+        className="absolute left-2 top-2 z-10 flex h-8 w-8 cursor-move items-center justify-center rounded-full bg-brand-pink/10 text-brand-pink transition-colors hover:bg-brand-pink hover:text-white"
         style={{ touchAction: "none" }}
         onClick={(e) => e.stopPropagation()}
         title="Перетащите для перемещения"
@@ -1196,10 +1196,10 @@ function DraggableTestItem({
 
   return (
     <div ref={setNodeRef} style={style} {...attributes} className="relative">
-      {/* Drag handle - значок в правом верхнем углу */}
+      {/* Drag handle - значок в левом верхнем углу */}
       <div
         {...listeners}
-        className="absolute right-2 top-2 z-10 flex h-8 w-8 cursor-move items-center justify-center rounded-full bg-brand-pink/10 text-brand-pink transition-colors hover:bg-brand-pink hover:text-white"
+        className="absolute left-2 top-2 z-10 flex h-8 w-8 cursor-move items-center justify-center rounded-full bg-brand-pink/10 text-brand-pink transition-colors hover:bg-brand-pink hover:text-white"
         style={{ touchAction: "none" }}
         onClick={(e) => e.stopPropagation()}
         title="Перетащите для перемещения"
@@ -1256,10 +1256,10 @@ function DraggableContentBlock({
 
   return (
     <div ref={setNodeRef} style={style} {...attributes} className="relative">
-      {/* Drag handle - значок в правом верхнем углу */}
+      {/* Drag handle - значок в левом верхнем углу */}
       <div
         {...listeners}
-        className="absolute right-2 top-2 z-10 flex h-8 w-8 cursor-move items-center justify-center rounded-full bg-brand-pink/10 text-brand-pink transition-colors hover:bg-brand-pink hover:text-white"
+        className="absolute left-2 top-2 z-10 flex h-8 w-8 cursor-move items-center justify-center rounded-full bg-brand-pink/10 text-brand-pink transition-colors hover:bg-brand-pink hover:text-white"
         style={{ touchAction: "none" }}
         onClick={(e) => e.stopPropagation()}
         title="Перетащите для перемещения"
