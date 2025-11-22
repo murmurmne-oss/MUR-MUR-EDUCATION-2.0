@@ -1326,54 +1326,73 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
 
         // Создаем новый массив модулей
         return prev.map((m) => {
-          // Удаляем форму из исходного урока
+          // Если это исходный модуль
           if (m.tempId === activeForm.moduleTempId) {
-            const updatedLessons = m.lessons.map((l) => {
-              if (l.tempId === activeForm.lessonTempId) {
-                const filteredForms = l.forms.filter(
-                  (f) => f.tempId !== activeForm.formTempId,
-                );
-                console.log("[FormDrag] Removed form from source lesson, remaining:", filteredForms.length);
-                return {
-                  ...l,
-                  forms: filteredForms,
-                };
-              }
-              return l;
-            });
-
-            // Если это также целевой модуль, добавляем форму в целевой урок
+            // Если это также целевой модуль (перемещение внутри одного модуля)
             if (m.tempId === overTarget.moduleTempId) {
-              const finalLessons = updatedLessons.map((l) => {
-                if (l.tempId === overTarget.lessonTempId) {
-                  console.log("[FormDrag] Adding form to target lesson in same module (drop zone)");
+              const updatedLessons = m.lessons.map((l) => {
+                // Удаляем форму из исходного урока
+                if (l.tempId === activeForm.lessonTempId) {
+                  const filteredForms = l.forms.filter(
+                    (f) => f.tempId !== activeForm.formTempId,
+                  );
+                  console.log("[FormDrag] Removed form from source lesson, remaining:", filteredForms.length);
                   return {
                     ...l,
-                    forms: [formToMove, ...targetLesson.forms],
+                    forms: filteredForms,
+                  };
+                }
+                // Добавляем форму в целевой урок
+                if (l.tempId === overTarget.lessonTempId) {
+                  console.log("[FormDrag] Adding form to target lesson in same module (drop zone)");
+                  console.log("[FormDrag] Target lesson forms before:", targetLesson.forms.length);
+                  const newForms = [formToMove, ...targetLesson.forms];
+                  console.log("[FormDrag] Target lesson forms after:", newForms.length);
+                  return {
+                    ...l,
+                    forms: newForms,
                   };
                 }
                 return l;
               });
               return {
                 ...m,
-                lessons: finalLessons,
+                lessons: updatedLessons,
               };
             }
-
-            return {
-              ...m,
-              lessons: updatedLessons,
-            };
+            // Если это только исходный модуль (перемещение в другой модуль)
+            else {
+              const updatedLessons = m.lessons.map((l) => {
+                if (l.tempId === activeForm.lessonTempId) {
+                  const filteredForms = l.forms.filter(
+                    (f) => f.tempId !== activeForm.formTempId,
+                  );
+                  console.log("[FormDrag] Removed form from source lesson, remaining:", filteredForms.length);
+                  return {
+                    ...l,
+                    forms: filteredForms,
+                  };
+                }
+                return l;
+              });
+              return {
+                ...m,
+                lessons: updatedLessons,
+              };
+            }
           }
 
-          // Добавляем форму в начало целевого урока (если это не исходный модуль)
+          // Если это целевой модуль (и не исходный)
           if (m.tempId === overTarget.moduleTempId) {
             const updatedLessons = m.lessons.map((l) => {
               if (l.tempId === overTarget.lessonTempId) {
                 console.log("[FormDrag] Adding form to target lesson in different module (drop zone)");
+                console.log("[FormDrag] Target lesson forms before:", targetLesson.forms.length);
+                const newForms = [formToMove, ...targetLesson.forms];
+                console.log("[FormDrag] Target lesson forms after:", newForms.length);
                 return {
                   ...l,
-                  forms: [formToMove, ...targetLesson.forms],
+                  forms: newForms,
                 };
               }
               return l;
@@ -1486,27 +1505,27 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
 
       // Создаем новый массив модулей
       return prev.map((m) => {
-        // Удаляем форму из исходного урока
+        // Если это исходный модуль
         if (m.tempId === activeForm.moduleTempId) {
-          const updatedLessons = m.lessons.map((l) => {
-            if (l.tempId === activeForm.lessonTempId) {
-              const filteredForms = l.forms.filter(
-                (f) => f.tempId !== activeForm.formTempId,
-              );
-              console.log("[FormDrag] Removed form from source, remaining forms:", filteredForms.length);
-              return {
-                ...l,
-                forms: filteredForms,
-              };
-            }
-            return l;
-          });
-
-          // Если это также целевой модуль, добавляем форму в целевой урок
+          // Если это также целевой модуль (перемещение внутри одного модуля)
           if (m.tempId === overForm.moduleTempId) {
-            const finalLessons = updatedLessons.map((l) => {
+            const updatedLessons = m.lessons.map((l) => {
+              // Удаляем форму из исходного урока
+              if (l.tempId === activeForm.lessonTempId) {
+                const filteredForms = l.forms.filter(
+                  (f) => f.tempId !== activeForm.formTempId,
+                );
+                console.log("[FormDrag] Removed form from source, remaining forms:", filteredForms.length);
+                return {
+                  ...l,
+                  forms: filteredForms,
+                };
+              }
+              // Добавляем форму в целевой урок
               if (l.tempId === overForm.lessonTempId) {
                 console.log("[FormDrag] Adding form to target lesson in same module");
+                console.log("[FormDrag] Target lesson forms before:", targetLesson.forms.length);
+                console.log("[FormDrag] Target lesson forms after:", newTargetForms.length);
                 return {
                   ...l,
                   forms: newTargetForms,
@@ -1516,21 +1535,38 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
             });
             return {
               ...m,
-              lessons: finalLessons,
+              lessons: updatedLessons,
             };
           }
-
-          return {
-            ...m,
-            lessons: updatedLessons,
-          };
+          // Если это только исходный модуль (перемещение в другой модуль)
+          else {
+            const updatedLessons = m.lessons.map((l) => {
+              if (l.tempId === activeForm.lessonTempId) {
+                const filteredForms = l.forms.filter(
+                  (f) => f.tempId !== activeForm.formTempId,
+                );
+                console.log("[FormDrag] Removed form from source, remaining forms:", filteredForms.length);
+                return {
+                  ...l,
+                  forms: filteredForms,
+                };
+              }
+              return l;
+            });
+            return {
+              ...m,
+              lessons: updatedLessons,
+            };
+          }
         }
 
-        // Добавляем форму в целевой модуль (если это не исходный модуль)
+        // Если это целевой модуль (и не исходный)
         if (m.tempId === overForm.moduleTempId) {
           const updatedLessons = m.lessons.map((l) => {
             if (l.tempId === overForm.lessonTempId) {
               console.log("[FormDrag] Adding form to target lesson in different module");
+              console.log("[FormDrag] Target lesson forms before:", targetLesson.forms.length);
+              console.log("[FormDrag] Target lesson forms after:", newTargetForms.length);
               return {
                 ...l,
                 forms: newTargetForms,
