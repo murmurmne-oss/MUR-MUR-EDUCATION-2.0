@@ -147,6 +147,8 @@ export default function AccountPage() {
               languageCode: value,
             },
       );
+      // Обновляем страницу для применения нового языка
+      router.refresh();
     } catch (updateError) {
       console.error("Failed to update language preference", updateError);
       setLanguageError(
