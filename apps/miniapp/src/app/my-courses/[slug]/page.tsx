@@ -910,7 +910,8 @@ export default function MyCourseDetailsPage({
     [user?.id],
   );
   const { profile } = useUserProfile(userId);
-  const preferredLanguage = profile?.languageCode ?? 'sr';
+  // Используем язык из профиля, если есть, иначе из localStorage, иначе 'sr'
+  const preferredLanguage = profile?.languageCode ?? (typeof window !== 'undefined' ? localStorage.getItem('murmur_preferred_language') : null) ?? 'sr';
   const { t } = useMemo(
     () => createTranslator(preferredLanguage),
     [preferredLanguage],

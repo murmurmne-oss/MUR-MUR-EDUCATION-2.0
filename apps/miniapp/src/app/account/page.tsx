@@ -79,7 +79,8 @@ export default function AccountPage() {
     return null;
   }, [user?.id]);
   const { profile, setProfile } = useUserProfile(resolvedUserId);
-  const preferredLanguage = profile?.languageCode ?? "sr";
+  // Используем язык из профиля, если есть, иначе из localStorage, иначе 'sr'
+  const preferredLanguage = profile?.languageCode ?? (typeof window !== 'undefined' ? localStorage.getItem('murmur_preferred_language') : null) ?? "sr";
   const { t } = useMemo(
     () => createTranslator(preferredLanguage),
     [preferredLanguage],
@@ -131,6 +132,13 @@ export default function AccountPage() {
     setIsLanguageSaving(true);
     setLanguageError(null);
     try {
+      // Сохраняем язык в localStorage сразу
+      try {
+        localStorage.setItem('murmur_preferred_language', value);
+      } catch (storageError) {
+        console.warn("Failed to save language to localStorage", storageError);
+      }
+      
       await apiClient.syncUserProfile({
         id: resolvedUserId,
         languageCode: value,

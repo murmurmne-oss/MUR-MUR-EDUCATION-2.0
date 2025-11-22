@@ -313,9 +313,10 @@ function normalizeBlock(rawBlock: unknown): LessonContentBlock | null {
     return null;
   }
 
+  // Сохраняем HTML как есть (для rich text editor)
   return {
     type: "paragraph",
-    text,
+    text, // Может содержать HTML из rich text editor
     fontFamily:
       block.fontFamily === "serif" ||
       block.fontFamily === "mono" ||
