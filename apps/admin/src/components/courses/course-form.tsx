@@ -3429,9 +3429,33 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
                         moduleTempId={module.tempId}
                         lessonTempId={lesson.tempId}
                       >
-                        <span className="font-semibold text-text-dark">
-                          Урок {lessonIndex + 1}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold text-text-dark">
+                            Урок {lessonIndex + 1}
+                          </span>
+                          <span
+                            className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                              lesson.status === "PUBLISHED"
+                                ? "bg-green-100 text-green-700"
+                                : lesson.status === "HIDDEN"
+                                  ? "bg-gray-100 text-gray-700"
+                                  : "bg-yellow-100 text-yellow-700"
+                            }`}
+                            title={
+                              lesson.status === "PUBLISHED"
+                                ? "Опубликован"
+                                : lesson.status === "HIDDEN"
+                                  ? "Скрыт"
+                                  : "В разработке"
+                            }
+                          >
+                            {lesson.status === "PUBLISHED"
+                              ? "Опубликован"
+                              : lesson.status === "HIDDEN"
+                                ? "Скрыт"
+                                : "В разработке"}
+                          </span>
+                        </div>
                         <button
                           type="button"
                           onClick={(e) => {
