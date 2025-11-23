@@ -2027,107 +2027,6 @@ export default function MyCourseDetailsPage({
               )}
             </section>
 
-            {parsedTests.length > 0 ? (
-              <section className="space-y-3 rounded-3xl bg-white p-5 shadow-sm">
-                <h2 className="text-lg font-semibold text-text-dark">
-                  {t('Тесты')}
-                </h2>
-                <ul className="space-y-3">
-                  {parsedTests.map((test) => (
-                    <li
-                      key={test.id}
-                      className="rounded-2xl border border-card bg-surface px-4 py-3 text-sm text-text-medium"
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="space-y-1">
-                          <p className="font-medium text-text-dark">{test.title}</p>
-                          {test.description ? (
-                            <p className="text-xs text-text-light">{test.description}</p>
-                          ) : null}
-                          <p className="text-xs text-text-light">
-                            {t('Вопросов: {count}', {
-                              count: test.questions.length,
-                            })}
-                          </p>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => setSelectedTest(test)}
-                          disabled={test.questions.length === 0}
-                          className="rounded-full bg-brand-pink px-4 py-2 text-xs font-semibold text-white transition-transform active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
-                        >
-                          {t('Пройти тест')}
-                        </button>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            ) : null}
-
-            {course.forms && course.forms.length > 0 ? (
-              <section className="space-y-3 rounded-3xl bg-white p-5 shadow-sm">
-                <h2 className="text-lg font-semibold text-text-dark">
-                  {t('Формы')}
-                </h2>
-                <ul className="space-y-3">
-                  {course.forms.map((form) => {
-                    // Преобразуем форму в PublicForm для отображения
-                    const questions = Array.isArray(form.questions) ? form.questions : [];
-                    const publicForm: PublicForm = {
-                      id: form.id,
-                      title: form.title,
-                      description: form.description,
-                      type: form.type === "RATING" ? "RATING" : "CHOICE",
-                      maxRating: form.maxRating ?? null,
-                      questionCount: questions.length,
-                      questions: questions.map((q: any, index: number) => ({
-                        id: q.id || `q-${index}`,
-                        text: q.text || "",
-                        options: Array.isArray(q.options) ? q.options.map((opt: any, optIndex: number) => ({
-                          id: opt.id || `opt-${optIndex}`,
-                          text: opt.text || "",
-                          category: opt.category || "",
-                        })) : [],
-                      })),
-                    };
-
-                    return (
-                      <li
-                        key={form.id}
-                        className="rounded-2xl border border-card bg-surface px-4 py-3 text-sm text-text-medium"
-                      >
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="space-y-1">
-                            <p className="font-medium text-text-dark">{form.title}</p>
-                            {form.description ? (
-                              <p className="text-xs text-text-light">{form.description}</p>
-                            ) : null}
-                            <p className="text-xs text-text-light">
-                              {t('Вопросов: {count}', {
-                                count: publicForm.questionCount,
-                              })}
-                              {form.type === "RATING" && form.maxRating && (
-                                <> · {t("Оценка от 1 до {max}", { max: form.maxRating })}</>
-                              )}
-                            </p>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => handleStartForm(form.id)}
-                            disabled={publicForm.questionCount === 0}
-                            className="rounded-full bg-brand-pink px-4 py-2 text-xs font-semibold text-white transition-transform active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
-                          >
-                            {t('Пройти форму')}
-                          </button>
-                        </div>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </section>
-            ) : null}
-
             <section className="space-y-3">
               <h2 className="text-lg font-semibold text-text-dark">
                 {t('Программа курса')}
@@ -2175,7 +2074,7 @@ export default function MyCourseDetailsPage({
                             <button
                               type="button"
                               onClick={() => setSelectedTest(requiredTest)}
-                              className="mt-2 rounded-full bg-brand-orange px-3 py-1 text-xs font-semibold text-white transition-transform active:scale-95"
+                              className="mt-2 rounded-full bg-brand-pink px-4 py-2 text-xs font-semibold text-white transition-transform active:scale-95"
                             >
                               {t('Пройти тест')}
                             </button>
@@ -2291,6 +2190,107 @@ export default function MyCourseDetailsPage({
                 })}
               </div>
             </section>
+
+            {parsedTests.length > 0 ? (
+              <section className="space-y-3 rounded-3xl bg-white p-5 shadow-sm">
+                <h2 className="text-lg font-semibold text-text-dark">
+                  {t('Тесты')}
+                </h2>
+                <ul className="space-y-3">
+                  {parsedTests.map((test) => (
+                    <li
+                      key={test.id}
+                      className="rounded-2xl border border-card bg-surface px-4 py-3 text-sm text-text-medium"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="space-y-1">
+                          <p className="font-medium text-text-dark">{test.title}</p>
+                          {test.description ? (
+                            <p className="text-xs text-text-light">{test.description}</p>
+                          ) : null}
+                          <p className="text-xs text-text-light">
+                            {t('Вопросов: {count}', {
+                              count: test.questions.length,
+                            })}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedTest(test)}
+                          disabled={test.questions.length === 0}
+                          className="rounded-full bg-brand-pink px-4 py-2 text-xs font-semibold text-white transition-transform active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          {t('Пройти тест')}
+                        </button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ) : null}
+
+            {course.forms && course.forms.length > 0 ? (
+              <section className="space-y-3 rounded-3xl bg-white p-5 shadow-sm">
+                <h2 className="text-lg font-semibold text-text-dark">
+                  {t('Формы')}
+                </h2>
+                <ul className="space-y-3">
+                  {course.forms.map((form) => {
+                    // Преобразуем форму в PublicForm для отображения
+                    const questions = Array.isArray(form.questions) ? form.questions : [];
+                    const publicForm: PublicForm = {
+                      id: form.id,
+                      title: form.title,
+                      description: form.description,
+                      type: form.type === "RATING" ? "RATING" : "CHOICE",
+                      maxRating: form.maxRating ?? null,
+                      questionCount: questions.length,
+                      questions: questions.map((q: any, index: number) => ({
+                        id: q.id || `q-${index}`,
+                        text: q.text || "",
+                        options: Array.isArray(q.options) ? q.options.map((opt: any, optIndex: number) => ({
+                          id: opt.id || `opt-${optIndex}`,
+                          text: opt.text || "",
+                          category: opt.category || "",
+                        })) : [],
+                      })),
+                    };
+
+                    return (
+                      <li
+                        key={form.id}
+                        className="rounded-2xl border border-card bg-surface px-4 py-3 text-sm text-text-medium"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="space-y-1">
+                            <p className="font-medium text-text-dark">{form.title}</p>
+                            {form.description ? (
+                              <p className="text-xs text-text-light">{form.description}</p>
+                            ) : null}
+                            <p className="text-xs text-text-light">
+                              {t('Вопросов: {count}', {
+                                count: publicForm.questionCount,
+                              })}
+                              {form.type === "RATING" && form.maxRating && (
+                                <> · {t("Оценка от 1 до {max}", { max: form.maxRating })}</>
+                              )}
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleStartForm(form.id)}
+                            disabled={publicForm.questionCount === 0}
+                            className="rounded-full bg-brand-pink px-4 py-2 text-xs font-semibold text-white transition-transform active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            {t('Пройти форму')}
+                          </button>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </section>
+            ) : null}
           </>
         )}
       </main>
