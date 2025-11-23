@@ -1114,7 +1114,13 @@ export default function MyCourseDetailsPage({
 
           if (unlockTest) {
             const testRecord = courseData.tests.find((t) => t.id === unlockTest.id);
-            const hasCompletedAttempt = testRecord?.attempts && testRecord.attempts.length > 0;
+            // Проверяем наличие завершенных попыток (attempts возвращаются только с status COMPLETED)
+            const hasCompletedAttempt = testRecord?.attempts && 
+              Array.isArray(testRecord.attempts) && 
+              testRecord.attempts.length > 0 &&
+              testRecord.attempts.some((attempt: any) => 
+                attempt.status === 'COMPLETED' || attempt.completedAt !== null
+              );
             
             accessMap.set(module.id, {
               isLocked: !hasCompletedAttempt,
@@ -1274,7 +1280,13 @@ export default function MyCourseDetailsPage({
       if (unlockTest) {
         // Проверяем, пройден ли тест
         const testRecord = course.tests.find((t) => t.id === unlockTest.id);
-        const hasCompletedAttempt = testRecord?.attempts && testRecord.attempts.length > 0;
+        // Проверяем наличие завершенных попыток (attempts возвращаются только с status COMPLETED)
+        const hasCompletedAttempt = testRecord?.attempts && 
+          Array.isArray(testRecord.attempts) && 
+          testRecord.attempts.length > 0 &&
+          testRecord.attempts.some((attempt: any) => 
+            attempt.status === 'COMPLETED' || attempt.completedAt !== null
+          );
         
         accessMap.set(module.id, {
           isLocked: !hasCompletedAttempt,
@@ -2242,6 +2254,9 @@ export default function MyCourseDetailsPage({
             // Обновляем курс и enrollment после закрытия теста, чтобы проверить разблокировку модулей
             if (course) {
               try {
+                // Небольшая задержка, чтобы дать серверу время обработать попытку
+                await new Promise(resolve => setTimeout(resolve, 500));
+                
                 const [updatedCourse, enrollmentsResponse] = await Promise.all([
                   apiClient.getCourse(courseSlug, userId),
                   apiClient.getUserEnrollments(userId).catch(() => null),
@@ -2255,6 +2270,66 @@ export default function MyCourseDetailsPage({
                       (item) => item.course.slug === courseSlug,
                     ) ?? null;
                   setEnrollment(matchingEnrollment);
+                  
+                  // Пересчитываем доступность модулей и обновляем выбранный урок, если он заблокирован
+                  const parsedTests = updatedCourse.tests.map((test) => parseCourseTest(test));
+                  const accessMap = new Map<string, { isLocked: boolean; requiredTest: ParsedCourseTest | null }>();
+                  
+                  const firstModule = updatedCourse.modules[0];
+                  if (firstModule) {
+                    accessMap.set(firstModule.id, { isLocked: false, requiredTest: null });
+                  }
+
+                  for (let i = 1; i < updatedCourse.modules.length; i++) {
+                    const module = updatedCourse.modules[i];
+                    const unlockTest = parsedTests.find(
+                      (test) => test.unlockModuleId === module.id
+                    );
+
+                    if (unlockTest) {
+                      const testRecord = updatedCourse.tests.find((t) => t.id === unlockTest.id);
+                      const hasCompletedAttempt = testRecord?.attempts && 
+                        Array.isArray(testRecord.attempts) && 
+                        testRecord.attempts.length > 0 &&
+                        testRecord.attempts.some((attempt: any) => 
+                          attempt.status === 'COMPLETED' || attempt.completedAt !== null
+                        );
+                      
+                      accessMap.set(module.id, {
+                        isLocked: !hasCompletedAttempt,
+                        requiredTest: unlockTest,
+                      });
+                    } else {
+                      accessMap.set(module.id, { isLocked: false, requiredTest: null });
+                    }
+                  }
+                  
+                  // Если текущий урок заблокирован, переключаемся на первый доступный
+                  if (selectedLesson) {
+                    const currentModuleAccess = accessMap.get(selectedLesson.moduleId);
+                    if (currentModuleAccess?.isLocked) {
+                      const flattenedLessons: LessonRef[] = updatedCourse.modules.flatMap(
+                        (module) =>
+                          module.lessons.map((lesson) => ({
+                            moduleId: module.id,
+                            moduleTitle: module.title,
+                            moduleOrder: module.order,
+                            lesson,
+                          })),
+                      );
+                      
+                      const firstAvailableLesson = flattenedLessons.find(
+                        (item) => {
+                          const moduleAccess = accessMap.get(item.moduleId);
+                          return !moduleAccess?.isLocked;
+                        },
+                      );
+                      
+                      if (firstAvailableLesson) {
+                        setSelectedLesson(firstAvailableLesson);
+                      }
+                    }
+                  }
                 }
               } catch (refreshError) {
                 console.error('Failed to refresh course after test', refreshError);
