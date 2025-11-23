@@ -193,6 +193,7 @@ function TestRunner({
   // Начинаем тест при монтировании
   useEffect(() => {
     let active = true;
+    console.log('TestRunner mounted, starting test', { testId: test.id, courseSlug, userProfilePayload });
     setIsStarting(true);
     setCurrentIndex(0);
     setAnswers({});
@@ -204,6 +205,7 @@ function TestRunner({
     apiClient
       .startCourseTest(courseSlug, test.id, userProfilePayload)
       .then((response) => {
+        console.log('Test started successfully', response);
         if (!active) return;
         setAttemptId(response.attemptId);
         setIsStarting(false);
@@ -2050,7 +2052,10 @@ export default function MyCourseDetailsPage({
                         </div>
                         <button
                           type="button"
-                          onClick={() => setSelectedTest(test)}
+                          onClick={() => {
+                            console.log('Test button clicked', test);
+                            setSelectedTest(test);
+                          }}
                           disabled={test.questions.length === 0}
                           className="rounded-full bg-brand-pink px-4 py-2 text-xs font-semibold text-white transition-transform active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
                         >
@@ -2263,6 +2268,7 @@ export default function MyCourseDetailsPage({
           userId={userId}
           userProfilePayload={testProfilePayload}
           onClose={async () => {
+            console.log('TestRunnerModal onClose called');
             setSelectedTest(null);
             // Обновляем курс и enrollment после закрытия теста, чтобы проверить разблокировку модулей
             if (course) {
