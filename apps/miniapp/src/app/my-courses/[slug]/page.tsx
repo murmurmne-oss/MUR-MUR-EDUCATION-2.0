@@ -2241,15 +2241,18 @@ export default function MyCourseDetailsPage({
                                 const isHTML = typeof previewBlock.text === 'string' && /<[a-z][\s\S]*>/i.test(previewBlock.text.trim());
                                 
                                 if (isHTML) {
-                                  // Рендерим HTML-контент
+                                  // Рендерим HTML-контент с ограничением высоты
                                   return (
                                     <div
                                       className={`mt-2 overflow-hidden text-text-medium ${STATUS_ACCENTS[status]} prose prose-sm max-w-none`}
                                       style={{ 
-                                        display: '-webkit-box', 
-                                        WebkitLineClamp: 2, 
+                                        maxHeight: '3em',
+                                        lineHeight: '1.5em',
+                                        overflow: 'hidden',
+                                        textOverflow: 'ellipsis',
+                                        display: '-webkit-box',
+                                        WebkitLineClamp: 2,
                                         WebkitBoxOrient: 'vertical',
-                                        lineHeight: '1.5',
                                       }}
                                       dangerouslySetInnerHTML={{ __html: previewBlock.text }}
                                     />
