@@ -965,6 +965,36 @@ export default function MyCourseDetailsPage({
             (item) => item.course.slug === courseSlug,
           ) ?? null;
 
+        // Вычисляем доступность модулей для выбора начального урока
+        const parsedTests = courseData.tests.map((test) => parseCourseTest(test));
+        const accessMap = new Map<string, { isLocked: boolean; requiredTest: ParsedCourseTest | null }>();
+        
+        // Первый модуль всегда доступен
+        const firstModule = courseData.modules[0];
+        if (firstModule) {
+          accessMap.set(firstModule.id, { isLocked: false, requiredTest: null });
+        }
+
+        // Проверяем остальные модули
+        for (let i = 1; i < courseData.modules.length; i++) {
+          const module = courseData.modules[i];
+          const unlockTest = parsedTests.find(
+            (test) => test.unlockModuleId === module.id
+          );
+
+          if (unlockTest) {
+            const testRecord = courseData.tests.find((t) => t.id === unlockTest.id);
+            const hasCompletedAttempt = testRecord?.attempts && testRecord.attempts.length > 0;
+            
+            accessMap.set(module.id, {
+              isLocked: !hasCompletedAttempt,
+              requiredTest: unlockTest,
+            });
+          } else {
+            accessMap.set(module.id, { isLocked: false, requiredTest: null });
+          }
+        }
+
         const flattenedLessons: LessonRef[] = courseData.modules.flatMap(
           (module) =>
             module.lessons.map((lesson) => ({
@@ -978,14 +1008,32 @@ export default function MyCourseDetailsPage({
         const nextLessonTitle =
           matchingEnrollment?.progress.nextLessonTitle;
 
-        const initialLesson =
-          (nextLessonTitle
-            ? flattenedLessons.find(
-                (item) => item.lesson.title === nextLessonTitle,
-              )
-            : undefined) ??
-          flattenedLessons[0] ??
-          null;
+        // Выбираем начальный урок с учетом доступности модулей
+        let initialLesson: LessonRef | null = null;
+        
+        if (nextLessonTitle) {
+          const nextLesson = flattenedLessons.find(
+            (item) => item.lesson.title === nextLessonTitle,
+          );
+          
+          if (nextLesson) {
+            // Проверяем, доступен ли модуль этого урока
+            const moduleAccess = accessMap.get(nextLesson.moduleId);
+            if (!moduleAccess?.isLocked) {
+              initialLesson = nextLesson;
+            }
+          }
+        }
+        
+        // Если не нашли доступный урок по nextLessonTitle, ищем первый доступный
+        if (!initialLesson) {
+          initialLesson = flattenedLessons.find(
+            (item) => {
+              const moduleAccess = accessMap.get(item.moduleId);
+              return !moduleAccess?.isLocked;
+            },
+          ) ?? null;
+        }
 
         startTransition(() => {
           setCourse(courseData);
@@ -2058,11 +2106,23 @@ export default function MyCourseDetailsPage({
           test={selectedTest}
           onClose={async () => {
             setSelectedTest(null);
-            // Обновляем курс после закрытия теста, чтобы проверить разблокировку модулей
+            // Обновляем курс и enrollment после закрытия теста, чтобы проверить разблокировку модулей
             if (course) {
               try {
-                const updatedCourse = await apiClient.getCourse(courseSlug, userId);
+                const [updatedCourse, enrollmentsResponse] = await Promise.all([
+                  apiClient.getCourse(courseSlug, userId),
+                  apiClient.getUserEnrollments(userId).catch(() => null),
+                ]);
+                
                 setCourse(updatedCourse);
+                
+                if (enrollmentsResponse) {
+                  const matchingEnrollment =
+                    enrollmentsResponse.enrollments.find(
+                      (item) => item.course.slug === courseSlug,
+                    ) ?? null;
+                  setEnrollment(matchingEnrollment);
+                }
               } catch (refreshError) {
                 console.error('Failed to refresh course after test', refreshError);
               }
