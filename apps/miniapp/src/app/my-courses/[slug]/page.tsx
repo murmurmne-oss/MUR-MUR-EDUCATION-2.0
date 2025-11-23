@@ -2241,29 +2241,34 @@ export default function MyCourseDetailsPage({
                                 const isHTML = typeof previewBlock.text === 'string' && /<[a-z][\s\S]*>/i.test(previewBlock.text.trim());
                                 
                                 if (isHTML) {
-                                  // Рендерим HTML-контент с ограничением высоты
+                                  // Для HTML-контента извлекаем текст и обрезаем его аккуратно
+                                  // Используем тот же стиль, что и для summary
                                   return (
                                     <div
-                                      className={`mt-2 overflow-hidden text-text-medium ${STATUS_ACCENTS[status]} prose prose-sm max-w-none`}
+                                      className={`mt-1 text-xs text-text-light prose prose-sm max-w-none`}
                                       style={{ 
-                                        maxHeight: '3em',
-                                        lineHeight: '1.5em',
                                         overflow: 'hidden',
-                                        textOverflow: 'ellipsis',
                                         display: '-webkit-box',
-                                        WebkitLineClamp: 2,
+                                        WebkitLineClamp: 3,
                                         WebkitBoxOrient: 'vertical',
+                                        lineHeight: '1.4',
                                       }}
                                       dangerouslySetInnerHTML={{ __html: previewBlock.text }}
                                     />
                                   );
                                 }
                                 
-                                // Рендерим plain text
+                                // Рендерим plain text с тем же стилем, что и summary
                                 return (
                                   <p
-                                    className={`mt-2 overflow-hidden text-text-medium ${STATUS_ACCENTS[status]}`}
-                                    style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}
+                                    className="mt-1 text-xs text-text-light"
+                                    style={{ 
+                                      overflow: 'hidden',
+                                      display: '-webkit-box',
+                                      WebkitLineClamp: 3,
+                                      WebkitBoxOrient: 'vertical',
+                                      lineHeight: '1.4',
+                                    }}
                                   >
                                     {previewBlock.text}
                                   </p>
