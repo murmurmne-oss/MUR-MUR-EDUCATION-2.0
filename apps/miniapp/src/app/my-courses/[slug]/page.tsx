@@ -2241,11 +2241,18 @@ export default function MyCourseDetailsPage({
                                 const isHTML = typeof previewBlock.text === 'string' && /<[a-z][\s\S]*>/i.test(previewBlock.text.trim());
                                 
                                 if (isHTML) {
-                                  // Для HTML-контента извлекаем текст и обрезаем его аккуратно
+                                  // Для HTML-контента извлекаем только текст без HTML-тегов для превью
                                   // Используем тот же стиль, что и для summary
+                                  let plainText = previewBlock.text;
+                                  if (typeof document !== 'undefined') {
+                                    const tempDiv = document.createElement('div');
+                                    tempDiv.innerHTML = previewBlock.text;
+                                    plainText = tempDiv.textContent || tempDiv.innerText || previewBlock.text;
+                                  }
+                                  
                                   return (
-                                    <div
-                                      className={`mt-1 text-xs text-text-light prose prose-sm max-w-none`}
+                                    <p
+                                      className="mt-1 text-xs text-text-light"
                                       style={{ 
                                         overflow: 'hidden',
                                         display: '-webkit-box',
@@ -2253,8 +2260,9 @@ export default function MyCourseDetailsPage({
                                         WebkitBoxOrient: 'vertical',
                                         lineHeight: '1.4',
                                       }}
-                                      dangerouslySetInnerHTML={{ __html: previewBlock.text }}
-                                    />
+                                    >
+                                      {plainText}
+                                    </p>
                                   );
                                 }
                                 
