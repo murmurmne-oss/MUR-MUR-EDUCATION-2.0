@@ -18,7 +18,6 @@ export class UsersController {
   }
 
   @Get(':id')
-  @UseGuards(ApiKeyGuard)
   getUser(@Param('id') id: string) {
     return this.usersService.findOne(id);
   }
