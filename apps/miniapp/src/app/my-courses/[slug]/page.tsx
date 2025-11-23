@@ -2237,14 +2237,35 @@ export default function MyCourseDetailsPage({
                                   {lesson.summary}
                                 </p>
                               ) : null}
-                              {previewBlock && !lesson.summary ? (
-                                <p
-                                  className={`mt-2 overflow-hidden text-text-medium ${STATUS_ACCENTS[status]}`}
-                                  style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}
-                                >
-                                  {previewBlock.text}
-                                </p>
-                              ) : null}
+                              {previewBlock && !lesson.summary ? (() => {
+                                const isHTML = typeof previewBlock.text === 'string' && /<[a-z][\s\S]*>/i.test(previewBlock.text.trim());
+                                
+                                if (isHTML) {
+                                  // Рендерим HTML-контент
+                                  return (
+                                    <div
+                                      className={`mt-2 overflow-hidden text-text-medium ${STATUS_ACCENTS[status]} prose prose-sm max-w-none`}
+                                      style={{ 
+                                        display: '-webkit-box', 
+                                        WebkitLineClamp: 2, 
+                                        WebkitBoxOrient: 'vertical',
+                                        lineHeight: '1.5',
+                                      }}
+                                      dangerouslySetInnerHTML={{ __html: previewBlock.text }}
+                                    />
+                                  );
+                                }
+                                
+                                // Рендерим plain text
+                                return (
+                                  <p
+                                    className={`mt-2 overflow-hidden text-text-medium ${STATUS_ACCENTS[status]}`}
+                                    style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}
+                                  >
+                                    {previewBlock.text}
+                                  </p>
+                                );
+                              })() : null}
                             </button>
                           );
                         })}
