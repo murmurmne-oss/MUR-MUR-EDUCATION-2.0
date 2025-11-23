@@ -319,7 +319,7 @@ function TestRunner({
 
     return (
       <div className="space-y-4">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between sticky top-0 bg-white pb-2 z-10">
           <div>
             <h3 className="text-lg font-semibold text-text-dark">
               {test.title}
@@ -335,13 +335,13 @@ function TestRunner({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-full border border-card px-3 py-1 text-xs font-semibold text-text-medium transition-colors hover:border-brand-pink hover:text-text-dark"
+            className="rounded-full border border-card px-3 py-1 text-xs font-semibold text-text-medium transition-colors hover:border-brand-pink hover:text-text-dark flex-shrink-0"
           >
             {t("Закрыть")}
           </button>
         </div>
 
-        <div className="space-y-3">
+        <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-2">
           {evaluations.map((item, index) => (
             <div
               key={item.question.id}
@@ -393,7 +393,7 @@ function TestRunner({
           ))}
         </div>
 
-        <div className="flex justify-end gap-2">
+        <div className="flex justify-end gap-2 sticky bottom-0 bg-white pt-2">
           <button
             type="button"
             onClick={handleRestart}
