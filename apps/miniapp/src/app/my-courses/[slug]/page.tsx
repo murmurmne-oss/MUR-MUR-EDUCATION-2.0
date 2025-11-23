@@ -117,8 +117,16 @@ function TestRunnerModal({
   t: TranslateFn;
 }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 py-6">
-      <div className="w-full max-w-md rounded-3xl bg-white p-5 shadow-lg">
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 py-6"
+      onClick={(e) => {
+        // Закрываем при клике на фон
+        if (e.target === e.currentTarget) {
+          onClose();
+        }
+      }}
+    >
+      <div className="w-full max-w-md max-h-[90vh] rounded-3xl bg-white p-5 shadow-lg overflow-y-auto">
         <TestRunner test={test} onClose={onClose} t={t} />
       </div>
     </div>
