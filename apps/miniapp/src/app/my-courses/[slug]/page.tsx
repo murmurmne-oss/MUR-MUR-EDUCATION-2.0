@@ -305,6 +305,45 @@ function TestRunner({
     });
   }, [answers, test.questions]);
 
+  const handleSelectSingle = (questionId: string, optionId: string) => {
+    setAnswers((prev) => ({
+      ...prev,
+      [questionId]: optionId,
+    }));
+  };
+
+  const handleToggleMultiple = (questionId: string, optionId: string) => {
+    setAnswers((prev) => {
+      const prevValue = Array.isArray(prev[questionId])
+        ? (prev[questionId] as string[])
+        : [];
+      const nextValue = prevValue.includes(optionId)
+        ? prevValue.filter((id) => id !== optionId)
+        : [...prevValue, optionId];
+      return {
+        ...prev,
+        [questionId]: nextValue,
+      };
+    });
+  };
+
+  const handleOpenAnswerChange = (questionId: string, value: string) => {
+    setAnswers((prev) => ({
+      ...prev,
+      [questionId]: value,
+    }));
+  };
+
+  const handlePrev = () => {
+    setCurrentIndex((index) => Math.max(index - 1, 0));
+  };
+
+  const handleNext = () => {
+    setCurrentIndex((index) =>
+      Math.min(index + 1, test.questions.length - 1),
+    );
+  };
+
   const handleFinish = async () => {
     if (!attemptId) {
       setError(t('Не удалось отправить тест. Попробуйте закрыть и открыть тест снова.'));
