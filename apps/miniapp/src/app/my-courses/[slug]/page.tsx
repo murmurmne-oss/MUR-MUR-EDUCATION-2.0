@@ -704,7 +704,7 @@ function FormRunnerModal({
           courseSlug={courseSlug}
           onClose={onClose}
           t={t}
-          userProfilePayload={formProfilePayload}
+          userProfilePayload={userProfilePayload}
         />
       </div>
     </div>
