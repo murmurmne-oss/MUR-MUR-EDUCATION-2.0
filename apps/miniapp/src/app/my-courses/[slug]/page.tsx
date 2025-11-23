@@ -2242,7 +2242,7 @@ export default function MyCourseDetailsPage({
                                 
                                 if (isHTML) {
                                   // Для HTML-контента извлекаем только текст без HTML-тегов для превью
-                                  // Используем тот же стиль, что и для summary
+                                  // Используем тот же стиль, что и для summary (без text-xs)
                                   let plainText = previewBlock.text;
                                   if (typeof document !== 'undefined') {
                                     const tempDiv = document.createElement('div');
@@ -2252,7 +2252,7 @@ export default function MyCourseDetailsPage({
                                   
                                   return (
                                     <p
-                                      className="mt-1 text-xs text-text-light"
+                                      className="mt-1 text-text-light"
                                       style={{ 
                                         overflow: 'hidden',
                                         display: '-webkit-box',
@@ -2266,10 +2266,10 @@ export default function MyCourseDetailsPage({
                                   );
                                 }
                                 
-                                // Рендерим plain text с тем же стилем, что и summary
+                                // Рендерим plain text с тем же стилем, что и summary (без text-xs)
                                 return (
                                   <p
-                                    className="mt-1 text-xs text-text-light"
+                                    className="mt-1 text-text-light"
                                     style={{ 
                                       overflow: 'hidden',
                                       display: '-webkit-box',
