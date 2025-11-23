@@ -229,6 +229,20 @@ function TestRunner({
 
   const currentValue = answers[currentQuestion?.id ?? ''];
 
+  // ВСЕ ХУКИ ДОЛЖНЫ БЫТЬ ВЫЗВАНЫ ДО ЛЮБЫХ УСЛОВНЫХ ВОЗВРАТОВ!
+  const allAnswered = useMemo(() => {
+    return test.questions.every((question) => {
+      const answer = answers[question.id];
+      if (question.type === 'open') {
+        return typeof answer === 'string' && answer.trim().length > 0;
+      }
+      if (question.type === 'single') {
+        return typeof answer === 'string' && answer.length > 0;
+      }
+      return Array.isArray(answer) && answer.length > 0;
+    });
+  }, [answers, test.questions]);
+
   if (isStarting) {
     return (
       <div className="space-y-4">
@@ -272,19 +286,6 @@ function TestRunner({
       </div>
     );
   }
-
-  const allAnswered = useMemo(() => {
-    return test.questions.every((question) => {
-      const answer = answers[question.id];
-      if (question.type === 'open') {
-        return typeof answer === 'string' && answer.trim().length > 0;
-      }
-      if (question.type === 'single') {
-        return typeof answer === 'string' && answer.length > 0;
-      }
-      return Array.isArray(answer) && answer.length > 0;
-    });
-  }, [answers, test.questions]);
 
   const handleSelectSingle = (questionId: string, optionId: string) => {
     setAnswers((prev) => ({
@@ -773,6 +774,21 @@ function FormRunner({
 
   const currentValue = answers[currentQuestion?.id ?? ''];
 
+  // ВСЕ ХУКИ ДОЛЖНЫ БЫТЬ ВЫЗВАНЫ ДО ЛЮБЫХ УСЛОВНЫХ ВОЗВРАТОВ!
+  const allAnswered = useMemo(() => {
+    return form.questions.every((question) => {
+      const answer = answers[question.id];
+      if (form.type === "RATING") {
+        // Для рейтинговых форм ответ должен быть числом от 1 до maxRating
+        const rating = typeof answer === "string" ? parseFloat(answer) : (typeof answer === "number" ? answer : 0);
+        return !Number.isNaN(rating) && rating >= 1 && rating <= (form.maxRating ?? 5);
+      }
+      // Для форм с выбором вариантов
+      const selected = Array.isArray(answer) ? answer : (answer ? [answer] : []);
+      return selected.length > 0;
+    });
+  }, [answers, form.questions, form.type, form.maxRating]);
+
   if (totalQuestions === 0) {
     return (
       <div className="space-y-4">
@@ -791,20 +807,6 @@ function FormRunner({
       </div>
     );
   }
-
-  const allAnswered = useMemo(() => {
-    return form.questions.every((question) => {
-      const answer = answers[question.id];
-      if (form.type === "RATING") {
-        // Для рейтинговых форм ответ должен быть числом от 1 до maxRating
-        const rating = typeof answer === "string" ? parseFloat(answer) : (typeof answer === "number" ? answer : 0);
-        return !Number.isNaN(rating) && rating >= 1 && rating <= (form.maxRating ?? 5);
-      }
-      // Для форм с выбором вариантов
-      const selected = Array.isArray(answer) ? answer : (answer ? [answer] : []);
-      return selected.length > 0;
-    });
-  }, [answers, form.questions, form.type, form.maxRating]);
 
   const handleSelectOption = (questionId: string, optionId: string, isMultiple: boolean) => {
     setAnswers((prev) => {
