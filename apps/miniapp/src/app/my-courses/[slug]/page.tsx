@@ -1459,8 +1459,24 @@ export default function MyCourseDetailsPage({
         currentLessonIndex === currentModule.lessons.length - 1;
       
       if (isLastLessonInModule) {
-        // Это последний урок модуля - просто обновляем enrollment
-        // Пользователь должен вручную выбрать тест или следующий модуль
+        // Это последний урок модуля - проверяем следующий модуль
+        const currentModuleIndex = course.modules.findIndex(
+          (m) => m.id === currentModule.id,
+        );
+        
+        if (currentModuleIndex >= 0 && currentModuleIndex < course.modules.length - 1) {
+          const nextModule = course.modules[currentModuleIndex + 1];
+          const nextModuleAccess = moduleAccessibility.get(nextModule.id);
+          
+          // Если следующий модуль заблокирован тестом - открываем тест
+          if (nextModuleAccess?.isLocked && nextModuleAccess.requiredTest) {
+            await refreshEnrollment();
+            setSelectedTest(nextModuleAccess.requiredTest);
+            return;
+          }
+        }
+        
+        // Если это последний урок последнего модуля или следующий модуль доступен
         await refreshEnrollment();
         return;
       }
@@ -1942,16 +1958,46 @@ export default function MyCourseDetailsPage({
                   </div>
 
                   <div className="mt-4 flex flex-wrap gap-3">
-                    {selectedLessonProgress?.status !== 'COMPLETED' ? (
-                      <button
-                        type="button"
-                        onClick={handleCompleteLesson}
-                        disabled={isProgressUpdating}
-                        className="rounded-full bg-brand-orange px-5 py-2 text-sm font-semibold text-white transition-transform active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
-                      >
-                        {isProgressUpdating ? t('Сохраняем...') : t('Перейти к следующему уроку')}
-                      </button>
-                    ) : (
+                    {selectedLessonProgress?.status !== 'COMPLETED' ? (() => {
+                      // Определяем, является ли это последним уроком в модуле
+                      const currentModule = course.modules.find(
+                        (m) => m.id === selectedLesson.moduleId,
+                      );
+                      const isLastLessonInModule = currentModule
+                        ? currentModule.lessons.findIndex(
+                            (l) => l.id === selectedLesson.lesson.id,
+                          ) === currentModule.lessons.length - 1
+                        : false;
+                      
+                      // Определяем следующий модуль и его доступность
+                      let buttonText = t('Перейти к следующему уроку');
+                      if (isLastLessonInModule && currentModule) {
+                        const currentModuleIndex = course.modules.findIndex(
+                          (m) => m.id === currentModule.id,
+                        );
+                        if (currentModuleIndex >= 0 && currentModuleIndex < course.modules.length - 1) {
+                          const nextModule = course.modules[currentModuleIndex + 1];
+                          const nextModuleAccess = moduleAccessibility.get(nextModule.id);
+                          
+                          if (nextModuleAccess?.isLocked && nextModuleAccess.requiredTest) {
+                            buttonText = t('Пройти тест');
+                          } else {
+                            buttonText = t('Перейти на следующий модуль');
+                          }
+                        }
+                      }
+                      
+                      return (
+                        <button
+                          type="button"
+                          onClick={handleCompleteLesson}
+                          disabled={isProgressUpdating}
+                          className="rounded-full bg-brand-orange px-5 py-2 text-sm font-semibold text-white transition-transform active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          {isProgressUpdating ? t('Сохраняем...') : buttonText}
+                        </button>
+                      );
+                    })() : (
                       <span className="text-sm font-medium text-brand-pink">
                         {t('Урок завершён ')}
                         {selectedLessonProgress.completedAt
@@ -2239,6 +2285,67 @@ export default function MyCourseDetailsPage({
                       (item) => item.course.slug === courseSlug,
                     ) ?? null;
                   setEnrollment(matchingEnrollment);
+                  
+                  // Пересчитываем доступность модулей
+                  const parsedTests = updatedCourse.tests.map((test) => parseCourseTest(test));
+                  const accessMap = new Map<string, { isLocked: boolean; requiredTest: ParsedCourseTest | null }>();
+                  
+                  const firstModule = updatedCourse.modules[0];
+                  if (firstModule) {
+                    accessMap.set(firstModule.id, { isLocked: false, requiredTest: null });
+                  }
+
+                  for (let i = 1; i < updatedCourse.modules.length; i++) {
+                    const module = updatedCourse.modules[i];
+                    const unlockTest = parsedTests.find(
+                      (test) => test.unlockModuleId === module.id
+                    );
+
+                    if (unlockTest) {
+                      const testRecord = updatedCourse.tests.find((t) => t.id === unlockTest.id);
+                      const hasCompletedAttempt = testRecord?.attempts && 
+                        Array.isArray(testRecord.attempts) && 
+                        testRecord.attempts.length > 0 &&
+                        testRecord.attempts.some((attempt: any) => 
+                          attempt.status === 'COMPLETED' || attempt.completedAt !== null
+                        );
+                      
+                      accessMap.set(module.id, {
+                        isLocked: !hasCompletedAttempt,
+                        requiredTest: unlockTest,
+                      });
+                    } else {
+                      accessMap.set(module.id, { isLocked: false, requiredTest: null });
+                    }
+                  }
+                  
+                  // Находим модуль, который был разблокирован этим тестом
+                  const unlockedModule = updatedCourse.modules.find((module) => {
+                    const moduleAccess = accessMap.get(module.id);
+                    const wasUnlockedByTest = parsedTests.some(
+                      (test) => test.unlockModuleId === module.id
+                    );
+                    return wasUnlockedByTest && !moduleAccess?.isLocked && module.lessons.length > 0;
+                  });
+                  
+                  // Если нашли разблокированный модуль - переходим к его первому уроку
+                  if (unlockedModule) {
+                    const firstLessonOfUnlockedModule = unlockedModule.lessons[0];
+                    const nextLessonRef: LessonRef = {
+                      moduleId: unlockedModule.id,
+                      moduleTitle: unlockedModule.title,
+                      moduleOrder: unlockedModule.order,
+                      lesson: firstLessonOfUnlockedModule,
+                    };
+                    
+                    setSelectedLesson(nextLessonRef);
+                    await ensureLessonStarted(nextLessonRef);
+                    
+                    // Прокрутка наверх
+                    if (typeof window !== 'undefined') {
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }
+                  }
                 }
               } catch (refreshError) {
                 console.error('Failed to refresh course after test', refreshError);
