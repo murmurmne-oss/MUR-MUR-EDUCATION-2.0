@@ -139,7 +139,7 @@ function TestRunnerModal({
           test={test} 
           courseSlug={courseSlug}
           userId={userId}
-          userProfilePayload={testProfilePayload}
+          userProfilePayload={userProfilePayload}
           onClose={onClose} 
           t={t} 
         />
