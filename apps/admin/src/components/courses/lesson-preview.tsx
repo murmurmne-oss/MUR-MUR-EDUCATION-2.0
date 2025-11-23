@@ -286,24 +286,21 @@ export function LessonPreview({
                       /<[a-z][\s\S]*>/i.test(block.text.trim());
 
                     if (isHTML) {
-                      // Рендерим HTML с базовыми стилями
+                      // Применяем те же стили, что и для plain text
+                      const fontFamily =
+                        FONT_FAMILY_CLASSES[block.fontFamily ?? "sans"];
+                      const fontSize =
+                        FONT_SIZE_CLASSES[block.fontSize ?? "md"];
+                      const fontWeight =
+                        FONT_WEIGHT_CLASSES[block.fontWeight ?? "regular"];
+                      const align = ALIGN_CLASSES[block.align ?? "left"];
+
+                      // Рендерим HTML с теми же стилями, что и plain text
                       return (
                         <div
                           key={`${block.id}-${index}`}
-                          className="prose prose-sm max-w-none"
+                          className={`prose prose-sm max-w-none ${fontFamily} ${fontSize} ${fontWeight} ${align}`}
                           dangerouslySetInnerHTML={{ __html: block.text }}
-                          style={{
-                            fontFamily:
-                              block.fontFamily === "serif"
-                                ? "serif"
-                                : block.fontFamily === "mono"
-                                  ? "monospace"
-                                  : block.fontFamily === "display"
-                                    ? "display"
-                                    : block.fontFamily === "handwriting"
-                                      ? "cursive"
-                                      : "sans-serif",
-                          }}
                         />
                       );
                     }
