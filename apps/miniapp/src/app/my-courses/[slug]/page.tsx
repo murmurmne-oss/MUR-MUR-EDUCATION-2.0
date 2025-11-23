@@ -2188,8 +2188,8 @@ export default function MyCourseDetailsPage({
                         {/* Отображаем формы, привязанные к урокам этого модуля */}
                         {course.forms && course.forms.length > 0 ? (() => {
                           const lessonForms = course.forms.filter((form) => 
-                            form.unlockLesson?.id && 
-                            module.lessons.some((l) => l.id === form.unlockLesson?.id)
+                            form.unlockLessonId && 
+                            module.lessons.some((l) => l.id === form.unlockLessonId)
                           );
                           
                           if (lessonForms.length === 0) return null;
@@ -2199,7 +2199,7 @@ export default function MyCourseDetailsPage({
                               {lessonForms.map((form) => {
                                 const questions = Array.isArray(form.questions) ? form.questions : [];
                                 const questionCount = questions.length;
-                                const relatedLesson = module.lessons.find((l) => l.id === form.unlockLesson?.id);
+                                const relatedLesson = module.lessons.find((l) => l.id === form.unlockLessonId);
                                 
                                 return (
                                   <div
@@ -2242,7 +2242,7 @@ export default function MyCourseDetailsPage({
                       {/* Отображаем формы, привязанные к этому модулю */}
                       {course.forms && course.forms.length > 0 ? (() => {
                         const moduleForms = course.forms.filter((form) => 
-                          form.unlockModule?.id === module.id
+                          form.unlockModuleId === module.id
                         );
                         
                         if (moduleForms.length === 0) return null;
@@ -2336,7 +2336,7 @@ export default function MyCourseDetailsPage({
             {/* Отображаем только формы без привязки к модулям */}
             {course.forms && course.forms.length > 0 ? (() => {
               const unassignedForms = course.forms.filter((form) => 
-                !form.unlockModule?.id && !form.unlockLesson?.id
+                !form.unlockModuleId && !form.unlockLessonId
               );
               
               if (unassignedForms.length === 0) return null;
