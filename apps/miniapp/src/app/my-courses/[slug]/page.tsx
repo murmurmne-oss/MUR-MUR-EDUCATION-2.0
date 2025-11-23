@@ -6,6 +6,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import { useRouter } from 'next/navigation';
@@ -1044,7 +1045,7 @@ export default function MyCourseDetailsPage({
   const router = useRouter();
   const { user } = useTelegram();
   const resolvedParams = use(params);
-  const courseSlug = resolvedParams.slug;
+  const courseSlug = useMemo(() => resolvedParams.slug, [resolvedParams.slug]);
   const userId = useMemo(
     () => user?.id?.toString() ?? DEV_USER_ID,
     [user?.id],
@@ -1362,6 +1363,8 @@ export default function MyCourseDetailsPage({
 
   const refreshEnrollment = useCallback(
     async (options?: { completedLessonId?: string }) => {
+      if (!userId || !courseSlug) return;
+      
       const response = await apiClient.getUserEnrollments(userId);
       const matchingEnrollment =
         response.enrollments.find(
@@ -1440,6 +1443,7 @@ export default function MyCourseDetailsPage({
     [course, lessonProgressMap, refreshEnrollment, updateLessonProgress],
   );
 
+  const previousModuleOrderRef = useRef<number>(-1);
   const handleSelectLesson = useCallback(
     async (lessonRef: LessonRef) => {
       // Проверяем доступность модуля перед выбором урока
@@ -1449,10 +1453,11 @@ export default function MyCourseDetailsPage({
         return;
       }
       
-      const previousModuleOrder = selectedLesson?.moduleOrder ?? -1;
+      const previousModuleOrder = previousModuleOrderRef.current;
       const newModuleOrder = lessonRef.moduleOrder;
       
       setSelectedLesson(lessonRef);
+      previousModuleOrderRef.current = newModuleOrder;
       await ensureLessonStarted(lessonRef);
       
       // Прокрутка наверх при переходе на новый модуль
@@ -1460,7 +1465,7 @@ export default function MyCourseDetailsPage({
         window.scrollTo({ top: 0, behavior: 'smooth' });
       }
     },
-    [ensureLessonStarted, selectedLesson?.moduleOrder, moduleAccessibility],
+    [ensureLessonStarted, moduleAccessibility],
   );
 
   const handleCompleteLesson = useCallback(async () => {
