@@ -978,6 +978,16 @@ export class CoursesService {
         id: true,
         slug: true,
         title: true,
+        modules: {
+          select: {
+            id: true,
+            order: true,
+            lessons: {
+              select: { id: true },
+            },
+          },
+          orderBy: { order: 'asc' },
+        },
         tests: {
           where: { id: testId },
           select: {
@@ -997,6 +1007,7 @@ export class CoursesService {
               select: {
                 id: true,
                 title: true,
+                order: true,
                 lessons: {
                   select: { id: true },
                 },
@@ -1072,22 +1083,26 @@ export class CoursesService {
       }
     }
 
-    if (testRecord.unlockModuleId) {
-      const lessonIds =
-        testRecord.unlockModule?.lessons?.map((lesson) => lesson.id) ?? [];
+    if (testRecord.unlockModuleId && testRecord.unlockModule) {
+      // Тест разблокирует модуль, поэтому нужно проверить завершение уроков ПРЕДЫДУЩЕГО модуля
+      const unlockModuleOrder = testRecord.unlockModule.order;
+      const previousModule = course.modules.find(
+        (m) => m.order === unlockModuleOrder - 1,
+      );
 
-      if (lessonIds.length > 0) {
+      if (previousModule && previousModule.lessons.length > 0) {
+        const previousModuleLessonIds = previousModule.lessons.map((l) => l.id);
         const completedLessons = await this.prisma.courseProgress.count({
           where: {
             userId,
-            lessonId: { in: lessonIds },
+            lessonId: { in: previousModuleLessonIds },
             status: LessonProgressStatus.COMPLETED,
           },
         });
 
-        if (completedLessons < lessonIds.length) {
+        if (completedLessons < previousModuleLessonIds.length) {
           throw new BadRequestException(
-            `Для доступа к тесту завершите уроки модуля "${testRecord.unlockModule?.title ?? 'нужный модуль'}".`,
+            `Для доступа к тесту завершите все уроки предыдущего модуля.`,
           );
         }
       }
