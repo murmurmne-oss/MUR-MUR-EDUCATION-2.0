@@ -1173,19 +1173,17 @@ export default function MyCourseDetailsPage({
             })),
         );
 
-        const nextLessonTitle =
-          matchingEnrollment?.progress.nextLessonTitle;
-
-        // Выбираем начальный урок с учетом доступности модулей
+        // Выбираем начальный урок с учетом доступности модулей и прогресса
         let initialLesson: LessonRef | null = null;
         
+        // Сначала пытаемся найти урок по nextLessonTitle
+        const nextLessonTitle = matchingEnrollment?.progress.nextLessonTitle;
         if (nextLessonTitle) {
           const nextLesson = flattenedLessons.find(
             (item) => item.lesson.title === nextLessonTitle,
           );
           
           if (nextLesson) {
-            // Проверяем, доступен ли модуль этого урока
             const moduleAccess = accessMap.get(nextLesson.moduleId);
             if (!moduleAccess?.isLocked) {
               initialLesson = nextLesson;
@@ -1193,7 +1191,34 @@ export default function MyCourseDetailsPage({
           }
         }
         
-        // Если не нашли доступный урок по nextLessonTitle, ищем первый доступный
+        // Если не нашли по nextLessonTitle, ищем последний просмотренный урок
+        if (!initialLesson && matchingEnrollment?.lessonProgress) {
+          let lastViewedLesson: LessonRef | null = null;
+          let lastViewedAt: string | null = null;
+          
+          for (const progress of matchingEnrollment.lessonProgress) {
+            const lessonRef = flattenedLessons.find(
+              (item) => item.lesson.id === progress.lessonId,
+            );
+            
+            if (lessonRef) {
+              const moduleAccess = accessMap.get(lessonRef.moduleId);
+              if (!moduleAccess?.isLocked) {
+                const viewedAt = progress.lastViewedAt || progress.completedAt;
+                if (viewedAt && (!lastViewedAt || viewedAt > lastViewedAt)) {
+                  lastViewedAt = viewedAt;
+                  lastViewedLesson = lessonRef;
+                }
+              }
+            }
+          }
+          
+          if (lastViewedLesson) {
+            initialLesson = lastViewedLesson;
+          }
+        }
+        
+        // Если все еще не нашли, ищем первый доступный урок
         if (!initialLesson) {
           initialLesson = flattenedLessons.find(
             (item) => {
@@ -2310,7 +2335,7 @@ export default function MyCourseDetailsPage({
                     ) ?? null;
                   setEnrollment(matchingEnrollment);
                   
-                  // Пересчитываем доступность модулей и обновляем выбранный урок, если он заблокирован
+                  // Пересчитываем доступность модулей
                   const parsedTests = updatedCourse.tests.map((test) => parseCourseTest(test));
                   const accessMap = new Map<string, { isLocked: boolean; requiredTest: ParsedCourseTest | null }>();
                   
@@ -2343,20 +2368,47 @@ export default function MyCourseDetailsPage({
                     }
                   }
                   
-                  // Если текущий урок заблокирован, переключаемся на первый доступный
-                  if (selectedLesson) {
-                    const currentModuleAccess = accessMap.get(selectedLesson.moduleId);
-                    if (currentModuleAccess?.isLocked) {
-                      const flattenedLessons: LessonRef[] = updatedCourse.modules.flatMap(
-                        (module) =>
-                          module.lessons.map((lesson) => ({
-                            moduleId: module.id,
-                            moduleTitle: module.title,
-                            moduleOrder: module.order,
-                            lesson,
-                          })),
+                  // Находим первый разблокированный модуль после теста
+                  const flattenedLessons: LessonRef[] = updatedCourse.modules.flatMap(
+                    (module) =>
+                      module.lessons.map((lesson) => ({
+                        moduleId: module.id,
+                        moduleTitle: module.title,
+                        moduleOrder: module.order,
+                        lesson,
+                      })),
+                  );
+                  
+                  // Ищем модуль, который был разблокирован тестом
+                  let unlockedModuleLesson: LessonRef | null = null;
+                  for (const module of updatedCourse.modules) {
+                    const moduleAccess = accessMap.get(module.id);
+                    if (!moduleAccess?.isLocked && module.lessons.length > 0) {
+                      // Проверяем, был ли этот модуль заблокирован тестом
+                      const wasUnlockedByTest = parsedTests.some(
+                        (test) => test.unlockModuleId === module.id
                       );
                       
+                      if (wasUnlockedByTest) {
+                        // Это модуль, который был разблокирован тестом - переходим к его первому уроку
+                        unlockedModuleLesson = {
+                          moduleId: module.id,
+                          moduleTitle: module.title,
+                          moduleOrder: module.order,
+                          lesson: module.lessons[0],
+                        };
+                        break;
+                      }
+                    }
+                  }
+                  
+                  // Если нашли разблокированный модуль - переходим к нему
+                  if (unlockedModuleLesson) {
+                    setSelectedLesson(unlockedModuleLesson);
+                  } else if (selectedLesson) {
+                    // Если текущий урок заблокирован, переключаемся на первый доступный
+                    const currentModuleAccess = accessMap.get(selectedLesson.moduleId);
+                    if (currentModuleAccess?.isLocked) {
                       const firstAvailableLesson = flattenedLessons.find(
                         (item) => {
                           const moduleAccess = accessMap.get(item.moduleId);
