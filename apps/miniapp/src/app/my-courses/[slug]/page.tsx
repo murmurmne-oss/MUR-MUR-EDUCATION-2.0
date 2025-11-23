@@ -229,6 +229,31 @@ function TestRunner({
 
   const currentValue = answers[currentQuestion?.id ?? ''];
 
+  if (isStarting) {
+    return (
+      <div className="space-y-4">
+        <p className="text-sm text-text-medium">{t('Загрузка теста...')}</p>
+      </div>
+    );
+  }
+
+  if (error && !isFinished && !attemptId) {
+    return (
+      <div className="space-y-4">
+        <p className="text-sm text-brand-orange">{error}</p>
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-full bg-brand-pink px-4 py-2 text-xs font-semibold text-white transition-transform active:scale-95"
+          >
+            {t('Закрыть')}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   if (totalQuestions === 0) {
     return (
       <div className="space-y-4">
@@ -612,11 +637,17 @@ function TestRunner({
         )}
       </div>
 
+      {error && !isFinished && (
+        <div className="rounded-xl bg-red-50 p-3 text-sm text-red-600">
+          {error}
+        </div>
+      )}
+
       <div className="flex items-center justify-between">
         <button
           type="button"
           onClick={handlePrev}
-          disabled={currentIndex === 0}
+          disabled={currentIndex === 0 || isSubmitting}
           className="rounded-full border border-card px-3 py-1 text-xs font-semibold text-text-medium transition-colors hover:border-brand-pink hover:text-text-dark disabled:cursor-not-allowed disabled:opacity-40"
         >
           {t("Назад")}
@@ -626,6 +657,7 @@ function TestRunner({
           onClick={isLastQuestion ? handleFinish : handleNext}
           disabled={
             isSubmitting ||
+            !attemptId ||
             (currentQuestion.type === 'open'
               ? !(typeof currentValue === 'string' && currentValue.trim().length > 0)
               : currentQuestion.type === 'single'
