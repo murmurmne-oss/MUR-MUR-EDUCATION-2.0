@@ -1086,24 +1086,28 @@ export class CoursesService {
     if (testRecord.unlockModuleId && testRecord.unlockModule) {
       // Тест разблокирует модуль, поэтому нужно проверить завершение уроков ПРЕДЫДУЩЕГО модуля
       const unlockModuleOrder = testRecord.unlockModule.order;
-      const previousModule = course.modules.find(
-        (m) => m.order === unlockModuleOrder - 1,
-      );
+      
+      // Если это первый модуль (order = 0), тест доступен без проверки
+      if (unlockModuleOrder > 0 && course.modules && course.modules.length > 0) {
+        const previousModule = course.modules.find(
+          (m) => m.order === unlockModuleOrder - 1,
+        );
 
-      if (previousModule && previousModule.lessons.length > 0) {
-        const previousModuleLessonIds = previousModule.lessons.map((l) => l.id);
-        const completedLessons = await this.prisma.courseProgress.count({
-          where: {
-            userId,
-            lessonId: { in: previousModuleLessonIds },
-            status: LessonProgressStatus.COMPLETED,
-          },
-        });
+        if (previousModule && previousModule.lessons.length > 0) {
+          const previousModuleLessonIds = previousModule.lessons.map((l) => l.id);
+          const completedLessons = await this.prisma.courseProgress.count({
+            where: {
+              userId,
+              lessonId: { in: previousModuleLessonIds },
+              status: LessonProgressStatus.COMPLETED,
+            },
+          });
 
-        if (completedLessons < previousModuleLessonIds.length) {
-          throw new BadRequestException(
-            `Для доступа к тесту завершите все уроки предыдущего модуля.`,
-          );
+          if (completedLessons < previousModuleLessonIds.length) {
+            throw new BadRequestException(
+              `Для доступа к тесту завершите все уроки предыдущего модуля.`,
+            );
+          }
         }
       }
     }

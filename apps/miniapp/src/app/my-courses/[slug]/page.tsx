@@ -139,7 +139,7 @@ function TestRunnerModal({
           test={test} 
           courseSlug={courseSlug}
           userId={userId}
-          userProfilePayload={userProfilePayload}
+          userProfilePayload={testProfilePayload}
           onClose={onClose} 
           t={t} 
         />
@@ -704,7 +704,7 @@ function FormRunnerModal({
           courseSlug={courseSlug}
           onClose={onClose}
           t={t}
-          userProfilePayload={userProfilePayload}
+          userProfilePayload={formProfilePayload}
         />
       </div>
     </div>
@@ -1067,7 +1067,19 @@ export default function MyCourseDetailsPage({
   const [error, setError] = useState<string | null>(null);
   const [isProgressUpdating, setIsProgressUpdating] = useState(false);
 
-  const userProfilePayload = useMemo<StartFormPayload>(
+  const testProfilePayload = useMemo<StartTestPayload>(
+    () => ({
+      userId,
+      firstName: user?.first_name ?? null,
+      lastName: user?.last_name ?? null,
+      username: user?.username ?? null,
+      languageCode: profile?.languageCode ?? null,
+      avatarUrl: user?.photo_url ?? null,
+    }),
+    [userId, user, profile],
+  );
+
+  const formProfilePayload = useMemo<StartFormPayload>(
     () => ({
       userId,
       firstName: user?.first_name ?? null,
@@ -1504,14 +1516,14 @@ export default function MyCourseDetailsPage({
       const response = await apiClient.startCourseForm(
         courseSlug,
         formId,
-        userProfilePayload,
-      );
-      setSelectedForm(response.form);
+      formProfilePayload,
+    );
+    setSelectedForm(response.form);
     } catch (startError) {
       console.error('Failed to start form', startError);
       // Ошибка будет обработана в FormRunner
     }
-  }, [course, courseSlug, userProfilePayload]);
+  }, [course, courseSlug, formProfilePayload]);
 
   const handleResetLesson = useCallback(async () => {
     if (!course || !selectedLesson) return;
@@ -2255,7 +2267,7 @@ export default function MyCourseDetailsPage({
           test={selectedTest}
           courseSlug={courseSlug}
           userId={userId}
-          userProfilePayload={userProfilePayload}
+          userProfilePayload={testProfilePayload}
           onClose={async () => {
             setSelectedTest(null);
             // Обновляем курс и enrollment после закрытия теста, чтобы проверить разблокировку модулей
@@ -2364,7 +2376,7 @@ export default function MyCourseDetailsPage({
             }
           }}
           t={t}
-          userProfilePayload={userProfilePayload}
+          userProfilePayload={formProfilePayload}
         />
       ) : null}
     </div>
