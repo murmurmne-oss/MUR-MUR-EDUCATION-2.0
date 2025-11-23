@@ -1503,39 +1503,8 @@ export default function MyCourseDetailsPage({
         currentLessonIndex === currentModule.lessons.length - 1;
       
       if (isLastLessonInModule) {
-        // Это последний урок модуля - проверяем следующий модуль
-        const currentModuleIndex = course.modules.findIndex(
-          (m) => m.id === currentModule.id,
-        );
-        
-        if (currentModuleIndex >= 0 && currentModuleIndex < course.modules.length - 1) {
-          const nextModule = course.modules[currentModuleIndex + 1];
-          const nextModuleAccess = moduleAccessibility.get(nextModule.id);
-          
-          // Если следующий модуль заблокирован тестом - открываем тест
-          if (nextModuleAccess?.isLocked && nextModuleAccess.requiredTest) {
-            await refreshEnrollment();
-            setSelectedTest(nextModuleAccess.requiredTest);
-            return;
-          }
-          
-          // Если следующий модуль доступен - переходим к первому уроку следующего модуля
-          if (nextModule.lessons.length > 0) {
-            const firstLessonOfNextModule = nextModule.lessons[0];
-            const nextLessonRef: LessonRef = {
-              moduleId: nextModule.id,
-              moduleTitle: nextModule.title,
-              moduleOrder: nextModule.order,
-              lesson: firstLessonOfNextModule,
-            };
-            
-            await refreshEnrollment();
-            setSelectedLesson(nextLessonRef);
-            return;
-          }
-        }
-        
-        // Если это последний урок последнего модуля
+        // Это последний урок модуля - просто обновляем enrollment
+        // Пользователь должен вручную выбрать тест или следующий модуль
         await refreshEnrollment();
         return;
       }
@@ -2017,46 +1986,16 @@ export default function MyCourseDetailsPage({
                   </div>
 
                   <div className="mt-4 flex flex-wrap gap-3">
-                    {selectedLessonProgress?.status !== 'COMPLETED' ? (() => {
-                      // Определяем, является ли это последним уроком в модуле
-                      const currentModule = course.modules.find(
-                        (m) => m.id === selectedLesson.moduleId,
-                      );
-                      const isLastLessonInModule = currentModule
-                        ? currentModule.lessons.findIndex(
-                            (l) => l.id === selectedLesson.lesson.id,
-                          ) === currentModule.lessons.length - 1
-                        : false;
-                      
-                      // Определяем следующий модуль и его доступность
-                      let buttonText = t('Перейти к следующему уроку');
-                      if (isLastLessonInModule && currentModule) {
-                        const currentModuleIndex = course.modules.findIndex(
-                          (m) => m.id === currentModule.id,
-                        );
-                        if (currentModuleIndex >= 0 && currentModuleIndex < course.modules.length - 1) {
-                          const nextModule = course.modules[currentModuleIndex + 1];
-                          const nextModuleAccess = moduleAccessibility.get(nextModule.id);
-                          
-                          if (nextModuleAccess?.isLocked && nextModuleAccess.requiredTest) {
-                            buttonText = t('Пройти тест');
-                          } else {
-                            buttonText = t('Перейти на следующий модуль');
-                          }
-                        }
-                      }
-                      
-                      return (
-                        <button
-                          type="button"
-                          onClick={handleCompleteLesson}
-                          disabled={isProgressUpdating}
-                          className="rounded-full bg-brand-orange px-5 py-2 text-sm font-semibold text-white transition-transform active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
-                        >
-                          {isProgressUpdating ? t('Сохраняем...') : buttonText}
-                        </button>
-                      );
-                    })() : (
+                    {selectedLessonProgress?.status !== 'COMPLETED' ? (
+                      <button
+                        type="button"
+                        onClick={handleCompleteLesson}
+                        disabled={isProgressUpdating}
+                        className="rounded-full bg-brand-orange px-5 py-2 text-sm font-semibold text-white transition-transform active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {isProgressUpdating ? t('Сохраняем...') : t('Перейти к следующему уроку')}
+                      </button>
+                    ) : (
                       <span className="text-sm font-medium text-brand-pink">
                         {t('Урок завершён ')}
                         {selectedLessonProgress.completedAt
@@ -2344,93 +2283,6 @@ export default function MyCourseDetailsPage({
                       (item) => item.course.slug === courseSlug,
                     ) ?? null;
                   setEnrollment(matchingEnrollment);
-                  
-                  // Пересчитываем доступность модулей
-                  const parsedTests = updatedCourse.tests.map((test) => parseCourseTest(test));
-                  const accessMap = new Map<string, { isLocked: boolean; requiredTest: ParsedCourseTest | null }>();
-                  
-                  const firstModule = updatedCourse.modules[0];
-                  if (firstModule) {
-                    accessMap.set(firstModule.id, { isLocked: false, requiredTest: null });
-                  }
-
-                  for (let i = 1; i < updatedCourse.modules.length; i++) {
-                    const module = updatedCourse.modules[i];
-                    const unlockTest = parsedTests.find(
-                      (test) => test.unlockModuleId === module.id
-                    );
-
-                    if (unlockTest) {
-                      const testRecord = updatedCourse.tests.find((t) => t.id === unlockTest.id);
-                      const hasCompletedAttempt = testRecord?.attempts && 
-                        Array.isArray(testRecord.attempts) && 
-                        testRecord.attempts.length > 0 &&
-                        testRecord.attempts.some((attempt: any) => 
-                          attempt.status === 'COMPLETED' || attempt.completedAt !== null
-                        );
-                      
-                      accessMap.set(module.id, {
-                        isLocked: !hasCompletedAttempt,
-                        requiredTest: unlockTest,
-                      });
-                    } else {
-                      accessMap.set(module.id, { isLocked: false, requiredTest: null });
-                    }
-                  }
-                  
-                  // Находим первый разблокированный модуль после теста
-                  const flattenedLessons: LessonRef[] = updatedCourse.modules.flatMap(
-                    (module) =>
-                      module.lessons.map((lesson) => ({
-                        moduleId: module.id,
-                        moduleTitle: module.title,
-                        moduleOrder: module.order,
-                        lesson,
-                      })),
-                  );
-                  
-                  // Ищем модуль, который был разблокирован тестом
-                  let unlockedModuleLesson: LessonRef | null = null;
-                  for (const module of updatedCourse.modules) {
-                    const moduleAccess = accessMap.get(module.id);
-                    if (!moduleAccess?.isLocked && module.lessons.length > 0) {
-                      // Проверяем, был ли этот модуль заблокирован тестом
-                      const wasUnlockedByTest = parsedTests.some(
-                        (test) => test.unlockModuleId === module.id
-                      );
-                      
-                      if (wasUnlockedByTest) {
-                        // Это модуль, который был разблокирован тестом - переходим к его первому уроку
-                        unlockedModuleLesson = {
-                          moduleId: module.id,
-                          moduleTitle: module.title,
-                          moduleOrder: module.order,
-                          lesson: module.lessons[0],
-                        };
-                        break;
-                      }
-                    }
-                  }
-                  
-                  // Если нашли разблокированный модуль - переходим к нему
-                  if (unlockedModuleLesson) {
-                    setSelectedLesson(unlockedModuleLesson);
-                  } else if (selectedLesson) {
-                    // Если текущий урок заблокирован, переключаемся на первый доступный
-                    const currentModuleAccess = accessMap.get(selectedLesson.moduleId);
-                    if (currentModuleAccess?.isLocked) {
-                      const firstAvailableLesson = flattenedLessons.find(
-                        (item) => {
-                          const moduleAccess = accessMap.get(item.moduleId);
-                          return !moduleAccess?.isLocked;
-                        },
-                      );
-                      
-                      if (firstAvailableLesson) {
-                        setSelectedLesson(firstAvailableLesson);
-                      }
-                    }
-                  }
                 }
               } catch (refreshError) {
                 console.error('Failed to refresh course after test', refreshError);
