@@ -1211,44 +1211,86 @@ export default function MyCourseDetailsPage({
         progressPercent: 100,
       });
       
-      // Находим следующий урок в текущем модуле
+      // Находим текущий модуль
       const currentModule = course.modules.find(
         (m) => m.id === selectedLesson.moduleId,
       );
       
-      if (currentModule) {
-        // Находим индекс текущего урока в модуле
-        const currentLessonIndex = currentModule.lessons.findIndex(
-          (l) => l.id === selectedLesson.lesson.id,
-        );
-        
-        // Ищем следующий урок в том же модуле
-        if (currentLessonIndex >= 0 && currentLessonIndex < currentModule.lessons.length - 1) {
-          const nextLesson = currentModule.lessons[currentLessonIndex + 1];
-          const nextLessonRef: LessonRef = {
-            moduleId: currentModule.id,
-            moduleTitle: currentModule.title,
-            moduleOrder: currentModule.order,
-            lesson: nextLesson,
-          };
-          
-          // Обновляем enrollment и переходим к следующему уроку
-          await refreshEnrollment();
-          setSelectedLesson(nextLessonRef);
-          return;
-        }
+      if (!currentModule) {
+        await refreshEnrollment();
+        return;
       }
       
-      // Если в текущем модуле нет следующего урока, используем логику бэкенда
-      await refreshEnrollment({
-        completedLessonId: selectedLesson.lesson.id,
-      });
+      // Находим индекс текущего урока в модуле
+      const currentLessonIndex = currentModule.lessons.findIndex(
+        (l) => l.id === selectedLesson.lesson.id,
+      );
+      
+      // Проверяем, является ли это последним уроком в модуле
+      const isLastLessonInModule = currentLessonIndex >= 0 && 
+        currentLessonIndex === currentModule.lessons.length - 1;
+      
+      if (isLastLessonInModule) {
+        // Это последний урок модуля - проверяем следующий модуль
+        const currentModuleIndex = course.modules.findIndex(
+          (m) => m.id === currentModule.id,
+        );
+        
+        if (currentModuleIndex >= 0 && currentModuleIndex < course.modules.length - 1) {
+          const nextModule = course.modules[currentModuleIndex + 1];
+          const nextModuleAccess = moduleAccessibility.get(nextModule.id);
+          
+          // Если следующий модуль заблокирован тестом - открываем тест
+          if (nextModuleAccess?.isLocked && nextModuleAccess.requiredTest) {
+            await refreshEnrollment();
+            setSelectedTest(nextModuleAccess.requiredTest);
+            return;
+          }
+          
+          // Если следующий модуль доступен - переходим к первому уроку следующего модуля
+          if (nextModule.lessons.length > 0) {
+            const firstLessonOfNextModule = nextModule.lessons[0];
+            const nextLessonRef: LessonRef = {
+              moduleId: nextModule.id,
+              moduleTitle: nextModule.title,
+              moduleOrder: nextModule.order,
+              lesson: firstLessonOfNextModule,
+            };
+            
+            await refreshEnrollment();
+            setSelectedLesson(nextLessonRef);
+            return;
+          }
+        }
+        
+        // Если это последний урок последнего модуля
+        await refreshEnrollment();
+        return;
+      }
+      
+      // Это не последний урок - переходим к следующему уроку в том же модуле
+      if (currentLessonIndex >= 0 && currentLessonIndex < currentModule.lessons.length - 1) {
+        const nextLesson = currentModule.lessons[currentLessonIndex + 1];
+        const nextLessonRef: LessonRef = {
+          moduleId: currentModule.id,
+          moduleTitle: currentModule.title,
+          moduleOrder: currentModule.order,
+          lesson: nextLesson,
+        };
+        
+        await refreshEnrollment();
+        setSelectedLesson(nextLessonRef);
+        return;
+      }
+      
+      // Fallback
+      await refreshEnrollment();
     } catch (lessonError) {
       console.error('Failed to complete lesson', lessonError);
     } finally {
       setIsProgressUpdating(false);
     }
-  }, [course, refreshEnrollment, selectedLesson, updateLessonProgress]);
+  }, [course, refreshEnrollment, selectedLesson, updateLessonProgress, moduleAccessibility]);
 
   const handleStartForm = useCallback(async (formId: string) => {
     if (!course) return;
@@ -1703,18 +1745,46 @@ export default function MyCourseDetailsPage({
                   </div>
 
                   <div className="mt-4 flex flex-wrap gap-3">
-                    {selectedLessonProgress?.status !== 'COMPLETED' ? (
-                      <button
-                        type="button"
-                        onClick={handleCompleteLesson}
-                        disabled={isProgressUpdating}
-                        className="rounded-full bg-brand-orange px-5 py-2 text-sm font-semibold text-white transition-transform active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
-                      >
-                        {isProgressUpdating
-                          ? t('Сохраняем...')
-                          : t('Перейти к следующему уроку')}
-                      </button>
-                    ) : (
+                    {selectedLessonProgress?.status !== 'COMPLETED' ? (() => {
+                      // Определяем, является ли это последним уроком в модуле
+                      const currentModule = course.modules.find(
+                        (m) => m.id === selectedLesson.moduleId,
+                      );
+                      const isLastLessonInModule = currentModule
+                        ? currentModule.lessons.findIndex(
+                            (l) => l.id === selectedLesson.lesson.id,
+                          ) === currentModule.lessons.length - 1
+                        : false;
+                      
+                      // Определяем следующий модуль и его доступность
+                      let buttonText = t('Перейти к следующему уроку');
+                      if (isLastLessonInModule && currentModule) {
+                        const currentModuleIndex = course.modules.findIndex(
+                          (m) => m.id === currentModule.id,
+                        );
+                        if (currentModuleIndex >= 0 && currentModuleIndex < course.modules.length - 1) {
+                          const nextModule = course.modules[currentModuleIndex + 1];
+                          const nextModuleAccess = moduleAccessibility.get(nextModule.id);
+                          
+                          if (nextModuleAccess?.isLocked && nextModuleAccess.requiredTest) {
+                            buttonText = t('Пройти тест');
+                          } else {
+                            buttonText = t('Перейти на следующий модуль');
+                          }
+                        }
+                      }
+                      
+                      return (
+                        <button
+                          type="button"
+                          onClick={handleCompleteLesson}
+                          disabled={isProgressUpdating}
+                          className="rounded-full bg-brand-orange px-5 py-2 text-sm font-semibold text-white transition-transform active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          {isProgressUpdating ? t('Сохраняем...') : buttonText}
+                        </button>
+                      );
+                    })() : (
                       <span className="text-sm font-medium text-brand-pink">
                         {t('Урок завершён ')}
                         {selectedLessonProgress.completedAt
