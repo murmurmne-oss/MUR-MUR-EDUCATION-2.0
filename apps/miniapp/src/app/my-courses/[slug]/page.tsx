@@ -222,7 +222,8 @@ function TestRunner({
     return () => {
       active = false;
     };
-  }, [test, courseSlug, userProfilePayload, t]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [test.id, courseSlug, userProfilePayload]); // Убрали t и test из зависимостей, используем только стабильные значения
 
   const currentQuestion = test.questions[currentIndex];
   const totalQuestions = test.questions.length;
@@ -767,7 +768,8 @@ function FormRunner({
     return () => {
       active = false;
     };
-  }, [form, courseSlug, userProfilePayload, t]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.id, courseSlug, userProfilePayload]); // Убрали t и form из зависимостей, используем только стабильные значения
 
   const currentQuestion = form.questions[currentIndex];
   const totalQuestions = form.questions.length;
@@ -1042,6 +1044,8 @@ export default function MyCourseDetailsPage({
 }: {
   params: Promise<{ slug: string }>;
 }) {
+  // ВСЕ ХУКИ ДОЛЖНЫ БЫТЬ ВЫЗВАНЫ В ОДНОМ И ТОМ ЖЕ ПОРЯДКЕ ПРИ КАЖДОМ РЕНДЕРЕ!
+  // Порядок вызова хуков критичен - не меняйте его!
   const router = useRouter();
   const { user } = useTelegram();
   const resolvedParams = use(params);
@@ -1242,11 +1246,10 @@ export default function MyCourseDetailsPage({
         console.error('Failed to load course data', loadError);
         if (!active) return;
         startTransition(() => {
-          setError(
-            loadError instanceof Error
-              ? t(loadError.message)
-              : t('Не удалось загрузить курс. Попробуйте позже.'),
-          );
+          const errorMessage = loadError instanceof Error
+            ? loadError.message
+            : 'Не удалось загрузить курс. Попробуйте позже.';
+          setError(errorMessage);
         });
       })
       .finally(() => {
@@ -1258,7 +1261,7 @@ export default function MyCourseDetailsPage({
     return () => {
       active = false;
     };
-  }, [courseSlug, t, userId]);
+  }, [courseSlug, userId]); // Убрали t из зависимостей, так как он стабилен
 
   const lessonProgressMap = useMemo(() => {
     const map = new Map<string, LessonProgressState>();
