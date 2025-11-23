@@ -193,7 +193,6 @@ function TestRunner({
   // Начинаем тест при монтировании
   useEffect(() => {
     let active = true;
-    console.log('TestRunner mounted, starting test', { testId: test.id, courseSlug, userProfilePayload });
     setIsStarting(true);
     setCurrentIndex(0);
     setAnswers({});
@@ -205,7 +204,6 @@ function TestRunner({
     apiClient
       .startCourseTest(courseSlug, test.id, userProfilePayload)
       .then((response) => {
-        console.log('Test started successfully', response);
         if (!active) return;
         setAttemptId(response.attemptId);
         setIsStarting(false);
@@ -246,89 +244,6 @@ function TestRunner({
       return Array.isArray(answer) && answer.length > 0;
     });
   }, [answers, test.questions]);
-
-  if (isStarting) {
-    return (
-      <div className="space-y-4">
-        <p className="text-sm text-text-medium">{t('Загрузка теста...')}</p>
-      </div>
-    );
-  }
-
-  if (error && !isFinished && !attemptId) {
-    return (
-      <div className="space-y-4">
-        <p className="text-sm text-brand-orange">{error}</p>
-        <div className="flex justify-end">
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-full bg-brand-pink px-4 py-2 text-xs font-semibold text-white transition-transform active:scale-95"
-          >
-            {t('Закрыть')}
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  if (totalQuestions === 0) {
-    return (
-      <div className="space-y-4">
-        <p className="text-sm text-text-medium">
-          {t("Этот тест ещё не содержит вопросов.")}
-        </p>
-        <div className="flex justify-end">
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-full bg-brand-pink px-4 py-2 text-xs font-semibold text-white transition-transform active:scale-95"
-          >
-            {t("Закрыть")}
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  const handleSelectSingle = (questionId: string, optionId: string) => {
-    setAnswers((prev) => ({
-      ...prev,
-      [questionId]: optionId,
-    }));
-  };
-
-  const handleToggleMultiple = (questionId: string, optionId: string) => {
-    setAnswers((prev) => {
-      const prevValue = Array.isArray(prev[questionId])
-        ? (prev[questionId] as string[])
-        : [];
-      const nextValue = prevValue.includes(optionId)
-        ? prevValue.filter((id) => id !== optionId)
-        : [...prevValue, optionId];
-      return {
-        ...prev,
-        [questionId]: nextValue,
-      };
-    });
-  };
-
-  const handleOpenAnswerChange = (questionId: string, value: string) => {
-    setAnswers((prev) => ({
-      ...prev,
-      [questionId]: value,
-    }));
-  };
-
-  const handlePrev = () => {
-    setCurrentIndex((index) => Math.max(index - 1, 0));
-  };
-
-  const handleNext = () => {
-    setCurrentIndex((index) =>
-      Math.min(index + 1, test.questions.length - 1),
-    );
-  };
 
   const evaluateTest = useCallback((): QuestionResult[] => {
     return test.questions.map((question) => {
@@ -2052,10 +1967,7 @@ export default function MyCourseDetailsPage({
                         </div>
                         <button
                           type="button"
-                          onClick={() => {
-                            console.log('Test button clicked', test);
-                            setSelectedTest(test);
-                          }}
+                          onClick={() => setSelectedTest(test)}
                           disabled={test.questions.length === 0}
                           className="rounded-full bg-brand-pink px-4 py-2 text-xs font-semibold text-white transition-transform active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
                         >
@@ -2268,7 +2180,6 @@ export default function MyCourseDetailsPage({
           userId={userId}
           userProfilePayload={testProfilePayload}
           onClose={async () => {
-            console.log('TestRunnerModal onClose called');
             setSelectedTest(null);
             // Обновляем курс и enrollment после закрытия теста, чтобы проверить разблокировку модулей
             if (course) {
