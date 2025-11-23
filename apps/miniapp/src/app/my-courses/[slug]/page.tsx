@@ -1210,6 +1210,36 @@ export default function MyCourseDetailsPage({
         status: 'COMPLETED',
         progressPercent: 100,
       });
+      
+      // Находим следующий урок в текущем модуле
+      const currentModule = course.modules.find(
+        (m) => m.id === selectedLesson.moduleId,
+      );
+      
+      if (currentModule) {
+        // Находим индекс текущего урока в модуле
+        const currentLessonIndex = currentModule.lessons.findIndex(
+          (l) => l.id === selectedLesson.lesson.id,
+        );
+        
+        // Ищем следующий урок в том же модуле
+        if (currentLessonIndex >= 0 && currentLessonIndex < currentModule.lessons.length - 1) {
+          const nextLesson = currentModule.lessons[currentLessonIndex + 1];
+          const nextLessonRef: LessonRef = {
+            moduleId: currentModule.id,
+            moduleTitle: currentModule.title,
+            moduleOrder: currentModule.order,
+            lesson: nextLesson,
+          };
+          
+          // Обновляем enrollment и переходим к следующему уроку
+          await refreshEnrollment();
+          setSelectedLesson(nextLessonRef);
+          return;
+        }
+      }
+      
+      // Если в текущем модуле нет следующего урока, используем логику бэкенда
       await refreshEnrollment({
         completedLessonId: selectedLesson.lesson.id,
       });
