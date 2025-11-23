@@ -1383,6 +1383,13 @@ export default function MyCourseDetailsPage({
 
   const handleSelectLesson = useCallback(
     async (lessonRef: LessonRef) => {
+      // Проверяем доступность модуля перед выбором урока
+      const moduleAccess = moduleAccessibility.get(lessonRef.moduleId);
+      if (moduleAccess?.isLocked) {
+        // Если модуль заблокирован, не переключаемся на урок
+        return;
+      }
+      
       const previousModuleOrder = selectedLesson?.moduleOrder ?? -1;
       const newModuleOrder = lessonRef.moduleOrder;
       
@@ -1394,7 +1401,7 @@ export default function MyCourseDetailsPage({
         window.scrollTo({ top: 0, behavior: 'smooth' });
       }
     },
-    [ensureLessonStarted, selectedLesson?.moduleOrder],
+    [ensureLessonStarted, selectedLesson?.moduleOrder, moduleAccessibility],
   );
 
   const handleCompleteLesson = useCallback(async () => {
