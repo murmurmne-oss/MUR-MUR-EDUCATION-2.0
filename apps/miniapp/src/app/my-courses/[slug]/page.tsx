@@ -1049,7 +1049,18 @@ export default function MyCourseDetailsPage({
   );
   const { profile } = useUserProfile(userId);
   // Используем язык из профиля, если есть, иначе из localStorage, иначе 'sr'
-  const preferredLanguage = profile?.languageCode ?? (typeof window !== 'undefined' ? localStorage.getItem('murmur_preferred_language') : null) ?? 'sr';
+  const preferredLanguage = useMemo(() => {
+    if (profile?.languageCode) {
+      return profile.languageCode;
+    }
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('murmur_preferred_language');
+      if (stored) {
+        return stored;
+      }
+    }
+    return 'sr';
+  }, [profile?.languageCode]);
   const { t } = useMemo(
     () => createTranslator(preferredLanguage),
     [preferredLanguage],
