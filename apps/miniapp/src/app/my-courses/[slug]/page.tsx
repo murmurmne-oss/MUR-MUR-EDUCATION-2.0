@@ -21,6 +21,8 @@ import {
   StartFormResponse,
   SubmitFormPayload,
   SubmitFormResult,
+  StartTestPayload,
+  SubmitTestPayload,
 } from '@/lib/api-client';
 import {
   LessonContentBlock,
@@ -109,10 +111,16 @@ function clampPercent(status: LessonStatus) {
 
 function TestRunnerModal({
   test,
+  courseSlug,
+  userId,
+  userProfilePayload,
   onClose,
   t,
 }: {
   test: ParsedCourseTest;
+  courseSlug: string;
+  userId: string;
+  userProfilePayload: StartTestPayload;
   onClose: () => void;
   t: TranslateFn;
 }) {
@@ -127,7 +135,14 @@ function TestRunnerModal({
       }}
     >
       <div className="w-full max-w-md max-h-[90vh] rounded-3xl bg-white p-5 shadow-lg overflow-y-auto">
-        <TestRunner test={test} onClose={onClose} t={t} />
+        <TestRunner 
+          test={test} 
+          courseSlug={courseSlug}
+          userId={userId}
+          userProfilePayload={userProfilePayload}
+          onClose={onClose} 
+          t={t} 
+        />
       </div>
     </div>
   );
@@ -152,10 +167,16 @@ function normalizeArray(value: unknown): string[] {
 
 function TestRunner({
   test,
+  courseSlug,
+  userId,
+  userProfilePayload,
   onClose,
   t,
 }: {
   test: ParsedCourseTest;
+  courseSlug: string;
+  userId: string;
+  userProfilePayload: StartTestPayload;
   onClose: () => void;
   t: TranslateFn;
 }) {
@@ -163,13 +184,44 @@ function TestRunner({
   const [answers, setAnswers] = useState<Record<string, string | string[]>>({});
   const [isFinished, setIsFinished] = useState(false);
   const [evaluations, setEvaluations] = useState<QuestionResult[] | null>(null);
+  const [attemptId, setAttemptId] = useState<string | null>(null);
+  const [isStarting, setIsStarting] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
+  // Начинаем тест при монтировании
   useEffect(() => {
+    let active = true;
+    setIsStarting(true);
     setCurrentIndex(0);
     setAnswers({});
     setIsFinished(false);
     setEvaluations(null);
-  }, [test]);
+    setError(null);
+    setAttemptId(null);
+
+    apiClient
+      .startCourseTest(courseSlug, test.id, userProfilePayload)
+      .then((response) => {
+        if (!active) return;
+        setAttemptId(response.attemptId);
+        setIsStarting(false);
+      })
+      .catch((startError) => {
+        console.error('Failed to start test', startError);
+        if (!active) return;
+        setError(
+          startError instanceof Error
+            ? startError.message
+            : t('Не удалось начать тест. Попробуйте позже.'),
+        );
+        setIsStarting(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [test, courseSlug, userProfilePayload, t]);
 
   const currentQuestion = test.questions[currentIndex];
   const totalQuestions = test.questions.length;
@@ -308,10 +360,51 @@ function TestRunner({
     });
   }, [answers, test.questions]);
 
-  const handleFinish = () => {
-    const result = evaluateTest();
-    setEvaluations(result);
-    setIsFinished(true);
+  const handleFinish = async () => {
+    if (!attemptId) {
+      setError(t('Не удалось отправить тест. Попробуйте закрыть и открыть тест снова.'));
+      return;
+    }
+
+    setIsSubmitting(true);
+    setError(null);
+
+    try {
+      const payload: SubmitTestPayload = {
+        attemptId,
+        answers: test.questions.map((question) => {
+          const value = answers[question.id];
+          if (question.type === 'open') {
+            return {
+              questionId: question.id,
+              textAnswer: typeof value === 'string' ? value : '',
+            };
+          }
+
+          const selected = Array.isArray(value) ? (value as string[]) : [];
+          return {
+            questionId: question.id,
+            selectedOptionIds: selected,
+          };
+        }),
+      };
+
+      await apiClient.submitCourseTest(courseSlug, test.id, payload);
+      
+      // Оцениваем локально для отображения результатов
+      const result = evaluateTest();
+      setEvaluations(result);
+      setIsFinished(true);
+    } catch (submitError) {
+      console.error('Failed to submit test', submitError);
+      setError(
+        submitError instanceof Error
+          ? submitError.message
+          : t('Не удалось отправить тест. Попробуйте позже.'),
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleRestart = () => {
@@ -532,15 +625,20 @@ function TestRunner({
           type="button"
           onClick={isLastQuestion ? handleFinish : handleNext}
           disabled={
-            currentQuestion.type === 'open'
+            isSubmitting ||
+            (currentQuestion.type === 'open'
               ? !(typeof currentValue === 'string' && currentValue.trim().length > 0)
               : currentQuestion.type === 'single'
                 ? !(typeof currentValue === 'string' && currentValue.length > 0)
-                : !Array.isArray(currentValue) || currentValue.length === 0
+                : !Array.isArray(currentValue) || currentValue.length === 0)
           }
           className="rounded-full bg-brand-pink px-4 py-2 text-xs font-semibold text-white transition-transform active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {isLastQuestion ? t("Завершить") : t("Следующий")}
+          {isSubmitting
+            ? t('Отправка...')
+            : isLastQuestion
+              ? t('Завершить')
+              : t('Следующий')}
         </button>
       </div>
 
@@ -2104,6 +2202,9 @@ export default function MyCourseDetailsPage({
       {selectedTest ? (
         <TestRunnerModal
           test={selectedTest}
+          courseSlug={courseSlug}
+          userId={userId}
+          userProfilePayload={userProfilePayload}
           onClose={async () => {
             setSelectedTest(null);
             // Обновляем курс и enrollment после закрытия теста, чтобы проверить разблокировку модулей
