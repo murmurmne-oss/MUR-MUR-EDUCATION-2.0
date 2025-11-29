@@ -160,6 +160,12 @@ export function RichTextEditor({
         codeBlock: false,
         horizontalRule: false,
         hardBreak: false,
+        link: false, // Используем кастомный Link
+        underline: false, // Используем кастомный Underline
+        strike: false, // Используем кастомный Strike
+        bulletList: false, // Используем кастомный BulletList
+        orderedList: false, // Используем кастомный OrderedList
+        listItem: false, // Используем кастомный ListItem
       }),
       TextStyle,
       FontSize,

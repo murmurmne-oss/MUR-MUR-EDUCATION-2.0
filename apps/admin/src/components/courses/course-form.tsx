@@ -3248,9 +3248,11 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
           className="flex flex-col gap-6 rounded-3xl bg-white p-6 shadow-sm ring-1 ring-border/40"
         >
       <div className="grid gap-4 md:grid-cols-2">
-        <label className="flex flex-col gap-2 text-sm text-text-dark">
+        <label htmlFor="course-title" className="flex flex-col gap-2 text-sm text-text-dark">
           Название
           <input
+            id="course-title"
+            name="title"
             type="text"
             value={formState.title}
             onChange={(event) =>
@@ -3261,10 +3263,12 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
           />
         </label>
 
-        <label className="flex flex-col gap-2 text-sm text-text-dark">
+        <label htmlFor="course-slug" className="flex flex-col gap-2 text-sm text-text-dark">
           Slug
           <div className="flex gap-2">
             <input
+              id="course-slug"
+              name="slug"
               type="text"
               value={formState.slug}
               onChange={(event) =>
@@ -3283,9 +3287,11 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
           </div>
         </label>
 
-        <label className="flex flex-col gap-2 text-sm text-text-dark">
+        <label htmlFor="course-category" className="flex flex-col gap-2 text-sm text-text-dark">
           Категория
           <select
+            id="course-category"
+            name="category"
             value={formState.category}
             onChange={(event) =>
               handleFormChange("category", event.target.value)
@@ -3300,9 +3306,11 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
           </select>
         </label>
 
-        <label className="flex flex-col gap-2 text-sm text-text-dark">
+        <label htmlFor="course-language" className="flex flex-col gap-2 text-sm text-text-dark">
           Язык курса
           <select
+            id="course-language"
+            name="language"
             value={formState.language}
             onChange={(event) =>
               handleFormChange("language", event.target.value)
@@ -3317,9 +3325,11 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
           </select>
         </label>
 
-        <label className="flex flex-col gap-2 text-sm text-text-dark">
+        <label htmlFor="course-level" className="flex flex-col gap-2 text-sm text-text-dark">
           Уровень
           <select
+            id="course-level"
+            name="level"
             value={formState.level}
             onChange={(event) =>
               handleFormChange("level", event.target.value)
@@ -3334,9 +3344,11 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
           </select>
         </label>
 
-        <label className="flex flex-col gap-2 text-sm text-text-dark md:col-span-2">
+        <label htmlFor="course-short-description" className="flex flex-col gap-2 text-sm text-text-dark md:col-span-2">
           Короткое описание
           <textarea
+            id="course-short-description"
+            name="shortDescription"
             value={formState.shortDescription}
             onChange={(event) =>
               handleFormChange("shortDescription", event.target.value)
@@ -3346,9 +3358,11 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
           />
         </label>
 
-        <label className="flex flex-col gap-2 text-sm text-text-dark md:col-span-2">
+        <label htmlFor="course-description" className="flex flex-col gap-2 text-sm text-text-dark md:col-span-2">
           Описание
           <textarea
+            id="course-description"
+            name="description"
             value={formState.description}
             onChange={(event) =>
               handleFormChange("description", event.target.value)
@@ -3367,9 +3381,11 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
           />
         </div>
 
-        <label className="flex flex-col gap-2 text-sm text-text-dark">
+        <label htmlFor="course-promo-video" className="flex flex-col gap-2 text-sm text-text-dark">
           Промо видео (опционально)
           <input
+            id="course-promo-video"
+            name="promoVideoUrl"
             type="url"
             value={formState.promoVideoUrl}
             onChange={(event) =>
@@ -3431,9 +3447,11 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
               {!collapsedModules.has(module.tempId) && (
                 <>
                   <div className="grid gap-3 md:grid-cols-2">
-                    <label className="flex flex-col gap-2 text-xs text-text-dark">
+                    <label htmlFor={`module-title-${module.tempId}`} className="flex flex-col gap-2 text-xs text-text-dark">
                       Название модуля
                       <input
+                        id={`module-title-${module.tempId}`}
+                        name={`module-title-${module.tempId}`}
                         type="text"
                         value={module.title}
                         onChange={(event) =>
@@ -3443,9 +3461,11 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
                         className="rounded-2xl border border-border bg-white px-3 py-2 text-sm text-text-dark outline-none focus:border-brand-pink"
                       />
                     </label>
-                    <label className="flex flex-col gap-2 text-xs text-text-dark">
+                    <label htmlFor={`module-order-${module.tempId}`} className="flex flex-col gap-2 text-xs text-text-dark">
                       Порядок
                       <input
+                        id={`module-order-${module.tempId}`}
+                        name={`module-order-${module.tempId}`}
                         type="number"
                         value={module.order}
                         onChange={(event) =>
@@ -3519,9 +3539,11 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
                       </LessonDropZone>
 
                       <div className="grid gap-3 md:grid-cols-2">
-                        <label className="flex flex-col gap-2 text-xs text-text-dark">
+                        <label htmlFor={`lesson-title-${lesson.tempId}`} className="flex flex-col gap-2 text-xs text-text-dark">
                           Название урока
                           <input
+                            id={`lesson-title-${lesson.tempId}`}
+                            name={`lesson-title-${lesson.tempId}`}
                             type="text"
                             value={lesson.title}
                             onChange={(event) =>
@@ -3536,9 +3558,11 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
                             className="rounded-2xl border border-border bg-surface px-3 py-2 text-sm text-text-dark outline-none focus:border-brand-pink"
                           />
                         </label>
-                        <label className="flex flex-col gap-2 text-xs text-text-dark">
+                        <label htmlFor={`lesson-order-${lesson.tempId}`} className="flex flex-col gap-2 text-xs text-text-dark">
                           Порядок
                           <input
+                            id={`lesson-order-${lesson.tempId}`}
+                            name={`lesson-order-${lesson.tempId}`}
                             type="number"
                             value={lesson.order}
                             onChange={(event) =>
@@ -3552,9 +3576,11 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
                             className="rounded-2xl border border-border bg-surface px-3 py-2 text-sm text-text-dark outline-none focus:border-brand-pink"
                           />
                         </label>
-                        <label className="flex flex-col gap-2 text-xs text-text-dark md:col-span-2">
+                        <label htmlFor={`lesson-summary-${lesson.tempId}`} className="flex flex-col gap-2 text-xs text-text-dark md:col-span-2">
                           Краткое описание
                           <textarea
+                            id={`lesson-summary-${lesson.tempId}`}
+                            name={`lesson-summary-${lesson.tempId}`}
                             value={lesson.summary}
                             onChange={(event) =>
                               handleLessonChange(
@@ -3571,11 +3597,13 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
                       </div>
 
                       {/* Ссылка на видео - компактная строка над контентом */}
-                      <label className="flex flex-col gap-1 text-xs text-text-dark">
+                      <label htmlFor={`lesson-video-url-${lesson.tempId}`} className="flex flex-col gap-1 text-xs text-text-dark">
                         <span className="text-[11px] font-medium text-text-light">
                           Ссылка на видео (если урок — видео):
                         </span>
                         <input
+                          id={`lesson-video-url-${lesson.tempId}`}
+                          name={`lesson-video-url-${lesson.tempId}`}
                           type="url"
                           value={lesson.videoUrl}
                           onChange={(event) =>
@@ -3659,9 +3687,11 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
 
                       {/* Длительность, статус и превью - в отдельном grid */}
                       <div className="grid gap-3 md:grid-cols-3">
-                        <label className="flex flex-col gap-2 text-xs text-text-dark">
+                        <label htmlFor={`lesson-duration-${lesson.tempId}`} className="flex flex-col gap-2 text-xs text-text-dark">
                           Длительность (мин)
                           <input
+                            id={`lesson-duration-${lesson.tempId}`}
+                            name={`lesson-duration-${lesson.tempId}`}
                             type="number"
                             min="0"
                             value={lesson.durationMinutes}
@@ -3676,8 +3706,10 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
                             className="rounded-2xl border border-border bg-surface px-3 py-2 text-sm text-text-dark outline-none focus:border-brand-pink"
                           />
                         </label>
-                        <label className="flex items-center gap-2 text-xs text-text-dark">
+                        <label htmlFor={`lesson-preview-${lesson.tempId}`} className="flex items-center gap-2 text-xs text-text-dark">
                           <input
+                            id={`lesson-preview-${lesson.tempId}`}
+                            name={`lesson-preview-${lesson.tempId}`}
                             type="checkbox"
                             checked={lesson.isPreview}
                             onChange={(event) =>
