@@ -37,6 +37,7 @@ import { CourseNavigationSidebar } from "./course-navigation-sidebar";
 import { CoursePreview } from "./course-preview";
 import { LessonPreview } from "./lesson-preview";
 import { ImageUploadField } from "./image-upload-field";
+import { VideoUploadField } from "./video-upload-field";
 
 const CATEGORY_OPTIONS = [
   { value: "EROS_EVERY_DAY", label: "Eros & every day" },
@@ -3381,19 +3382,14 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
           />
         </div>
 
-        <label htmlFor="course-promo-video" className="flex flex-col gap-2 text-sm text-text-dark">
-          Промо видео (опционально)
-          <input
-            id="course-promo-video"
-            name="promoVideoUrl"
-            type="url"
+        <div className="flex flex-col gap-2 text-sm text-text-dark">
+          <VideoUploadField
             value={formState.promoVideoUrl}
-            onChange={(event) =>
-              handleFormChange("promoVideoUrl", event.target.value)
-            }
-            className="rounded-2xl border border-border bg-surface px-4 py-2 text-sm text-text-dark outline-none focus:border-brand-pink"
+            onChange={(url) => handleFormChange("promoVideoUrl", url)}
+            label="Промо видео (опционально)"
+            placeholder="https://... или загрузите файл"
           />
-        </label>
+        </div>
       </div>
 
       <section className="flex flex-col gap-4">
@@ -3596,28 +3592,22 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
                         </label>
                       </div>
 
-                      {/* Ссылка на видео - компактная строка над контентом */}
-                      <label htmlFor={`lesson-video-url-${lesson.tempId}`} className="flex flex-col gap-1 text-xs text-text-dark">
-                        <span className="text-[11px] font-medium text-text-light">
-                          Ссылка на видео (если урок — видео):
-                        </span>
-                        <input
-                          id={`lesson-video-url-${lesson.tempId}`}
-                          name={`lesson-video-url-${lesson.tempId}`}
-                          type="url"
+                      {/* Видео - компактная строка над контентом */}
+                      <div className="flex flex-col gap-1">
+                        <VideoUploadField
                           value={lesson.videoUrl}
-                          onChange={(event) =>
+                          onChange={(url) =>
                             handleLessonChange(
                               module.tempId,
                               lesson.tempId,
                               "videoUrl",
-                              event.target.value,
+                              url,
                             )
                           }
-                          placeholder="https://..."
-                          className="rounded-xl border border-border bg-surface px-3 py-1.5 text-xs text-text-dark outline-none focus:border-brand-pink"
+                          label="Видео (если урок — видео):"
+                          placeholder="https://... или загрузите файл"
                         />
-                      </label>
+                      </div>
 
                       {/* Раздел контента - на всю ширину */}
                       <div className="w-full">

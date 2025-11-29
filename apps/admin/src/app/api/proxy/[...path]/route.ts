@@ -1,5 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 
+// Увеличиваем лимит размера тела запроса для загрузки больших видео файлов
+export const config = {
+  api: {
+    bodyParser: false,
+  },
+  maxDuration: 300, // 5 минут для загрузки больших файлов
+};
+
 function normalizeBaseUrl(rawValue: string | undefined) {
   let base = rawValue?.trim();
   if (!base || base.length === 0) {

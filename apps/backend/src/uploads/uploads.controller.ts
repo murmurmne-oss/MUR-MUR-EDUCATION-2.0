@@ -87,6 +87,60 @@ export class UploadsController {
       url: `${baseUrl}/uploads/${file.filename}`,
     };
   }
+
+  @Post('videos')
+  @UseGuards(ApiKeyGuard)
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: diskStorage({
+        destination: (_req, _file, cb) => {
+          ensureUploadsDir();
+          cb(null, uploadsDir);
+        },
+        filename: (_req, file, cb) => {
+          const unique = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
+          const extension = extname(file.originalname) || '.mp4';
+          cb(null, `${unique}${extension}`);
+        },
+      }),
+      fileFilter: (_req, file, cb) => {
+        const allowedMimeTypes = [
+          'video/mp4',
+          'video/webm',
+          'video/ogg',
+          'video/quicktime',
+          'video/x-msvideo',
+        ];
+        if (!allowedMimeTypes.includes(file.mimetype)) {
+          return cb(
+            new BadRequestException(
+              'Можно загружать только видео файлы (MP4, WebM, OGG, MOV, AVI)',
+            ) as never,
+            false,
+          );
+        }
+        cb(null, true);
+      },
+      limits: {
+        fileSize:
+          Number.parseInt(process.env.UPLOAD_VIDEO_MAX_SIZE ?? '', 10) ||
+          500 * 1024 * 1024, // 500MB по умолчанию
+      },
+    }),
+  )
+  uploadVideo(
+    @UploadedFile() file: Express.Multer.File | undefined,
+    @Req() request: Request,
+  ) {
+    if (!file) {
+      throw new BadRequestException('Файл не найден или не прошел проверку');
+    }
+
+    const baseUrl = resolveUploadsBaseUrl(request);
+    return {
+      url: `${baseUrl}/uploads/${file.filename}`,
+    };
+  }
 }
 
 

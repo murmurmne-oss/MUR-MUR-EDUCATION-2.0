@@ -1,0 +1,7 @@
+.env
+.env.staging
+.env.local
+*.pem
+*.key
+*.crt
+

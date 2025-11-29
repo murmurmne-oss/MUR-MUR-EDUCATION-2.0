@@ -78,6 +78,25 @@ async function uploadImage(file: File): Promise<{ url: string }> {
   return (await response.json()) as { url: string };
 }
 
+async function uploadVideo(file: File): Promise<{ url: string }> {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const response = await fetch("/api/proxy/uploads/videos", {
+    method: "POST",
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const message = await response.text();
+    throw new Error(
+      `Upload to /uploads/videos failed with ${response.status}: ${message}`,
+    );
+  }
+
+  return (await response.json()) as { url: string };
+}
+
 export type OverviewMetrics = {
   activeUsers: number;
   revenueCents: number;
@@ -412,6 +431,7 @@ export const apiClient = {
       body: JSON.stringify(payload ?? {}),
     }),
   uploadImage,
+  uploadVideo,
   getUsers: () => request<UserSummary[]>("/users"),
   getUser: (id: string) => request<UserDetail>(`/users/${id}`),
   getUserEnrollments: (id: string) =>
