@@ -742,7 +742,7 @@ function FormRunner({
         const rating = typeof answer === "string" ? parseFloat(answer) : (typeof answer === "number" ? answer : 0);
         return !Number.isNaN(rating) && rating >= 1 && rating <= (form.maxRating ?? 5);
       }
-      // Для форм с выбором вариантов
+      // Для форм с выбором вариантов (CHOICE и SCORED)
       const selected = Array.isArray(answer) ? answer : (answer ? [answer] : []);
       return selected.length > 0;
     });

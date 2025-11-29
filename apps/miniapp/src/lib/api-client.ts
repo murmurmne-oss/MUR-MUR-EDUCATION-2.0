@@ -191,7 +191,7 @@ export type CourseDetails = {
     id: string;
     title: string;
     description: string | null;
-    type?: "CHOICE" | "RATING";
+    type?: "CHOICE" | "RATING" | "SCORED";
     maxRating?: number | null;
     questions: unknown;
     results: unknown;
@@ -341,7 +341,8 @@ export type PublicFormQuestion = {
   options: Array<{
     id: string;
     text: string;
-    category: string;
+    category?: string;  // Для CHOICE форм
+    score?: number;     // Для SCORED форм - баллы за вариант ответа
   }>;
 };
 
@@ -349,7 +350,7 @@ export type PublicForm = {
   id: string;
   title: string;
   description: string | null;
-  type: "CHOICE" | "RATING";
+  type: "CHOICE" | "RATING" | "SCORED";
   maxRating: number | null;
   questionCount: number;
   questions: PublicFormQuestion[];

@@ -4686,8 +4686,9 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
                                                 />
                                               </label>
                                             </>
-                                          )}
-                                          <label className="flex flex-col gap-1 text-xs text-text-dark">
+                                          ) : null}
+                                        </div>
+                                        <label className="flex flex-col gap-1 text-xs text-text-dark">
                                             <span className="text-[11px] font-medium text-text-light">
                                               Название результата
                                             </span>

@@ -420,5 +420,6 @@ enum ActivityActorType {
 enum FormType {
   CHOICE
   RATING
+  SCORED  // Форма с вопросами, вариантами ответов и баллами за каждый вариант
 }
 

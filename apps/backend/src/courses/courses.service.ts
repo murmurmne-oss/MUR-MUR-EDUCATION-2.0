@@ -53,7 +53,7 @@ export type CourseTestInput = {
 export type CourseFormInput = {
   title: string;
   description?: string | null;
-  type?: "CHOICE" | "RATING";
+  type?: "CHOICE" | "RATING" | "SCORED";
   maxRating?: number | null;
   questions?: Prisma.InputJsonValue | null;
   results?: Prisma.InputJsonValue | null;
@@ -1772,6 +1772,63 @@ export class CoursesService {
     responses: Record<string, string | string[]>,
   ): string | null {
     if (!Array.isArray(questions) || !Array.isArray(results)) {
+      return null;
+    }
+
+    // Для форм с баллами (SCORED) - суммируем баллы за выбранные варианты ответов
+    if (formType === FormType.SCORED) {
+      let totalScore = 0;
+
+      for (const question of questions) {
+        if (!question || typeof question !== 'object') continue;
+        const q = question as Record<string, unknown>;
+        const questionId = typeof q.id === 'string' ? q.id : '';
+        const response = responses[questionId];
+
+        if (!response) continue;
+
+        // Получаем варианты ответов для этого вопроса
+        const options = Array.isArray(q.options) ? q.options : [];
+        
+        // Для SCORED форм response - это массив выбранных optionId
+        const selectedOptionIds = Array.isArray(response) ? response : [response as string];
+
+        // Суммируем баллы за выбранные варианты
+        for (const optionId of selectedOptionIds) {
+          const option = options.find((opt: unknown) => {
+            if (!opt || typeof opt !== 'object') return false;
+            const o = opt as Record<string, unknown>;
+            return typeof o.id === 'string' && o.id === optionId;
+          });
+
+          if (option && typeof option === 'object') {
+            const opt = option as Record<string, unknown>;
+            const score = typeof opt.score === 'number' ? opt.score : 0;
+            totalScore += score;
+          }
+        }
+      }
+
+      // Находим результат на основе диапазонов баллов
+      for (const result of results) {
+        if (!result || typeof result !== 'object') continue;
+        const r = result as Record<string, unknown>;
+        const resultId = typeof r.id === 'string' ? r.id : '';
+        const minScore = typeof r.minScore === 'number' ? r.minScore : undefined;
+        const maxScore = typeof r.maxScore === 'number' ? r.maxScore : undefined;
+
+        if (!resultId) continue;
+
+        // Проверяем, попадает ли сумма баллов в диапазон
+        const inRange = 
+          (minScore === undefined || totalScore >= minScore) &&
+          (maxScore === undefined || totalScore <= maxScore);
+
+        if (inRange) {
+          return resultId;
+        }
+      }
+
       return null;
     }
 
