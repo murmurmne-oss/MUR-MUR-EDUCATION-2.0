@@ -78,6 +78,7 @@ type LessonContentEditorProps = {
   ) => void;
   onRemoveBlock: (blockId: string) => void;
   onUploadImage?: (file: File) => Promise<{ url: string }>;
+  onUploadVideo?: (file: File) => Promise<{ url: string }>;
   // Пропсы для drag-and-drop
   moduleTempId?: string;
   lessonTempId?: string;
@@ -174,18 +175,24 @@ export function LessonContentEditor({
   onUpdateBlock,
   onRemoveBlock,
   onUploadImage,
+  onUploadVideo,
   moduleTempId,
   lessonTempId,
   renderBlockWrapper,
 }: LessonContentEditorProps) {
   const sectionId = useId();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const videoInputRef = useRef<HTMLInputElement | null>(null);
   const [pendingUploadBlockId, setPendingUploadBlockId] = useState<string | null>(
+    null,
+  );
+  const [pendingVideoBlockId, setPendingVideoBlockId] = useState<string | null>(
     null,
   );
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [isUploadingVideo, setIsUploadingVideo] = useState(false);
 
   const hasBlocks = blocks.length > 0;
 
@@ -231,6 +238,62 @@ export function LessonContentEditor({
       }
     },
     [onAddBlock, onRemoveBlock, onUpdateBlock, onUploadImage, pendingUploadBlockId],
+  );
+
+  const handleVideoFileChange = useCallback(
+    async (event: ChangeEvent<HTMLInputElement>, blockId: string) => {
+      if (!onUploadVideo) {
+        return;
+      }
+      const file = event.target.files?.[0];
+      if (!file) {
+        return;
+      }
+
+      // Проверка типа файла
+      const allowedTypes = [
+        "video/mp4",
+        "video/webm",
+        "video/ogg",
+        "video/quicktime",
+        "video/x-msvideo",
+      ];
+      if (!allowedTypes.includes(file.type)) {
+        setUploadError("Выберите видео файл (MP4, WebM, OGG, MOV, AVI)");
+        return;
+      }
+
+      setUploadError(null);
+
+      try {
+        setIsUploadingVideo(true);
+        const result = await onUploadVideo(file);
+        onUpdateBlock(blockId, { url: result.url });
+      } catch (error) {
+        setUploadError(
+          error instanceof Error
+            ? error.message
+            : "Не удалось загрузить видео. Попробуйте снова.",
+        );
+      } finally {
+        setIsUploadingVideo(false);
+        if (event.target) {
+          event.target.value = "";
+        }
+      }
+    },
+    [onUpdateBlock, onUploadVideo],
+  );
+
+  const handleVideoUploadClick = useCallback(
+    (blockId: string) => {
+      if (videoInputRef.current) {
+        // Сохраняем blockId в data-атрибут для обработки
+        videoInputRef.current.setAttribute("data-block-id", blockId);
+        videoInputRef.current.click();
+      }
+    },
+    [],
   );
 
   const handleUploadClick = useCallback(
@@ -475,18 +538,44 @@ export function LessonContentEditor({
             Удалить
           </button>
         </div>
-        <label className="flex flex-col gap-2 text-[11px] text-text-dark">
-          Ссылка на видео
-          <input
-            type="url"
-            value={block.url}
-            onChange={(event) =>
-              onUpdateBlock(block.id, { url: event.target.value })
-            }
-            placeholder="https://..."
-            className="rounded-2xl border border-border bg-white px-3 py-2 text-sm text-text-dark outline-none focus:border-brand-pink"
-          />
-        </label>
+        <div className="flex flex-col gap-2 text-[11px] text-text-dark">
+          <label>Ссылка на видео</label>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <input
+              type="url"
+              value={block.url}
+              onChange={(event) =>
+                onUpdateBlock(block.id, { url: event.target.value })
+              }
+              placeholder="https://..."
+              className="flex-1 rounded-2xl border border-border bg-white px-3 py-2 text-sm text-text-dark outline-none focus:border-brand-pink"
+            />
+            {onUploadVideo && (
+              <>
+                <input
+                  ref={videoInputRef}
+                  type="file"
+                  accept="video/*"
+                  onChange={(event) => {
+                    const blockId = event.currentTarget.getAttribute("data-block-id");
+                    if (blockId) {
+                      handleVideoFileChange(event, blockId);
+                    }
+                  }}
+                  className="hidden"
+                />
+                <button
+                  type="button"
+                  onClick={() => handleVideoUploadClick(block.id)}
+                  disabled={isUploadingVideo}
+                  className="rounded-2xl border border-brand-pink bg-white px-4 py-2 text-xs font-semibold text-brand-pink transition-colors hover:bg-brand-pink hover:text-white disabled:cursor-not-allowed disabled:opacity-60 whitespace-nowrap"
+                >
+                  {isUploadingVideo ? "Загрузка..." : "Загрузить файл"}
+                </button>
+              </>
+            )}
+          </div>
+        </div>
         <label className="flex flex-col gap-2 text-[11px] text-text-dark">
           Подпись (опционально)
           <input
@@ -534,7 +623,7 @@ export function LessonContentEditor({
         ) : null}
       </div>
     ),
-    [onRemoveBlock, onUpdateBlock],
+    [onRemoveBlock, onUpdateBlock, onUploadVideo, handleVideoFileChange, handleVideoUploadClick, isUploadingVideo],
   );
 
   const renderAudioBlock = useCallback(

@@ -2833,6 +2833,11 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
     [],
   );
 
+  const handleLessonUploadVideo = useCallback(
+    (file: File) => apiClient.uploadVideo(file),
+    [],
+  );
+
   const buildLessonPayload = (lesson: LessonState): LessonPayload => {
     const duration = lesson.durationMinutes.trim();
     const order = Number(lesson.order);
@@ -3659,6 +3664,7 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
                               )
                             }
                             onUploadImage={handleLessonUploadImage}
+                            onUploadVideo={handleLessonUploadVideo}
                             moduleTempId={module.tempId}
                             lessonTempId={lesson.tempId}
                             renderBlockWrapper={(block, children) => (
