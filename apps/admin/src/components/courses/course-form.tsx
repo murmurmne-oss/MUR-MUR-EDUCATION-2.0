@@ -4734,7 +4734,6 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
                                               className="rounded-lg border border-border bg-white px-2 py-1 text-xs text-text-dark outline-none focus:border-brand-pink"
                                             />
                                           </label>
-                                        </div>
                                         <label className="flex flex-col gap-1 text-xs text-text-dark">
                                           <span className="text-[11px] font-medium text-text-light">
                                             Описание результата
@@ -4781,6 +4780,7 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
                                             className="rounded-lg border border-border bg-white px-2 py-1 text-xs text-text-dark outline-none focus:border-brand-pink"
                                           />
                                         </label>
+                                        </div>
                                       </div>
                                       {form.results.length > 1 && (
                                         <button
@@ -4821,7 +4821,6 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
                                           ✕
                                         </button>
                                       )}
-                                    </div>
                                   </div>
                                 ))}
                                 {/* Кнопка добавления результата внизу списка */}
