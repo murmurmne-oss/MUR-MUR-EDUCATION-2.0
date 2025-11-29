@@ -241,7 +241,7 @@ export type CourseTestPayload = {
 export type CourseFormPayload = {
   title: string;
   description?: string | null;
-  type?: "CHOICE" | "RATING";
+  type?: "CHOICE" | "RATING" | "SCORED";
   maxRating?: number | null;
   questions?: unknown;
   results?: unknown;

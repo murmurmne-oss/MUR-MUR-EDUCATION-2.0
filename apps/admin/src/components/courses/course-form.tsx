@@ -3057,7 +3057,7 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
           title: form.title,
           description: form.description || null,
           type: form.type,
-          maxRating: form.type === "RATING" ? form.maxRating : null,
+          maxRating: form.type === "RATING" || form.type === "SCORED" ? form.maxRating : null,
           questions: serializeFormQuestions(form.questions, form.type),
           results: serializeFormResults(form.results),
           lessonId: lessonId || null,
@@ -4821,8 +4821,8 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
                                           ✕
                                         </button>
                                       )}
-                                  </div>
-                                ))}
+                                </div>
+                              ))}
                                 {/* Кнопка добавления результата внизу списка */}
                                 {form.results.length > 0 && (
                                   <div className="flex justify-center pt-2">
