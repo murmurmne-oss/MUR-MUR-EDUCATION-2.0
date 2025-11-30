@@ -59,7 +59,7 @@ export class SupportBotService {
       return;
     }
 
-    this.logger.debug(
+    this.logger.log(
       `Received message from chat ${message.chat.id}, type: ${message.chat.type}`,
     );
 
@@ -87,7 +87,7 @@ export class SupportBotService {
     }
 
     const text = message.text ?? message.caption ?? '';
-    this.logger.debug(`Handling user message from ${userId}: ${text.substring(0, 50)}`);
+    this.logger.log(`Handling user message from ${userId}: ${text.substring(0, 50)}`);
 
     if (text.startsWith('/start')) {
       await this.handleStartCommand(message, text);
@@ -108,7 +108,7 @@ export class SupportBotService {
       return;
     }
 
-    this.logger.debug(`Handling /start command from user ${userId}`);
+    this.logger.log(`Handling /start command from user ${userId}`);
 
     const payload = text.replace('/start', '').trim();
     if (payload.startsWith('buy_')) {
