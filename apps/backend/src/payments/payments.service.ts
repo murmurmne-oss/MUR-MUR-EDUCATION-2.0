@@ -36,6 +36,7 @@ type TelegramPreCheckoutQuery = {
 export type TelegramUpdate = {
   update_id: number;
   message?: {
+    message_id?: number;
     from?: TelegramUser;
     chat?: { id: number; type: string };
     text?: string;
@@ -252,6 +253,7 @@ export class PaymentsService {
         `Received /start command from user ${message.from?.id} in chat ${message.chat.id}`,
       );
       await this.handleStartCommand({
+        message_id: message.message_id,
         chat: { id: message.chat.id, type: message.chat.type },
         from: message.from,
       });
@@ -502,6 +504,7 @@ export class PaymentsService {
   }
 
   private async handleStartCommand(message: {
+    message_id?: number;
     chat: { id: number; type: string };
     from?: TelegramUser;
   }) {
@@ -511,11 +514,13 @@ export class PaymentsService {
     }
 
     const chatId = message.chat.id;
+    const messageId = message.message_id;
     const welcomeText =
       'Добар дан! Ово је платформа за сексуално образовање. За почетак учења кликните на дугме да отворите апликацију.';
 
     try {
-      await this.callTelegramApi('sendMessage', {
+      // Пробуем сначала ответить на сообщение, если есть message_id
+      const payload: Record<string, unknown> = {
         chat_id: chatId,
         text: welcomeText,
         reply_markup: {
@@ -528,10 +533,32 @@ export class PaymentsService {
             ],
           ],
         },
-      });
-      this.logger.debug(`Sent welcome message to chat ${chatId}`);
+      };
+
+      // Если есть message_id, отвечаем на сообщение
+      if (messageId) {
+        payload.reply_to_message_id = messageId;
+      }
+
+      await this.callTelegramApi('sendMessage', payload);
+      this.logger.log(`Sent welcome message to chat ${chatId}`);
     } catch (error) {
-      this.logger.error(`Failed to send welcome message to chat ${chatId}`, error);
+      this.logger.error(
+        `Failed to send welcome message to chat ${chatId}. Error: ${error instanceof Error ? error.message : String(error)}`,
+      );
+      // Пробуем отправить без кнопки, если с кнопкой не получилось
+      try {
+        await this.callTelegramApi('sendMessage', {
+          chat_id: chatId,
+          text: welcomeText,
+        });
+        this.logger.log(`Sent welcome message (without button) to chat ${chatId}`);
+      } catch (fallbackError) {
+        this.logger.error(
+          `Failed to send welcome message even without button to chat ${chatId}`,
+          fallbackError,
+        );
+      }
     }
   }
 
