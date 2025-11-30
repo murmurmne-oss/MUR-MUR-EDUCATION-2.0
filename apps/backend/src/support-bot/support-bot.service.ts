@@ -50,12 +50,18 @@ export class SupportBotService {
 
   async handleUpdate(update: TelegramUpdate) {
     if (!this.isEnabled) {
+      this.logger.warn('Support bot is disabled, ignoring update');
       return;
     }
     const message = update.message;
     if (!message) {
+      this.logger.debug('Update has no message, ignoring');
       return;
     }
+
+    this.logger.debug(
+      `Received message from chat ${message.chat.id}, type: ${message.chat.type}`,
+    );
 
     if (this.managerChatId && message.chat.id === this.managerChatId) {
       if (message.reply_to_message) {
@@ -66,16 +72,23 @@ export class SupportBotService {
 
     if (message.chat.type === 'private') {
       await this.handleUserMessage(message);
+    } else {
+      this.logger.debug(
+        `Ignoring message from non-private chat: ${message.chat.type}`,
+      );
     }
   }
 
   private async handleUserMessage(message: TelegramMessage) {
     const userId = message.from?.id;
     if (!userId) {
+      this.logger.warn('Message has no user ID, ignoring');
       return;
     }
 
     const text = message.text ?? message.caption ?? '';
+    this.logger.debug(`Handling user message from ${userId}: ${text.substring(0, 50)}`);
+
     if (text.startsWith('/start')) {
       await this.handleStartCommand(message, text);
       return;
@@ -91,8 +104,11 @@ export class SupportBotService {
   private async handleStartCommand(message: TelegramMessage, text: string) {
     const userId = message.from?.id;
     if (!userId) {
+      this.logger.warn('Start command has no user ID, ignoring');
       return;
     }
+
+    this.logger.debug(`Handling /start command from user ${userId}`);
 
     const payload = text.replace('/start', '').trim();
     if (payload.startsWith('buy_')) {
