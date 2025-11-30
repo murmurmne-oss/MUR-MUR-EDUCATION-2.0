@@ -321,7 +321,13 @@ export class PaymentsService {
       }
       return true;
     }
-    return secret === this.webhookSecret;
+    const secretMatch = secret === this.webhookSecret;
+    if (!secretMatch) {
+      this.logger.debug(
+        `Secret token mismatch. Expected length: ${this.webhookSecret.length}, received length: ${secret?.length ?? 0}`,
+      );
+    }
+    return secretMatch;
   }
 
   private parseInvoicePayload(payload: string): InvoicePayload | null {
