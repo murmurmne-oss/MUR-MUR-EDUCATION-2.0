@@ -462,19 +462,38 @@ export class PaymentsService {
     if (!this.telegramApiBase) {
       throw new Error('Telegram API base URL is not configured');
     }
-    const response = await fetch(`${this.telegramApiBase}/${method}`, {
+    const url = `${this.telegramApiBase}/${method}`;
+    this.logger.debug(`Calling Telegram API: ${method} to ${url.substring(0, 50)}...`);
+    
+    const response = await fetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(payload),
     });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      this.logger.error(
+        `Telegram API error: ${response.status} ${response.statusText}. Response: ${errorText}`,
+      );
+      throw new Error(
+        `Telegram API ${method} failed: ${response.status} ${response.statusText}`,
+      );
+    }
+    
     const data = (await response.json()) as {
       ok: boolean;
       result: T;
       description?: string;
+      error_code?: number;
     };
+    
     if (!data.ok) {
+      this.logger.error(
+        `Telegram API returned error: ${data.error_code ?? 'unknown'} - ${data.description ?? 'unknown error'}`,
+      );
       throw new Error(
         data.description ?? `Telegram API method ${method} failed`,
       );
