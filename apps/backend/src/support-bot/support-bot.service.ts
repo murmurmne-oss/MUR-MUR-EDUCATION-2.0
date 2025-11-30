@@ -115,7 +115,7 @@ export class SupportBotService {
     }
 
     await this.safeSendMessage(userId, {
-      text: 'Здравствуйте! Напишите ваш вопрос, и мы обязательно ответим.',
+      text: 'Здраво! Напишите ваше питање, и ми ћемо одговорити.',
     });
   }
 
