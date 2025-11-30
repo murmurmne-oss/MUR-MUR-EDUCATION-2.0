@@ -36,7 +36,10 @@ type TelegramPreCheckoutQuery = {
 export type TelegramUpdate = {
   update_id: number;
   message?: {
+    message_id?: number;
     from?: TelegramUser;
+    chat?: { id: number; type: string };
+    text?: string;
     successful_payment?: TelegramSuccessfulPayment;
   };
   channel_post?: {
@@ -81,6 +84,10 @@ export class PaymentsService {
       process.env.NEXT_PUBLIC_TELEGRAM_STARS_PER_EURO ??
       '60',
   );
+  private readonly miniappUrl =
+    process.env.NEXT_PUBLIC_MINIAPP_URL ??
+    process.env.MINIAPP_URL ??
+    'https://mini.murmurmne.com';
   private readonly telegramApiBase = this.botToken
     ? `https://api.telegram.org/bot${this.botToken}`
     : null;
@@ -230,6 +237,21 @@ export class PaymentsService {
       this.logger.debug(
         `Approved pre-checkout query ${body.pre_checkout_query.id}`,
       );
+      return { ok: true };
+    }
+
+    // Обработка команды /start
+    const message = body.message;
+    if (
+      message?.text?.startsWith('/start') &&
+      message.chat?.type === 'private' &&
+      message.chat?.id
+    ) {
+      await this.handleStartCommand({
+        message_id: message.message_id,
+        chat: { id: message.chat.id, type: message.chat.type },
+        from: message.from,
+      });
       return { ok: true };
     }
 
@@ -449,6 +471,50 @@ export class PaymentsService {
       );
     }
     return data.result;
+  }
+
+  private async handleStartCommand(message: {
+    message_id?: number;
+    chat: { id: number; type: string };
+    from?: TelegramUser;
+  }) {
+    if (!this.telegramApiBase) {
+      this.logger.warn('Cannot handle /start command: TELEGRAM_BOT_TOKEN not configured');
+      return;
+    }
+
+    const chatId = message.chat.id;
+    const welcomeText =
+      'Добар дан! Ово је платформа за сексуално образовање. За почетак учења кликните на дугме да отворите апликацију.';
+
+    try {
+      const payload: Record<string, unknown> = {
+        chat_id: chatId,
+        text: welcomeText,
+        reply_markup: {
+          inline_keyboard: [
+            [
+              {
+                text: 'Отвори апликацију',
+                web_app: { url: this.miniappUrl },
+              },
+            ],
+          ],
+        },
+      };
+
+      if (message.message_id) {
+        payload.reply_to_message_id = message.message_id;
+      }
+
+      await this.callTelegramApi('sendMessage', payload);
+      this.logger.log(`Sent welcome message to chat ${chatId}`);
+    } catch (error) {
+      this.logger.error(
+        `Failed to send welcome message to chat ${chatId}`,
+        error,
+      );
+    }
   }
 
   private async answerPreCheckoutQuery(
