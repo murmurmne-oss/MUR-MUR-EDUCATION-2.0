@@ -246,6 +246,9 @@ export class PaymentsService {
       message.chat?.type === 'private' &&
       message.chat?.id
     ) {
+      this.logger.log(
+        `Received /start command from user ${message.from?.id} in chat ${message.chat.id}`,
+      );
       await this.handleStartCommand({
         chat: { id: message.chat.id, type: message.chat.type },
         from: message.from,
