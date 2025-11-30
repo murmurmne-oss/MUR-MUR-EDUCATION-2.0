@@ -7,9 +7,9 @@ const nextConfig: NextConfig = {
     serverActions: {
       bodySizeLimit: "500mb",
     },
+    // Увеличиваем лимит для middleware и route handlers (Next.js 16+)
+    middlewareClientMaxBodySize: "500mb",
   },
-  // Для API routes в App Router нужно использовать другой подход
-  // Лимиты устанавливаются через переменные окружения или в route handlers
 };
 
 export default nextConfig;

@@ -101,9 +101,21 @@ async function proxyRequest(
 
   if (method !== "GET" && method !== "DELETE") {
     if (contentType?.includes("multipart/form-data")) {
-      // Для FormData используем formData() напрямую
-      body = await request.formData();
-      // Не устанавливаем Content-Type для FormData - fetch сам добавит boundary
+      try {
+        // Для FormData используем formData() напрямую
+        // Важно: это должно работать с большими файлами после настройки middlewareClientMaxBodySize
+        body = await request.formData();
+        // Не устанавливаем Content-Type для FormData - fetch сам добавит boundary
+      } catch (error) {
+        console.error("[Proxy] Failed to parse FormData:", error);
+        return NextResponse.json(
+          { 
+            message: "Ошибка при обработке файла. Убедитесь, что файл не превышает 500MB.",
+            error: error instanceof Error ? error.message : String(error)
+          },
+          { status: 413 },
+        );
+      }
     } else {
       // Для JSON и других типов
       if (contentType) {
