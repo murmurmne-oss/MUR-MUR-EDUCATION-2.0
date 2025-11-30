@@ -12,6 +12,8 @@ services:
     environment:
       NODE_ENV: production
       PORT: 4000
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      TELEGRAM_WEBHOOK_SECRET_TOKEN: ${TELEGRAM_WEBHOOK_SECRET_TOKEN-}
       TELEGRAM_STARS_PER_EURO: ${TELEGRAM_STARS_PER_EURO-60}
       DATABASE_URL: ${DATABASE_URL}
       REDIS_URL: ${REDIS_URL-}
@@ -21,7 +23,6 @@ services:
       MANAGER_BOT_TOKEN: ${MANAGER_BOT_TOKEN}
       MANAGER_BOT_SECRET_TOKEN: ${MANAGER_BOT_SECRET_TOKEN-}
       MANAGER_CHAT_ID: ${MANAGER_CHAT_ID}
-      MINIAPP_URL: ${MINIAPP_URL-https://mini.murmurmne.com}
     volumes:
       - backend_uploads:/uploads
     expose:

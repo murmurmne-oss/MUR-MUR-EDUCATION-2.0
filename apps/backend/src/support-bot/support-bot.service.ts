@@ -12,7 +12,6 @@ export class SupportBotService {
   private readonly apiBase?: string;
   private readonly managerChatId?: number;
   private readonly secretToken?: string;
-  private readonly miniappUrl?: string;
   private readonly uidTag = /#uid:(\d+)/;
   private readonly isEnabled: boolean;
 
@@ -20,10 +19,6 @@ export class SupportBotService {
     const token = process.env.MANAGER_BOT_TOKEN;
     const chatId = process.env.MANAGER_CHAT_ID;
     this.secretToken = process.env.MANAGER_BOT_SECRET_TOKEN;
-    this.miniappUrl =
-      process.env.NEXT_PUBLIC_MINIAPP_URL ??
-      process.env.MINIAPP_URL ??
-      'https://mini.murmurmne.com';
 
     if (!token || !chatId) {
       this.isEnabled = false;
@@ -50,18 +45,12 @@ export class SupportBotService {
 
   async handleUpdate(update: TelegramUpdate) {
     if (!this.isEnabled) {
-      this.logger.warn('Support bot is disabled, ignoring update');
       return;
     }
     const message = update.message;
     if (!message) {
-      this.logger.debug('Update has no message, ignoring');
       return;
     }
-
-    this.logger.log(
-      `Received message from chat ${message.chat.id}, type: ${message.chat.type}`,
-    );
 
     if (this.managerChatId && message.chat.id === this.managerChatId) {
       if (message.reply_to_message) {
@@ -72,23 +61,16 @@ export class SupportBotService {
 
     if (message.chat.type === 'private') {
       await this.handleUserMessage(message);
-    } else {
-      this.logger.debug(
-        `Ignoring message from non-private chat: ${message.chat.type}`,
-      );
     }
   }
 
   private async handleUserMessage(message: TelegramMessage) {
     const userId = message.from?.id;
     if (!userId) {
-      this.logger.warn('Message has no user ID, ignoring');
       return;
     }
 
     const text = message.text ?? message.caption ?? '';
-    this.logger.log(`Handling user message from ${userId}: ${text.substring(0, 50)}`);
-
     if (text.startsWith('/start')) {
       await this.handleStartCommand(message, text);
       return;
@@ -104,11 +86,8 @@ export class SupportBotService {
   private async handleStartCommand(message: TelegramMessage, text: string) {
     const userId = message.from?.id;
     if (!userId) {
-      this.logger.warn('Start command has no user ID, ignoring');
       return;
     }
-
-    this.logger.log(`Handling /start command from user ${userId}`);
 
     const payload = text.replace('/start', '').trim();
     if (payload.startsWith('buy_')) {
@@ -135,24 +114,8 @@ export class SupportBotService {
       return;
     }
 
-    // Приветственное сообщение на сербском с кнопкой для открытия приложения
-    const welcomeText =
-      'Добар дан! Ово је платформа за сексуално образовање. За почетак учења кликните на дугме да отворите апликацију.';
-    
-    const appUrl = this.miniappUrl ?? 'https://mini.murmurmne.com';
-    
     await this.safeSendMessage(userId, {
-      text: welcomeText,
-      reply_markup: {
-        inline_keyboard: [
-          [
-            {
-              text: 'Отвори апликацију',
-              web_app: { url: appUrl },
-            },
-          ],
-        ],
-      },
+      text: 'Здравствуйте! Напишите ваш вопрос, и мы обязательно ответим.',
     });
   }
 
@@ -220,19 +183,7 @@ export class SupportBotService {
 
   private async safeSendMessage(
     chatId: number,
-    payload: {
-      text: string;
-      reply_to_message_id?: number;
-      reply_markup?: {
-        inline_keyboard: Array<
-          Array<{
-            text: string;
-            web_app?: { url: string };
-            url?: string;
-          }>
-        >;
-      };
-    },
+    payload: { text: string; reply_to_message_id?: number },
   ) {
     if (!this.isEnabled || !this.apiBase) {
       return;

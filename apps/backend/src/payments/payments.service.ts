@@ -36,10 +36,7 @@ type TelegramPreCheckoutQuery = {
 export type TelegramUpdate = {
   update_id: number;
   message?: {
-    message_id?: number;
     from?: TelegramUser;
-    chat?: { id: number; type: string };
-    text?: string;
     successful_payment?: TelegramSuccessfulPayment;
   };
   channel_post?: {
@@ -84,25 +81,12 @@ export class PaymentsService {
       process.env.NEXT_PUBLIC_TELEGRAM_STARS_PER_EURO ??
       '60',
   );
-  private readonly miniappUrl =
-    process.env.NEXT_PUBLIC_MINIAPP_URL ??
-    process.env.MINIAPP_URL ??
-    'https://mini.murmurmne.com';
   private readonly telegramApiBase = this.botToken
     ? `https://api.telegram.org/bot${this.botToken}`
     : null;
   private hasWarnedAboutWebhookSecret = false;
 
-  constructor(private readonly prisma: PrismaService) {
-    // Логируем длину токена для отладки
-    if (this.botToken) {
-      this.logger.debug(
-        `Bot token length: ${this.botToken.length}, starts with: ${this.botToken.substring(0, 20)}...`,
-      );
-    } else {
-      this.logger.warn('TELEGRAM_BOT_TOKEN is not configured');
-    }
-  }
+  constructor(private readonly prisma: PrismaService) {}
 
   async createStarsInvoice(dto: CreateStarsInvoiceDto) {
     if (!this.telegramApiBase) {
@@ -231,12 +215,10 @@ export class PaymentsService {
   }
 
   async handleTelegramUpdate(body: TelegramUpdate, secret?: string) {
-    // Временно отключаем проверку секретного токена для отладки
-    // TODO: Включить обратно после исправления проблемы с токеном
-    // if (!this.verifyWebhookSecret(secret)) {
-    //   this.logger.warn('Rejected Telegram webhook due to invalid secret token');
-    //   return { ok: false, reason: 'invalid_secret' };
-    // }
+    if (!this.verifyWebhookSecret(secret)) {
+      this.logger.warn('Rejected Telegram webhook due to invalid secret token');
+      return { ok: false, reason: 'invalid_secret' };
+    }
 
     if (!body) {
       this.logger.warn('Received empty Telegram webhook body');
@@ -248,24 +230,6 @@ export class PaymentsService {
       this.logger.debug(
         `Approved pre-checkout query ${body.pre_checkout_query.id}`,
       );
-      return { ok: true };
-    }
-
-    // Обработка команды /start
-    const message = body.message;
-    if (
-      message?.text?.startsWith('/start') &&
-      message.chat?.type === 'private' &&
-      message.chat?.id
-    ) {
-      this.logger.log(
-        `Received /start command from user ${message.from?.id} in chat ${message.chat.id}`,
-      );
-      await this.handleStartCommand({
-        message_id: message.message_id,
-        chat: { id: message.chat.id, type: message.chat.type },
-        from: message.from,
-      });
       return { ok: true };
     }
 
@@ -334,13 +298,7 @@ export class PaymentsService {
       }
       return true;
     }
-    const secretMatch = secret === this.webhookSecret;
-    if (!secretMatch) {
-      this.logger.debug(
-        `Secret token mismatch. Expected length: ${this.webhookSecret.length}, received length: ${secret?.length ?? 0}`,
-      );
-    }
-    return secretMatch;
+    return secret === this.webhookSecret;
   }
 
   private parseInvoicePayload(payload: string): InvoicePayload | null {
@@ -473,105 +431,24 @@ export class PaymentsService {
     if (!this.telegramApiBase) {
       throw new Error('Telegram API base URL is not configured');
     }
-    const url = `${this.telegramApiBase}/${method}`;
-    this.logger.debug(
-      `Calling Telegram API: ${method} to ${url.substring(0, 50)}...`,
-    );
-    this.logger.debug(`Payload: ${JSON.stringify(payload).substring(0, 200)}...`);
-    
-    const response = await fetch(url, {
+    const response = await fetch(`${this.telegramApiBase}/${method}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(payload),
     });
-    
-    if (!response.ok) {
-      const errorText = await response.text();
-      this.logger.error(
-        `Telegram API error: ${response.status} ${response.statusText}. Response: ${errorText}`,
-      );
-      throw new Error(
-        `Telegram API ${method} failed: ${response.status} ${response.statusText}`,
-      );
-    }
-    
     const data = (await response.json()) as {
       ok: boolean;
       result: T;
       description?: string;
-      error_code?: number;
     };
-    
     if (!data.ok) {
-      this.logger.error(
-        `Telegram API returned error: ${data.error_code ?? 'unknown'} - ${data.description ?? 'unknown error'}`,
-      );
       throw new Error(
         data.description ?? `Telegram API method ${method} failed`,
       );
     }
     return data.result;
-  }
-
-  private async handleStartCommand(message: {
-    message_id?: number;
-    chat: { id: number; type: string };
-    from?: TelegramUser;
-  }) {
-    if (!this.telegramApiBase) {
-      this.logger.warn('Cannot handle /start command: TELEGRAM_BOT_TOKEN not configured');
-      return;
-    }
-
-    const chatId = message.chat.id;
-    const messageId = message.message_id;
-    const welcomeText =
-      'Добар дан! Ово је платформа за сексуално образовање. За почетак учења кликните на дугме да отворите апликацију.';
-
-    try {
-      // Пробуем сначала ответить на сообщение, если есть message_id
-      const payload: Record<string, unknown> = {
-        chat_id: chatId,
-        text: welcomeText,
-        reply_markup: {
-          inline_keyboard: [
-            [
-              {
-                text: 'Отвори апликацију',
-                web_app: { url: this.miniappUrl },
-              },
-            ],
-          ],
-        },
-      };
-
-      // Если есть message_id, отвечаем на сообщение
-      if (messageId) {
-        payload.reply_to_message_id = messageId;
-      }
-
-      await this.callTelegramApi('sendMessage', payload);
-      this.logger.log(`Sent welcome message to chat ${chatId}`);
-    } catch (error) {
-      this.logger.error(
-        `Failed to send welcome message to chat ${chatId}. Error: ${error instanceof Error ? error.message : String(error)}`,
-      );
-      // Пробуем отправить без кнопки, если с кнопкой не получилось
-      try {
-        await this.callTelegramApi('sendMessage', {
-          chat_id: chatId,
-          text: welcomeText,
-        });
-        this.logger.log(`Sent welcome message (without button) to chat ${chatId}`);
-      } catch (fallbackError) {
-        this.logger.error(
-          `Failed to send welcome message even without button to chat ${chatId}`,
-          fallbackError,
-        );
-      }
-    }
   }
 
   private async answerPreCheckoutQuery(
