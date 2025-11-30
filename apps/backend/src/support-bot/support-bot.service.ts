@@ -123,6 +123,8 @@ export class SupportBotService {
     const welcomeText =
       'Добар дан! Ово је платформа за сексуално образовање. За почетак учења кликните на дугме да отворите апликацију.';
     
+    const appUrl = this.miniappUrl ?? 'https://mini.murmurmne.com';
+    
     await this.safeSendMessage(userId, {
       text: welcomeText,
       reply_markup: {
@@ -130,7 +132,7 @@ export class SupportBotService {
           [
             {
               text: 'Отвори апликацију',
-              web_app: { url: this.miniappUrl },
+              web_app: { url: appUrl },
             },
           ],
         ],
