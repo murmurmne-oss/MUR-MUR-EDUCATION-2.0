@@ -465,7 +465,10 @@ export class PaymentsService {
       throw new Error('Telegram API base URL is not configured');
     }
     const url = `${this.telegramApiBase}/${method}`;
-    this.logger.debug(`Calling Telegram API: ${method} to ${url.substring(0, 50)}...`);
+    this.logger.debug(
+      `Calling Telegram API: ${method} to ${url.substring(0, 50)}...`,
+    );
+    this.logger.debug(`Payload: ${JSON.stringify(payload).substring(0, 200)}...`);
     
     const response = await fetch(url, {
       method: 'POST',
