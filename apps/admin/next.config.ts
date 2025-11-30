@@ -8,6 +8,8 @@ const nextConfig: NextConfig = {
       bodySizeLimit: "500mb",
     },
   },
+  // Для API routes в App Router нужно использовать другой подход
+  // Лимиты устанавливаются через переменные окружения или в route handlers
 };
 
 export default nextConfig;

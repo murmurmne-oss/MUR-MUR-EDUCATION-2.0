@@ -1,12 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 
 // Увеличиваем лимит размера тела запроса для загрузки больших видео файлов
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-  maxDuration: 300, // 5 минут для загрузки больших файлов
-};
+export const maxDuration = 600; // 10 минут для загрузки больших файлов
+export const runtime = 'nodejs';
 
 function normalizeBaseUrl(rawValue: string | undefined) {
   let base = rawValue?.trim();
@@ -118,11 +114,44 @@ async function proxyRequest(
   }
 
   try {
-    const response = await fetch(url.toString(), {
-      method,
-      headers,
-      body,
-    });
+    // Логирование для диагностики загрузки файлов
+    if (contentType?.includes("multipart/form-data")) {
+      console.log("[Proxy] Processing multipart/form-data upload");
+      if (body instanceof FormData) {
+        const file = body.get("file");
+        if (file instanceof File) {
+          console.log("[Proxy] File size:", file.size, "bytes (", Math.round(file.size / 1024 / 1024), "MB)");
+          console.log("[Proxy] File type:", file.type);
+        }
+      }
+    }
+
+    // Создаем AbortController для управления таймаутом
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => {
+      controller.abort();
+    }, 10 * 60 * 1000); // 10 минут
+
+    let response: Response;
+    try {
+      response = await fetch(url.toString(), {
+        method,
+        headers,
+        body,
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+    } catch (error) {
+      clearTimeout(timeoutId);
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.error("[Proxy] Request timeout after 10 minutes");
+        return NextResponse.json(
+          { message: "Загрузка файла превысила максимальное время ожидания (10 минут)" },
+          { status: 408 },
+        );
+      }
+      throw error;
+    }
 
     const responseData = await response.text();
     let jsonData: unknown;
