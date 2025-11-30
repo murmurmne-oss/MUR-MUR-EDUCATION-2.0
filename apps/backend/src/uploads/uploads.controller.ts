@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   Controller,
+  Logger,
   Post,
   Req,
   UploadedFile,
@@ -43,6 +44,7 @@ function resolveUploadsBaseUrl(request: Request) {
 
 @Controller('uploads')
 export class UploadsController {
+  private readonly logger = new Logger(UploadsController.name);
   @Post('images')
   @UseGuards(ApiKeyGuard)
   @UseInterceptors(
@@ -104,16 +106,10 @@ export class UploadsController {
         },
       }),
       fileFilter: (_req, file, cb) => {
-        const allowedMimeTypes = [
-          'video/mp4',
-          'video/webm',
-          'video/ogg',
-          'video/quicktime',
-          'video/x-msvideo',
-        ];
-        if (!allowedMimeTypes.includes(file.mimetype)) {
+        // Проверяем, что это видео файл
+        if (!file.mimetype || !file.mimetype.startsWith('video/')) {
           return cb(
-            new BadRequestException(
+            new Error(
               'Можно загружать только видео файлы (MP4, WebM, OGG, MOV, AVI)',
             ) as never,
             false,
@@ -136,10 +132,17 @@ export class UploadsController {
       throw new BadRequestException('Файл не найден или не прошел проверку');
     }
 
-    const baseUrl = resolveUploadsBaseUrl(request);
-    return {
-      url: `${baseUrl}/uploads/${file.filename}`,
-    };
+    try {
+      const baseUrl = resolveUploadsBaseUrl(request);
+      return {
+        url: `${baseUrl}/uploads/${file.filename}`,
+      };
+    } catch (error) {
+      this.logger.error('Error processing video upload', error);
+      throw new BadRequestException(
+        'Ошибка при обработке видео файла',
+      );
+    }
   }
 }
 

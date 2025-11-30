@@ -4,7 +4,16 @@
 
 api.murmurmne.com {
 	encode gzip
-	reverse_proxy backend:4000
+	reverse_proxy backend:4000 {
+		# Увеличиваем лимит размера тела запроса для загрузки больших видео файлов
+		transport http {
+			response_header_timeout 5m
+		}
+	}
+	# Увеличиваем лимит размера тела запроса до 500MB
+	request_body {
+		max_size 500MB
+	}
 }
 
 mini.murmurmne.com {

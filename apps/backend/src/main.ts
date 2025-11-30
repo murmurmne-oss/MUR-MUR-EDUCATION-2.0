@@ -19,7 +19,7 @@ function resolveUploadsDir() {
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
-  const bodySizeLimit = process.env.BODY_SIZE_LIMIT ?? '10mb';
+  const bodySizeLimit = process.env.BODY_SIZE_LIMIT ?? '500mb';
   app.use(
     json({
       limit: bodySizeLimit,
