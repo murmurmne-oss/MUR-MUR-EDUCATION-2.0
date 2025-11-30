@@ -23,6 +23,7 @@ services:
       MANAGER_BOT_TOKEN: ${MANAGER_BOT_TOKEN}
       MANAGER_BOT_SECRET_TOKEN: ${MANAGER_BOT_SECRET_TOKEN-}
       MANAGER_CHAT_ID: ${MANAGER_CHAT_ID}
+      MINIAPP_URL: ${MINIAPP_URL-https://mini.murmurmne.com}
     volumes:
       - backend_uploads:/uploads
     expose:

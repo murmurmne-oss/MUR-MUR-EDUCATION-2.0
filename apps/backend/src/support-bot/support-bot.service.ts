@@ -12,6 +12,7 @@ export class SupportBotService {
   private readonly apiBase?: string;
   private readonly managerChatId?: number;
   private readonly secretToken?: string;
+  private readonly miniappUrl?: string;
   private readonly uidTag = /#uid:(\d+)/;
   private readonly isEnabled: boolean;
 
@@ -19,6 +20,10 @@ export class SupportBotService {
     const token = process.env.MANAGER_BOT_TOKEN;
     const chatId = process.env.MANAGER_CHAT_ID;
     this.secretToken = process.env.MANAGER_BOT_SECRET_TOKEN;
+    this.miniappUrl =
+      process.env.NEXT_PUBLIC_MINIAPP_URL ??
+      process.env.MINIAPP_URL ??
+      'https://mini.murmurmne.com';
 
     if (!token || !chatId) {
       this.isEnabled = false;
@@ -114,8 +119,22 @@ export class SupportBotService {
       return;
     }
 
+    // Приветственное сообщение на сербском с кнопкой для открытия приложения
+    const welcomeText =
+      'Добар дан! Ово је платформа за сексуално образовање. За почетак учења кликните на дугме да отворите апликацију.';
+    
     await this.safeSendMessage(userId, {
-      text: 'Здравствуйте! Напишите ваш вопрос, и мы обязательно ответим.',
+      text: welcomeText,
+      reply_markup: {
+        inline_keyboard: [
+          [
+            {
+              text: 'Отвори апликацију',
+              web_app: { url: this.miniappUrl },
+            },
+          ],
+        ],
+      },
     });
   }
 
@@ -183,7 +202,19 @@ export class SupportBotService {
 
   private async safeSendMessage(
     chatId: number,
-    payload: { text: string; reply_to_message_id?: number },
+    payload: {
+      text: string;
+      reply_to_message_id?: number;
+      reply_markup?: {
+        inline_keyboard: Array<
+          Array<{
+            text: string;
+            web_app?: { url: string };
+            url?: string;
+          }>
+        >;
+      };
+    },
   ) {
     if (!this.isEnabled || !this.apiBase) {
       return;
