@@ -37,6 +37,8 @@ export type TelegramUpdate = {
   update_id: number;
   message?: {
     from?: TelegramUser;
+    chat?: { id: number; type: string };
+    text?: string;
     successful_payment?: TelegramSuccessfulPayment;
   };
   channel_post?: {
@@ -81,6 +83,10 @@ export class PaymentsService {
       process.env.NEXT_PUBLIC_TELEGRAM_STARS_PER_EURO ??
       '60',
   );
+  private readonly miniappUrl =
+    process.env.NEXT_PUBLIC_MINIAPP_URL ??
+    process.env.MINIAPP_URL ??
+    'https://mini.murmurmne.com';
   private readonly telegramApiBase = this.botToken
     ? `https://api.telegram.org/bot${this.botToken}`
     : null;
@@ -230,6 +236,13 @@ export class PaymentsService {
       this.logger.debug(
         `Approved pre-checkout query ${body.pre_checkout_query.id}`,
       );
+      return { ok: true };
+    }
+
+    // Обработка команды /start
+    const message = body.message;
+    if (message?.text?.startsWith('/start') && message.chat?.type === 'private') {
+      await this.handleStartCommand(message);
       return { ok: true };
     }
 
@@ -449,6 +462,40 @@ export class PaymentsService {
       );
     }
     return data.result;
+  }
+
+  private async handleStartCommand(message: {
+    chat: { id: number; type: string };
+    from?: TelegramUser;
+  }) {
+    if (!this.telegramApiBase) {
+      this.logger.warn('Cannot handle /start command: TELEGRAM_BOT_TOKEN not configured');
+      return;
+    }
+
+    const chatId = message.chat.id;
+    const welcomeText =
+      'Добар дан! Ово је платформа за сексуално образовање. За почетак учења кликните на дугме да отворите апликацију.';
+
+    try {
+      await this.callTelegramApi('sendMessage', {
+        chat_id: chatId,
+        text: welcomeText,
+        reply_markup: {
+          inline_keyboard: [
+            [
+              {
+                text: 'Отвори апликацију',
+                web_app: { url: this.miniappUrl },
+              },
+            ],
+          ],
+        },
+      });
+      this.logger.debug(`Sent welcome message to chat ${chatId}`);
+    } catch (error) {
+      this.logger.error(`Failed to send welcome message to chat ${chatId}`, error);
+    }
   }
 
   private async answerPreCheckoutQuery(
