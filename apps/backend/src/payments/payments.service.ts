@@ -93,7 +93,16 @@ export class PaymentsService {
     : null;
   private hasWarnedAboutWebhookSecret = false;
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) {
+    // Логируем длину токена для отладки
+    if (this.botToken) {
+      this.logger.debug(
+        `Bot token length: ${this.botToken.length}, starts with: ${this.botToken.substring(0, 20)}...`,
+      );
+    } else {
+      this.logger.warn('TELEGRAM_BOT_TOKEN is not configured');
+    }
+  }
 
   async createStarsInvoice(dto: CreateStarsInvoiceDto) {
     if (!this.telegramApiBase) {
