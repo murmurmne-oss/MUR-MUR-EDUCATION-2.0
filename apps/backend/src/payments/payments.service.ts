@@ -241,8 +241,15 @@ export class PaymentsService {
 
     // Обработка команды /start
     const message = body.message;
-    if (message?.text?.startsWith('/start') && message.chat?.type === 'private') {
-      await this.handleStartCommand(message);
+    if (
+      message?.text?.startsWith('/start') &&
+      message.chat?.type === 'private' &&
+      message.chat?.id
+    ) {
+      await this.handleStartCommand({
+        chat: { id: message.chat.id, type: message.chat.type },
+        from: message.from,
+      });
       return { ok: true };
     }
 
