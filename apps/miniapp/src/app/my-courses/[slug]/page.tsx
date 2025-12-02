@@ -1939,11 +1939,6 @@ export default function MyCourseDetailsPage({
                   ) : null}
 
                   <div className="flex flex-wrap gap-3 text-xs text-text-light">
-                    <span>
-                      {t('Тип: {value}', {
-                        value: selectedLesson.lesson.contentType,
-                      })}
-                    </span>
                     {selectedLesson.lesson.durationMinutes ? (
                       <span>
                         {t('Длительность: ')}

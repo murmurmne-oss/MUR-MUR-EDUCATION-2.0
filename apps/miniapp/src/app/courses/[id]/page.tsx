@@ -609,9 +609,6 @@ export default function CourseDetailsPage({
                             </div>
                           ) : null}
                           <div className="mt-2 flex items-center gap-3 text-[11px] text-text-light">
-                            <span>
-                              {t("Тип: {type}", { type: lesson.contentType })}
-                            </span>
                             {lesson.durationMinutes ? (
                               <span>
                                 {t("{minutes} мин", {
