@@ -487,7 +487,17 @@ export default function CourseDetailsPage({
       </header>
 
       <main className="mt-6 flex flex-1 flex-col gap-6 px-4 pb-24">
-        {course?.coverImageUrl ? (
+        {course?.promoVideoUrl ? (
+          <div className="overflow-hidden rounded-3xl bg-black/80">
+            <video
+              controls
+              playsInline
+              preload="metadata"
+              className="h-auto w-full"
+              src={course.promoVideoUrl}
+            />
+          </div>
+        ) : course?.coverImageUrl ? (
           <div className="relative h-48 w-full overflow-hidden rounded-3xl">
             <Image
               src={course.coverImageUrl}
@@ -586,9 +596,15 @@ export default function CourseDetailsPage({
                             </ul>
                           ) : null}
                           {lesson.videoUrl ? (
-                            <p className="mt-2 text-xs text-brand-orange">
-                              {t("Видео: {url}", { url: lesson.videoUrl })}
-                            </p>
+                            <div className="mt-2 overflow-hidden rounded-xl bg-black/80">
+                              <video
+                                controls
+                                className="h-auto w-full max-h-48"
+                                src={lesson.videoUrl}
+                                playsInline
+                                preload="metadata"
+                              />
+                            </div>
                           ) : null}
                           <div className="mt-2 flex items-center gap-3 text-[11px] text-text-light">
                             <span>

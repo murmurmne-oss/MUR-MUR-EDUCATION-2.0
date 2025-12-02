@@ -1794,6 +1794,8 @@ export default function MyCourseDetailsPage({
                             >
                               <video
                                 controls
+                                playsInline
+                                preload="metadata"
                                 poster={block.coverImageUrl ?? undefined}
                                 className="h-auto w-full"
                                 src={block.url}
@@ -1923,17 +1925,15 @@ export default function MyCourseDetailsPage({
                   </div>
 
                   {selectedLesson.lesson.videoUrl ? (
-                    <div className="rounded-2xl bg-brand-pink/10 p-4 text-sm text-brand-pink">
-                      {t('Видео урок: ')}
-                      <a
-                        href={selectedLesson.lesson.videoUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="underline underline-offset-4"
-                      >
-                        {selectedLesson.lesson.videoUrl}
-                      </a>
-                    </div>
+                    <figure className="overflow-hidden rounded-3xl bg-black/80">
+                      <video
+                        controls
+                        className="h-auto w-full"
+                        src={selectedLesson.lesson.videoUrl}
+                        playsInline
+                        preload="metadata"
+                      />
+                    </figure>
                   ) : null}
 
                   <div className="flex flex-wrap gap-3 text-xs text-text-light">
