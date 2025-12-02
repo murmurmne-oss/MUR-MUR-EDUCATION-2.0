@@ -44,6 +44,26 @@ body {
   .font-display {
     font-family: "Playfair Display", "Times New Roman", serif;
   }
+}
+
+/* Стили для видеоплееров - ограничиваем controls внутри контейнера */
+video {
+  display: block;
+}
+
+video::-webkit-media-controls {
+  overflow: hidden !important;
+}
+
+video::-webkit-media-controls-panel {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+video::-webkit-media-controls-enclosure {
+  overflow: hidden !important;
+  max-width: 100% !important;
+}
 
   .font-handwriting {
     font-family: "Caveat", "Comic Sans MS", cursive;

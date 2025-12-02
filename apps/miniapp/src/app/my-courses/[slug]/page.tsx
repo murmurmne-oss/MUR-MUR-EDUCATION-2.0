@@ -1790,14 +1790,15 @@ export default function MyCourseDetailsPage({
                           return (
                             <figure
                               key={`video-${index}`}
-                              className="overflow-hidden rounded-3xl bg-black/80"
+                              className="relative overflow-hidden rounded-3xl bg-black/80"
                             >
                               <video
                                 controls
                                 playsInline
                                 preload="metadata"
                                 poster={block.coverImageUrl ?? undefined}
-                                className="h-auto w-full"
+                                className="h-auto w-full object-contain"
+                                style={{ maxHeight: '100%' }}
                                 src={block.url}
                                 {...autoplayProps}
                               />
@@ -1925,10 +1926,11 @@ export default function MyCourseDetailsPage({
                   </div>
 
                   {selectedLesson.lesson.videoUrl ? (
-                    <figure className="overflow-hidden rounded-3xl bg-black/80">
+                    <figure className="relative overflow-hidden rounded-3xl bg-black/80">
                       <video
                         controls
-                        className="h-auto w-full"
+                        className="h-auto w-full object-contain"
+                        style={{ maxHeight: '100%' }}
                         src={selectedLesson.lesson.videoUrl}
                         playsInline
                         preload="metadata"

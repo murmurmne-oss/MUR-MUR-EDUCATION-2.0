@@ -488,12 +488,13 @@ export default function CourseDetailsPage({
 
       <main className="mt-6 flex flex-1 flex-col gap-6 px-4 pb-24">
         {course?.promoVideoUrl ? (
-          <div className="overflow-hidden rounded-3xl bg-black/80">
+          <div className="relative overflow-hidden rounded-3xl bg-black/80">
             <video
               controls
               playsInline
               preload="metadata"
-              className="h-auto w-full"
+              className="h-auto w-full object-contain"
+              style={{ maxHeight: '100%' }}
               src={course.promoVideoUrl}
             />
           </div>
@@ -596,10 +597,11 @@ export default function CourseDetailsPage({
                             </ul>
                           ) : null}
                           {lesson.videoUrl ? (
-                            <div className="mt-2 overflow-hidden rounded-xl bg-black/80">
+                            <div className="relative mt-2 overflow-hidden rounded-xl bg-black/80">
                               <video
                                 controls
-                                className="h-auto w-full max-h-48"
+                                className="h-auto w-full max-h-48 object-contain"
+                                style={{ maxHeight: '12rem' }}
                                 src={lesson.videoUrl}
                                 playsInline
                                 preload="metadata"
