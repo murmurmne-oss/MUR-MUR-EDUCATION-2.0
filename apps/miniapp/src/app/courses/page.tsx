@@ -67,35 +67,49 @@ export default function CoursesPage() {
 
   const filteredCatalog = useMemo(
     () => {
+      // Сначала фильтруем по предпочитаемому языку
       const filtered = catalog
         .map((category) => ({
           ...category,
           courses: category.courses.filter(
             (course) => {
-              const courseLang = course.language ?? "SR";
-              const matches = courseLang === normalizedLanguage;
-              if (process.env.NODE_ENV === 'development' && !matches) {
-                console.log('[Course filter]', {
-                  courseTitle: course.title,
-                  courseLang,
-                  normalizedLanguage,
-                  matches,
-                });
-              }
-              return matches;
+              const courseLang = (course.language ?? "SR").toUpperCase();
+              return courseLang === normalizedLanguage;
             },
           ),
         }))
         .filter((category) => category.courses.length > 0);
       
-      if (process.env.NODE_ENV === 'development') {
-        console.log('[Course filter]', {
-          totalCategories: catalog.length,
-          filteredCategories: filtered.length,
-          normalizedLanguage,
-          allCourses: catalog.flatMap(c => c.courses).map(c => ({ title: c.title, language: c.language })),
-        });
+      // Если нет курсов на предпочитаемом языке, показываем сербские (SR)
+      if (filtered.length === 0 && normalizedLanguage !== "SR") {
+        const fallbackFiltered = catalog
+          .map((category) => ({
+            ...category,
+            courses: category.courses.filter(
+              (course) => {
+                const courseLang = (course.language ?? "SR").toUpperCase();
+                return courseLang === "SR";
+              },
+            ),
+          }))
+          .filter((category) => category.courses.length > 0);
+        
+      // Логирование для диагностики (временно включено для production)
+      console.log('[Course filter] Fallback to SR', {
+        normalizedLanguage,
+        fallbackCourses: fallbackFiltered.length,
+      });
+        
+        return fallbackFiltered;
       }
+      
+      // Логирование для диагностики (временно включено для production)
+      console.log('[Course filter]', {
+        totalCategories: catalog.length,
+        filteredCategories: filtered.length,
+        normalizedLanguage,
+        allCourses: catalog.flatMap(c => c.courses).map(c => ({ title: c.title, language: c.language })),
+      });
       
       return filtered;
     },

@@ -114,43 +114,57 @@ export default function HomePage() {
     };
   }, [t]);
 
-  // Фильтруем каталог по языку
+  // Фильтруем каталог по языку с fallback на SR
   const filteredCatalog = useMemo(
     () => {
+      // Сначала фильтруем по предпочитаемому языку
       const filtered = catalog
         .map((category) => ({
           ...category,
           courses: category.courses.filter(
             (course) => {
               const courseLang = (course.language ?? "SR").toUpperCase();
-              const matches = courseLang === normalizedLanguage;
-              if (process.env.NODE_ENV === 'development') {
-                console.log('[HomePage filter]', {
-                  courseTitle: course.title,
-                  courseLang,
-                  normalizedLanguage,
-                  matches,
-                });
-              }
-              return matches;
+              return courseLang === normalizedLanguage;
             },
           ),
         }))
         .filter((category) => category.courses.length > 0);
       
-      if (process.env.NODE_ENV === 'development') {
-        console.log('[HomePage filter]', {
-          totalCategories: catalog.length,
-          filteredCategories: filtered.length,
-          normalizedLanguage,
-          preferredLanguage,
-          allCourses: catalog.flatMap(c => c.courses).map(c => ({ 
-            title: c.title, 
-            language: c.language,
-            isPublished: true, // Assuming all from catalog are published
-          })),
-        });
+      // Если нет курсов на предпочитаемом языке, показываем сербские (SR)
+      if (filtered.length === 0 && normalizedLanguage !== "SR") {
+        const fallbackFiltered = catalog
+          .map((category) => ({
+            ...category,
+            courses: category.courses.filter(
+              (course) => {
+                const courseLang = (course.language ?? "SR").toUpperCase();
+                return courseLang === "SR";
+              },
+            ),
+          }))
+          .filter((category) => category.courses.length > 0);
+        
+        if (process.env.NODE_ENV === 'development') {
+          console.log('[HomePage filter] Fallback to SR', {
+            normalizedLanguage,
+            fallbackCourses: fallbackFiltered.length,
+          });
+        }
+        
+        return fallbackFiltered;
       }
+      
+      // Логирование для диагностики (временно включено для production)
+      console.log('[HomePage filter]', {
+        totalCategories: catalog.length,
+        filteredCategories: filtered.length,
+        normalizedLanguage,
+        preferredLanguage,
+        allCourses: catalog.flatMap(c => c.courses).map(c => ({ 
+          title: c.title, 
+          language: c.language,
+        })),
+      });
       
       return filtered;
     },
