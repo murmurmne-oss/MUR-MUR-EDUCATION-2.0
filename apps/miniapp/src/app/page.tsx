@@ -209,7 +209,7 @@ export default function HomePage() {
 
       <main className="flex flex-1 flex-col gap-8 px-4 pb-10 pt-6">
         <div
-          className="relative -ml-4 w-[50%] rounded-r-[50px] bg-brand-pink px-8 py-3 text-left text-white shadow-md"
+          className="relative -ml-4 w-[70%] rounded-r-[50px] bg-brand-pink px-8 py-3 text-left text-white shadow-md"
         >
           <span className="block text-2xl font-bold leading-tight">
             {t("New")}
