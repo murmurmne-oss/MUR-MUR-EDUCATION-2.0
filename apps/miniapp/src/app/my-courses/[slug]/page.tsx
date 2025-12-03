@@ -1775,8 +1775,16 @@ export default function MyCourseDetailsPage({
                                     : 'max-h-[280px]'
                                 }`}
                                 onError={(e) => {
-                                  console.error('Failed to load image:', block.url);
-                                  e.currentTarget.style.display = 'none';
+                                  const imgSrc = normalizeImageUrl(block.url);
+                                  if (process.env.NODE_ENV === 'development') {
+                                    console.error('Failed to load image:', {
+                                      original: block.url,
+                                      normalized: imgSrc,
+                                    });
+                                  }
+                                  // Show error placeholder instead of hiding
+                                  e.currentTarget.style.display = 'block';
+                                  e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2VlZSIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTQiIGZpbGw9IiM5OTkiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj7QodC10LrRgNC10LzQtdC90YLQsCDQvtCx0YnQuNC5PC90ZXh0Pjwvc3ZnPg==';
                                 }}
                               />
                               {block.caption ? (

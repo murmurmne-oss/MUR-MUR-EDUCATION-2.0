@@ -39,7 +39,11 @@ function resolveUploadsBaseUrl(request: Request) {
     return fromEnv.replace(/\/+$/, '');
   }
   const host = request.get('host');
-  return `${request.protocol}://${host}`;
+  // In production, always use https for api.murmurmne.com
+  const protocol = process.env.NODE_ENV === 'production' && host?.includes('murmurmne.com')
+    ? 'https'
+    : request.protocol;
+  return `${protocol}://${host}`;
 }
 
 @Controller('uploads')

@@ -45,8 +45,19 @@ export function normalizeImageUrl(url: string | undefined | null): string {
   const trimmed = url.trim();
   if (!trimmed) return '';
   
-  // If already absolute URL, return as is
+  // If already absolute URL, ensure it uses https in production
   if (/^https?:\/\//i.test(trimmed)) {
+    // In production, force https for api.murmurmne.com
+    if (typeof window !== 'undefined' && window.location.protocol === 'https:') {
+      try {
+        const urlObj = new URL(trimmed);
+        if (urlObj.hostname === 'api.murmurmne.com' && urlObj.protocol === 'http:') {
+          return trimmed.replace(/^http:/, 'https:');
+        }
+      } catch {
+        // Invalid URL, return as is
+      }
+    }
     return trimmed;
   }
   
