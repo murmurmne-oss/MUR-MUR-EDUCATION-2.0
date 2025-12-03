@@ -677,12 +677,14 @@ function FormRunner({
   onClose,
   t,
   userProfilePayload,
+  embedded = false,
 }: {
   form: PublicForm;
   courseSlug: string;
   onClose: () => void;
   t: TranslateFn;
   userProfilePayload: StartFormPayload;
+  embedded?: boolean;
 }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string | string[]>>({});
@@ -752,18 +754,20 @@ function FormRunner({
   if (totalQuestions === 0) {
     return (
       <div className="space-y-4">
-        <p className="text-sm text-text-medium">
+                        <p className="text-sm text-text-medium">
           {t("Эта форма ещё не содержит вопросов.")}
         </p>
-        <div className="flex justify-end">
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-full bg-brand-pink px-4 py-2 text-xs font-semibold text-white transition-transform active:scale-95"
-          >
-            {t("Закрыть")}
-          </button>
-        </div>
+        {!embedded && (
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-full bg-brand-pink px-4 py-2 text-xs font-semibold text-white transition-transform active:scale-95"
+            >
+              {t("Закрыть")}
+            </button>
+          </div>
+        )}
       </div>
     );
   }
@@ -848,15 +852,17 @@ function FormRunner({
         ) : (
           <p className="text-sm text-text-medium">{t("Спасибо за прохождение формы!")}</p>
         )}
-        <div className="flex justify-end">
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-full bg-brand-pink px-4 py-2 text-xs font-semibold text-white transition-transform active:scale-95"
-          >
-            {t("Закрыть")}
-          </button>
-        </div>
+        {!embedded && (
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-full bg-brand-pink px-4 py-2 text-xs font-semibold text-white transition-transform active:scale-95"
+            >
+              {t("Закрыть")}
+            </button>
+          </div>
+        )}
       </div>
     );
   }
@@ -869,13 +875,15 @@ function FormRunner({
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold text-text-dark">{form.title}</h3>
-        <button
-          type="button"
-          onClick={onClose}
-          className="text-text-light hover:text-text-dark"
-        >
-          ✕
-        </button>
+        {!embedded && (
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-text-light hover:text-text-dark"
+          >
+            ✕
+          </button>
+        )}
       </div>
 
       {form.description && (
@@ -1252,6 +1260,12 @@ export default function MyCourseDetailsPage({
     if (!selectedLesson) return [];
     return parseLessonBlocks(selectedLesson.lesson.content);
   }, [selectedLesson]);
+
+  // Получаем формы, привязанные к текущему уроку
+  const selectedLessonForms = useMemo(() => {
+    if (!course || !selectedLesson) return [];
+    return course.forms?.filter((form) => form.lessonId === selectedLesson.lesson.id) ?? [];
+  }, [course, selectedLesson]);
 
   const progressLabel = useMemo(() => {
     if (!enrollment) return t('Прогресс недоступен');
@@ -1737,7 +1751,22 @@ export default function MyCourseDetailsPage({
 
                   <div className="space-y-4 text-sm leading-relaxed text-text-medium">
                     {selectedLessonBlocks.length === 0 ? (
-                      selectedLesson.lesson.contentType === 'VIDEO' ? (
+                      // Если нет контента, проверяем есть ли форма
+                      selectedLessonForms.length > 0 ? (
+                        // Если есть форма, показываем её вместо сообщения
+                        selectedLessonForms.map((form) => (
+                          <div key={form.id} className="rounded-2xl border border-border bg-surface p-4">
+                            <FormRunner
+                              form={form}
+                              courseSlug={courseSlug}
+                              onClose={() => {}}
+                              t={t}
+                              userProfilePayload={formProfilePayload}
+                              embedded={true}
+                            />
+                          </div>
+                        ))
+                      ) : selectedLesson.lesson.contentType === 'VIDEO' ? (
                         <p className="rounded-2xl bg-card px-4 py-3 text-sm text-text-medium">
                             {t(
                               'Откройте ссылку на видео, чтобы изучить урок.',
@@ -1936,6 +1965,24 @@ export default function MyCourseDetailsPage({
                         );
                       })
                     )}
+                    
+                    {/* Показываем формы после контента, если они есть */}
+                    {selectedLessonBlocks.length > 0 && selectedLessonForms.length > 0 && (
+                      <div className="space-y-4">
+                        {selectedLessonForms.map((form) => (
+                          <div key={form.id} className="rounded-2xl border border-border bg-surface p-4">
+                            <FormRunner
+                              form={form}
+                              courseSlug={courseSlug}
+                              onClose={() => {}}
+                              t={t}
+                              userProfilePayload={formProfilePayload}
+                              embedded={true}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
                   {selectedLesson.lesson.videoUrl ? (
@@ -2029,57 +2076,6 @@ export default function MyCourseDetailsPage({
                       </button>
                     )}
                   </div>
-
-                  {/* Отображаем формы, привязанные к этому уроку */}
-                  {course.forms && course.forms.length > 0 && selectedLesson ? (() => {
-                    const lessonForms = course.forms.filter((form) => 
-                      form.lessonId === selectedLesson.lesson.id
-                    );
-                    
-                    if (lessonForms.length === 0) return null;
-                    
-                    return (
-                      <div className="mt-4 space-y-3 border-t border-card pt-4">
-                        <p className="text-xs font-semibold text-text-dark">
-                          {t('Формы урока')}
-                        </p>
-                        {lessonForms.map((form) => {
-                          const questions = Array.isArray(form.questions) ? form.questions : [];
-                          const questionCount = questions.length;
-                          
-                          return (
-                            <div
-                              key={form.id}
-                              className="rounded-xl border border-card bg-surface px-4 py-3"
-                            >
-                              <div className="flex items-start justify-between gap-3">
-                                <div className="space-y-1 flex-1">
-                                  <p className="font-medium text-text-dark">{form.title}</p>
-                                  {form.description ? (
-                                    <p className="text-sm text-text-light">{form.description}</p>
-                                  ) : null}
-                                  <p className="text-xs text-text-light">
-                                    {t('Вопросов: {count}', { count: questionCount })}
-                                    {form.type === "RATING" && form.maxRating && (
-                                      <> · {t("Оценка от 1 до {max}", { max: form.maxRating })}</>
-                                    )}
-                                  </p>
-                                </div>
-                                <button
-                                  type="button"
-                                  onClick={() => handleStartForm(form.id)}
-                                  disabled={questionCount === 0}
-                                  className="rounded-full bg-brand-pink px-4 py-2 text-xs font-semibold text-white transition-transform active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 flex-shrink-0"
-                                >
-                                  {t('Пройти форму')}
-                                </button>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    );
-                  })() : null}
                 </>
               ) : (
                 <div className="text-sm text-text-medium">
