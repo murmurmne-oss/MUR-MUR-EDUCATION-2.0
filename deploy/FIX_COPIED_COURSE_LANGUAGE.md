@@ -7,24 +7,39 @@
 
 ### Вариант 1: Исправление через SQL (быстрое решение)
 
-1. Найдите slug курса в админке (например, `my-course-copy-1234567890`)
+1. Найдите slug курса в админке (например, `eros-everyday-srb`)
 
-2. Выполните SQL запрос на сервере:
+2. Выполните SQL запрос на сервере через Prisma:
 ```bash
 cd /opt/murmur/deploy
-docker exec -i $(docker ps -q -f name=backend) sh -c "psql \$DATABASE_URL" <<EOF
-UPDATE "Course"
+docker exec -i $(docker ps -q -f name=backend) sh -c "
+  cd /app && \
+  npx prisma db execute --stdin <<'SQL'
+UPDATE \"Course\"
 SET language = 'SR'
-WHERE slug = 'your-course-slug-here';
-SELECT id, slug, title, language, "isPublished" FROM "Course" WHERE slug = 'your-course-slug-here';
-EOF
+WHERE slug = 'eros-everyday-srb';
+SELECT id, slug, title, language, \"isPublished\" FROM \"Course\" WHERE slug = 'eros-everyday-srb';
+SQL
+"
+```
+
+**Или используйте готовый скрипт:**
+```bash
+cd /opt/murmur/deploy
+chmod +x fix-course-language-command.sh
+./fix-course-language-command.sh eros-everyday-srb SR
 ```
 
 3. Проверьте, что язык обновился:
-```sql
-SELECT id, slug, title, language, "isPublished" 
-FROM "Course" 
-WHERE slug = 'your-course-slug-here';
+```bash
+docker exec -i $(docker ps -q -f name=backend) sh -c "
+  cd /app && \
+  npx prisma db execute --stdin <<'SQL'
+SELECT id, slug, title, language, \"isPublished\" 
+FROM \"Course\" 
+WHERE slug = 'eros-everyday-srb';
+SQL
+"
 ```
 
 ### Вариант 2: Исправление через админку (с логированием)
