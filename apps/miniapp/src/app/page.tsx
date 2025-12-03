@@ -124,20 +124,29 @@ export default function HomePage() {
           courses: category.courses.filter(
             (course) => {
               // Нормализуем язык курса: приводим к верхнему регистру, если null/undefined - используем SR
-              const courseLang = course.language 
-                ? String(course.language).toUpperCase().trim()
-                : "SR";
+              // Prisma enum сериализуется как строка "SR" или "RU"
+              let courseLang: string;
+              if (!course.language) {
+                courseLang = "SR";
+              } else if (typeof course.language === 'string') {
+                courseLang = course.language.toUpperCase().trim();
+              } else {
+                // Если это объект или что-то другое, преобразуем в строку
+                courseLang = String(course.language).toUpperCase().trim();
+              }
+              
               const matches = courseLang === normalizedLanguage;
               
-              if (process.env.NODE_ENV === 'development' || true) {
-                console.log('[HomePage filter course]', {
-                  title: course.title,
-                  courseLanguage: course.language,
-                  courseLang,
-                  normalizedLanguage,
-                  matches,
-                });
-              }
+              // Логирование для диагностики (временно включено для production)
+              console.log('[HomePage filter course]', {
+                title: course.title,
+                courseLanguageRaw: course.language,
+                courseLanguageType: typeof course.language,
+                courseLang,
+                normalizedLanguage,
+                matches,
+                comparison: `${courseLang} === ${normalizedLanguage}`,
+              });
               
               return matches;
             },

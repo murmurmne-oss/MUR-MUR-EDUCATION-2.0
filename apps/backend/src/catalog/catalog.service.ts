@@ -71,6 +71,23 @@ export class CatalogService {
       },
     });
 
+    // Логирование для диагностики (временно включено)
+    console.log('[CatalogService] Loaded courses:', {
+      total: courses.length,
+      byLanguage: courses.reduce((acc, c) => {
+        const lang = c.language || 'NULL';
+        acc[lang] = (acc[lang] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>),
+      courses: courses.map(c => ({
+        id: c.id,
+        title: c.title,
+        language: c.language,
+        languageType: typeof c.language,
+        isPublished: c.isPublished,
+      })),
+    });
+
     const grouped = new Map<CourseCategory, CatalogCourse[]>();
 
     for (const course of courses) {
