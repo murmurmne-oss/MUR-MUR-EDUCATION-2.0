@@ -65,6 +65,9 @@ export default function HomePage() {
   const { profile } = useUserProfile(resolvedUserId);
   // Используем язык из профиля, если есть, иначе из localStorage, иначе 'sr'
   const preferredLanguage = profile?.languageCode ?? (typeof window !== 'undefined' ? localStorage.getItem('murmur_preferred_language') : null) ?? "sr";
+  const normalizedLanguage = preferredLanguage.toLowerCase().startsWith("ru")
+    ? "RU"
+    : "SR";
   const { t } = useMemo(
     () => createTranslator(preferredLanguage),
     [preferredLanguage],
@@ -112,15 +115,29 @@ export default function HomePage() {
     };
   }, [t]);
 
+  // Фильтруем каталог по языку
+  const filteredCatalog = useMemo(
+    () =>
+      catalog
+        .map((category) => ({
+          ...category,
+          courses: category.courses.filter(
+            (course) => (course.language ?? "SR") === normalizedLanguage,
+          ),
+        }))
+        .filter((category) => category.courses.length > 0),
+    [catalog, normalizedLanguage],
+  );
+
   const featuredCourse = useMemo(() => {
-    if (!catalog.length) return null;
-    return catalog[0]?.courses[0] ?? null;
-  }, [catalog]);
+    if (!filteredCatalog.length) return null;
+    return filteredCatalog[0]?.courses[0] ?? null;
+  }, [filteredCatalog]);
 
   const popularCourses = useMemo(() => {
-    const allCourses = catalog.flatMap((category) => category.courses);
+    const allCourses = filteredCatalog.flatMap((category) => category.courses);
     return allCourses.slice(0, 6);
-  }, [catalog]);
+  }, [filteredCatalog]);
 
   return (
     <div className="flex flex-1 flex-col bg-background text-text-dark">

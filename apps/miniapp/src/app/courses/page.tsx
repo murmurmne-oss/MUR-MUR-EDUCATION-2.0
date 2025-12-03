@@ -66,15 +66,39 @@ export default function CoursesPage() {
   }, [t]);
 
   const filteredCatalog = useMemo(
-    () =>
-      catalog
+    () => {
+      const filtered = catalog
         .map((category) => ({
           ...category,
           courses: category.courses.filter(
-            (course) => (course.language ?? "SR") === normalizedLanguage,
+            (course) => {
+              const courseLang = course.language ?? "SR";
+              const matches = courseLang === normalizedLanguage;
+              if (process.env.NODE_ENV === 'development' && !matches) {
+                console.log('[Course filter]', {
+                  courseTitle: course.title,
+                  courseLang,
+                  normalizedLanguage,
+                  matches,
+                });
+              }
+              return matches;
+            },
           ),
         }))
-        .filter((category) => category.courses.length > 0),
+        .filter((category) => category.courses.length > 0);
+      
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[Course filter]', {
+          totalCategories: catalog.length,
+          filteredCategories: filtered.length,
+          normalizedLanguage,
+          allCourses: catalog.flatMap(c => c.courses).map(c => ({ title: c.title, language: c.language })),
+        });
+      }
+      
+      return filtered;
+    },
     [catalog, normalizedLanguage],
   );
 
