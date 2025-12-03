@@ -458,6 +458,16 @@ export class CoursesService {
       throw new NotFoundException(`Course ${idOrSlug} not found`);
     }
 
+    // Логирование для диагностики (временно включено)
+    console.log('[CoursesService.update]', {
+      courseId: existing.id,
+      courseSlug: existing.slug,
+      existingLanguage: existing.language,
+      incomingLanguage: data.language,
+      languageType: typeof data.language,
+      willUpdate: data.language !== undefined && data.language !== null,
+    });
+
     if (data.slug !== existing.slug) {
       await this.ensureSlugUnique(data.slug);
     }

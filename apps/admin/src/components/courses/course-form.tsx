@@ -3081,6 +3081,17 @@ export function CourseForm({ initialCourse }: CourseFormProps) {
 
     try {
       const payload = buildPayload();
+      
+      // Логирование для диагностики (временно включено)
+      console.log('[CourseForm.handleSubmit]', {
+        isNewCourse,
+        courseSlug: initialCourse?.slug,
+        formStateLanguage: formState.language,
+        payloadLanguage: payload.language,
+        languageType: typeof payload.language,
+        fullPayload: payload,
+      });
+      
       const result = isNewCourse
         ? await apiClient.createCourse(payload)
         : await apiClient.updateCourse(initialCourse!.slug, payload);
