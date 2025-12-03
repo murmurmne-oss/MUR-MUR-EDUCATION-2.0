@@ -39,35 +39,37 @@ function buildUrl(path: string) {
 
 /**
  * Normalizes image URLs - converts relative URLs to absolute using API base URL
+ * Always uses https for api.murmurmne.com to avoid mixed content issues
  */
 export function normalizeImageUrl(url: string | undefined | null): string {
   if (!url) return '';
   const trimmed = url.trim();
   if (!trimmed) return '';
   
-  // If already absolute URL, ensure it uses https in production
+  let normalized = trimmed;
+  
+  // If already absolute URL, ensure it uses https for api.murmurmne.com
   if (/^https?:\/\//i.test(trimmed)) {
-    // In production, force https for api.murmurmne.com
-    if (typeof window !== 'undefined' && window.location.protocol === 'https:') {
-      try {
-        const urlObj = new URL(trimmed);
-        if (urlObj.hostname === 'api.murmurmne.com' && urlObj.protocol === 'http:') {
-          return trimmed.replace(/^http:/, 'https:');
-        }
-      } catch {
-        // Invalid URL, return as is
-      }
+    // Always force https for api.murmurmne.com to avoid mixed content
+    if (trimmed.includes('api.murmurmne.com')) {
+      normalized = trimmed.replace(/^http:/i, 'https:');
+    } else {
+      normalized = trimmed;
     }
-    return trimmed;
+  } else if (trimmed.startsWith('/')) {
+    // If relative URL starting with /, prepend API base URL
+    normalized = `${API_BASE_URL}${trimmed}`;
+  } else {
+    // Otherwise, treat as relative to API base
+    normalized = `${API_BASE_URL}/${trimmed}`;
   }
   
-  // If relative URL starting with /, prepend API base URL
-  if (trimmed.startsWith('/')) {
-    return `${API_BASE_URL}${trimmed}`;
+  // Final check: ensure api.murmurmne.com always uses https
+  if (normalized.includes('api.murmurmne.com')) {
+    normalized = normalized.replace(/^http:/i, 'https:');
   }
   
-  // Otherwise, treat as relative to API base
-  return `${API_BASE_URL}/${trimmed}`;
+  return normalized;
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
