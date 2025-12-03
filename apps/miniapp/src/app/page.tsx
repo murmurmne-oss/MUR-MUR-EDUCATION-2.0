@@ -1,7 +1,5 @@
 "use client";
 
-"use client";
-
 import { startTransition, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -11,6 +9,7 @@ import {
   apiClient,
   CatalogCategory,
   formatPrice,
+  normalizeImageUrl,
 } from "@/lib/api-client";
 import { createTranslator } from "@/lib/i18n";
 
@@ -117,16 +116,45 @@ export default function HomePage() {
 
   // Фильтруем каталог по языку
   const filteredCatalog = useMemo(
-    () =>
-      catalog
+    () => {
+      const filtered = catalog
         .map((category) => ({
           ...category,
           courses: category.courses.filter(
-            (course) => (course.language ?? "SR") === normalizedLanguage,
+            (course) => {
+              const courseLang = (course.language ?? "SR").toUpperCase();
+              const matches = courseLang === normalizedLanguage;
+              if (process.env.NODE_ENV === 'development') {
+                console.log('[HomePage filter]', {
+                  courseTitle: course.title,
+                  courseLang,
+                  normalizedLanguage,
+                  matches,
+                });
+              }
+              return matches;
+            },
           ),
         }))
-        .filter((category) => category.courses.length > 0),
-    [catalog, normalizedLanguage],
+        .filter((category) => category.courses.length > 0);
+      
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[HomePage filter]', {
+          totalCategories: catalog.length,
+          filteredCategories: filtered.length,
+          normalizedLanguage,
+          preferredLanguage,
+          allCourses: catalog.flatMap(c => c.courses).map(c => ({ 
+            title: c.title, 
+            language: c.language,
+            isPublished: true, // Assuming all from catalog are published
+          })),
+        });
+      }
+      
+      return filtered;
+    },
+    [catalog, normalizedLanguage, preferredLanguage],
   );
 
   const featuredCourse = useMemo(() => {
@@ -172,11 +200,12 @@ export default function HomePage() {
             <div className="relative h-60 w-full">
               {featuredCourse.coverImageUrl ? (
                 <Image
-                  src={featuredCourse.coverImageUrl}
+                  src={normalizeImageUrl(featuredCourse.coverImageUrl)}
                   alt={featuredCourse.title}
                   fill
                   className="object-cover"
                   priority
+                  unoptimized={featuredCourse.coverImageUrl?.includes('api.murmurmne.com')}
                 />
               ) : (
                 <div className="flex h-full w-full items-center justify-center bg-card text-text-medium">
@@ -253,11 +282,12 @@ export default function HomePage() {
                   <div className="relative flex h-[65%] items-center justify-center">
                     {course.coverImageUrl ? (
                       <Image
-                        src={course.coverImageUrl}
+                        src={normalizeImageUrl(course.coverImageUrl)}
                         alt={course.title}
                         width={140}
                         height={140}
                         className="object-cover"
+                        unoptimized={course.coverImageUrl?.includes('api.murmurmne.com')}
                       />
                     ) : (
                       <div className="flex h-full w-full items-center justify-center text-xs text-text-dark/70">
