@@ -256,19 +256,6 @@ export default function HomePage() {
           <div className="h-48 animate-pulse rounded-3xl bg-card" />
         )}
 
-        <button
-          type="button"
-          onClick={() => router.push("/courses")}
-          className="w-fit max-w-[240px] rounded-r-[50px] bg-brand-pink px-8 py-3 text-left text-white shadow-md transition-transform active:scale-95"
-        >
-          <span className="block text-2xl font-bold leading-tight">
-            {t("New")}
-          </span>
-          <span className="block text-2xl font-bold leading-tight">
-            {t("To discover")}
-          </span>
-        </button>
-
         <section>
           <div className="mb-4 flex items-baseline justify-between">
             <h2 className="text-xl font-semibold text-text-dark">
