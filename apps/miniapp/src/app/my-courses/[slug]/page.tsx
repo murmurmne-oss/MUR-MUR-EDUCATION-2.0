@@ -24,6 +24,7 @@ import {
   SubmitFormResult,
   StartTestPayload,
   SubmitTestPayload,
+  normalizeImageUrl,
 } from '@/lib/api-client';
 import {
   LessonContentBlock,
@@ -1766,13 +1767,17 @@ export default function MyCourseDetailsPage({
                               }`}
                             >
                               <img
-                                src={block.url}
+                                src={normalizeImageUrl(block.url)}
                                 alt={block.caption ?? t('Изображение урока')}
                                 className={`h-auto w-full object-cover ${
                                   block.width === 'full'
                                     ? 'max-h-[360px]'
                                     : 'max-h-[280px]'
                                 }`}
+                                onError={(e) => {
+                                  console.error('Failed to load image:', block.url);
+                                  e.currentTarget.style.display = 'none';
+                                }}
                               />
                               {block.caption ? (
                                 <figcaption className="px-4 py-3 text-xs text-text-light">

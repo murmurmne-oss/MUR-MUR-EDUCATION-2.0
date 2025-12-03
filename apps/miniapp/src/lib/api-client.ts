@@ -26,7 +26,7 @@ function normalizeBaseUrl(rawValue: string | undefined) {
   return base.replace(/\.+$/, "").replace(/\/+$/, "");
 }
 
-const API_BASE_URL = normalizeBaseUrl(
+export const API_BASE_URL = normalizeBaseUrl(
   process.env.NEXT_PUBLIC_API_BASE_URL,
 );
 
@@ -35,6 +35,28 @@ function buildUrl(path: string) {
     return `${API_BASE_URL}/${path}`;
   }
   return `${API_BASE_URL}${path}`;
+}
+
+/**
+ * Normalizes image URLs - converts relative URLs to absolute using API base URL
+ */
+export function normalizeImageUrl(url: string | undefined | null): string {
+  if (!url) return '';
+  const trimmed = url.trim();
+  if (!trimmed) return '';
+  
+  // If already absolute URL, return as is
+  if (/^https?:\/\//i.test(trimmed)) {
+    return trimmed;
+  }
+  
+  // If relative URL starting with /, prepend API base URL
+  if (trimmed.startsWith('/')) {
+    return `${API_BASE_URL}${trimmed}`;
+  }
+  
+  // Otherwise, treat as relative to API base
+  return `${API_BASE_URL}/${trimmed}`;
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
