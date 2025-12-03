@@ -3,6 +3,7 @@
 import { startTransition, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useTelegram } from "@/hooks/useTelegram";
 import { useUserProfile } from "@/hooks/useUserProfile";
 import {
@@ -26,22 +27,36 @@ export default function HomePage() {
   const [catalog, setCatalog] = useState<CatalogCategory[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // Синхронизация профиля - не блокирует UI, выполняется в фоне
   useEffect(() => {
     if (!user?.id) {
       return;
     }
 
-    apiClient
-      .syncUserProfile({
-        id: user.id.toString(),
-        firstName: user.first_name ?? null,
-        lastName: user.last_name ?? null,
-        username: user.username ?? null,
-        avatarUrl: user.photo_url ?? null,
-      })
-      .catch((syncError) => {
-        console.error("Failed to sync user profile", syncError);
-      });
+    // Используем requestIdleCallback для синхронизации профиля в фоне
+    const syncProfile = () => {
+      apiClient
+        .syncUserProfile({
+          id: user.id.toString(),
+          firstName: user.first_name ?? null,
+          lastName: user.last_name ?? null,
+          username: user.username ?? null,
+          avatarUrl: user.photo_url ?? null,
+        })
+        .catch((syncError) => {
+          console.error("Failed to sync user profile", syncError);
+        });
+    };
+
+    // Если браузер поддерживает requestIdleCallback, используем его
+    if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+      const id = requestIdleCallback(syncProfile, { timeout: 2000 });
+      return () => cancelIdleCallback(id);
+    } else {
+      // Fallback: выполняем с небольшой задержкой
+      const timeoutId = setTimeout(syncProfile, 100);
+      return () => clearTimeout(timeoutId);
+    }
   }, [
     user?.id,
     user?.first_name,
@@ -86,26 +101,69 @@ export default function HomePage() {
 
   useEffect(() => {
     let active = true;
-    startTransition(() => setIsLoading(true));
+    let hasCachedData = false;
+    
+    // Пытаемся загрузить каталог из кэша для мгновенного отображения
+    if (typeof window !== 'undefined') {
+      const cachedCatalog = sessionStorage.getItem('catalog_cache');
+      
+      if (cachedCatalog) {
+        try {
+          const parsed = JSON.parse(cachedCatalog);
+          const cacheTime = parsed.timestamp;
+          const now = Date.now();
+          // Используем кэш, если он не старше 5 минут
+          if (now - cacheTime < 5 * 60 * 1000 && parsed.data) {
+            hasCachedData = true;
+            startTransition(() => {
+              setCatalog(parsed.data);
+              setIsLoading(false);
+            });
+          }
+        } catch (e) {
+          // Игнорируем ошибки парсинга кэша
+        }
+      }
+    }
+    
+    // Если нет кэша, показываем загрузку
+    if (!hasCachedData) {
+      startTransition(() => setIsLoading(true));
+    }
+    
+    // Загружаем свежие данные в фоне (даже если есть кэш)
     apiClient
       .getCatalog()
       .then((response) => {
         if (!active) return;
+        
+        // Сохраняем в кэш
+        if (typeof window !== 'undefined') {
+          try {
+            sessionStorage.setItem('catalog_cache', JSON.stringify({
+              data: response,
+              timestamp: Date.now(),
+            }));
+          } catch (e) {
+            // Игнорируем ошибки сохранения кэша
+          }
+        }
+        
         startTransition(() => {
           setCatalog(response);
           setError(null);
+          setIsLoading(false);
         });
       })
       .catch((catalogError: unknown) => {
         console.error("Failed to load catalog", catalogError);
         if (!active) return;
-        startTransition(() => {
-          setError(t("Не удалось загрузить каталог. Попробуйте обновить."));
-        });
-      })
-      .finally(() => {
-        if (active) {
-          startTransition(() => setIsLoading(false));
+        // Если была ошибка, но есть кэш, не показываем ошибку
+        if (!hasCachedData) {
+          startTransition(() => {
+            setError(t("Не удалось загрузить каталог. Попробуйте обновить."));
+            setIsLoading(false);
+          });
         }
       });
 
@@ -216,13 +274,13 @@ export default function HomePage() {
             <h2 className="text-xl font-semibold text-text-dark">
               {t("Популярные курсы")}
             </h2>
-            <button
-              type="button"
-              onClick={() => router.push("/courses")}
-              className="text-xs font-medium text-brand-orange underline-offset-4 hover:underline"
-            >
-              {t("Смотреть все")}
-            </button>
+          <Link
+            href="/courses"
+            prefetch={true}
+            className="text-xs font-medium text-brand-orange underline-offset-4 hover:underline"
+          >
+            {t("Смотреть все")}
+          </Link>
           </div>
           {isLoading ? (
             <div className="-mx-4 flex gap-4 overflow-x-auto pb-2 pl-4 pr-4 no-scrollbar">

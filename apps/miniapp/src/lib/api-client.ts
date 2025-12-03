@@ -81,7 +81,9 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
         "Content-Type": "application/json",
         ...init?.headers,
       },
-      cache: "no-store",
+      // Используем кэш для GET запросов, если не указано иное
+      cache: init?.method === 'GET' && !init?.cache ? 'default' : (init?.cache || 'no-store'),
+      next: init?.method === 'GET' ? { revalidate: 60 } : undefined, // Revalidate через 60 секунд для GET
     });
   } catch (networkError) {
     throw new ApiError(
