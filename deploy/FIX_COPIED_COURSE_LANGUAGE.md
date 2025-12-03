@@ -9,28 +9,13 @@
 
 1. Найдите slug курса в админке (например, `eros-everyday-srb`)
 
-2. Выполните SQL запрос на сервере через Prisma Client (рекомендуемый способ):
+2. Выполните SQL запрос на сервере через готовый скрипт (рекомендуемый способ):
 ```bash
 cd /opt/murmur/deploy
-docker exec -i $(docker ps -q -f name=backend) sh -c "
-  cd /app && \
-  node -e \"
-    const { PrismaClient } = require('@prisma/client');
-    const prisma = new PrismaClient();
-    prisma.course.update({
-      where: { slug: 'eros-everyday-srb' },
-      data: { language: 'SR' },
-      select: { id: true, slug: true, title: true, language: true, isPublished: true }
-    }).then(course => {
-      console.log('Курс обновлен:', JSON.stringify(course, null, 2));
-      prisma.\$disconnect();
-    }).catch(e => {
-      console.error('Ошибка:', e);
-      prisma.\$disconnect();
-      process.exit(1);
-    });
-  \"
-"
+git pull
+docker cp fix-course-language.js $(docker ps -q -f name=backend):/app/
+docker exec -i $(docker ps -q -f name=backend) sh -c "cd /app && node fix-course-language.js eros-everyday-srb SR"
+```
 ```
 
 **Или скопируйте скрипт и используйте его:**
