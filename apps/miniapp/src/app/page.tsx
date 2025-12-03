@@ -178,10 +178,6 @@ export default function HomePage() {
     [catalog],
   );
 
-  const featuredCourse = useMemo(() => {
-    if (!filteredCatalog.length) return null;
-    return filteredCatalog[0]?.courses[0] ?? null;
-  }, [filteredCatalog]);
 
   const popularCourses = useMemo(() => {
     const allCourses = filteredCatalog.flatMap((category) => category.courses);
@@ -212,49 +208,18 @@ export default function HomePage() {
       </header>
 
       <main className="flex flex-1 flex-col gap-8 px-4 pb-10 pt-6">
-        {featuredCourse ? (
-          <button
-            type="button"
-            className="group relative w-full overflow-hidden rounded-3xl shadow-lg transition-transform active:scale-95"
-            onClick={() => router.push(`/courses/${featuredCourse.slug}`)}
-          >
-            <div className="relative h-60 w-full">
-              {featuredCourse.coverImageUrl ? (
-                <Image
-                  src={normalizeImageUrl(featuredCourse.coverImageUrl)}
-                  alt={featuredCourse.title}
-                  fill
-                  className="object-cover"
-                  priority
-                  unoptimized={featuredCourse.coverImageUrl?.includes('api.murmurmne.com')}
-                />
-              ) : (
-                <div className="flex h-full w-full items-center justify-center bg-card text-text-medium">
-                  {t("Нет изображения")}
-                </div>
-              )}
-            </div>
-
-            <div className="absolute inset-x-0 bottom-0 p-4">
-              <div className="inline-block max-w-[90%] rounded-2xl bg-brand-pink/95 px-4 py-3 text-left text-white shadow-md shadow-brand-pink/40 backdrop-blur">
-                <p className="text-xs font-medium opacity-90">
-                  {t("Курс который проходит прямо сейчас")}
-                </p>
-                <p className="text-sm font-semibold">{featuredCourse.title}</p>
-                <p className="mt-1 text-xs font-medium uppercase tracking-wide text-white/90">
-                  {featuredCourse.isFree
-                    ? t("Бесплатно")
-                    : formatPrice(
-                        featuredCourse.price.amount,
-                        featuredCourse.price.currency,
-                      )}
-                </p>
-              </div>
-            </div>
-          </button>
-        ) : (
-          <div className="h-48 animate-pulse rounded-3xl bg-card" />
-        )}
+        <button
+          type="button"
+          onClick={() => router.push("/courses")}
+          className="w-fit max-w-[240px] rounded-r-[50px] bg-brand-pink px-8 py-3 text-left text-white shadow-md transition-transform active:scale-95"
+        >
+          <span className="block text-2xl font-bold leading-tight">
+            {t("New")}
+          </span>
+          <span className="block text-2xl font-bold leading-tight">
+            {t("To discover")}
+          </span>
+        </button>
 
         <section>
           <div className="mb-4 flex items-baseline justify-between">
