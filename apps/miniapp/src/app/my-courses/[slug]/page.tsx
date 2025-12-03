@@ -736,6 +736,20 @@ function FormRunner({
 
   const currentValue = answers[currentQuestion?.id ?? ''];
 
+  // Проверяем, есть ли ответ на текущий вопрос
+  const isCurrentQuestionAnswered = useMemo(() => {
+    if (!currentQuestion) return false;
+    const answer = answers[currentQuestion.id];
+    if (form.type === "RATING") {
+      // Для рейтинговых форм ответ должен быть числом от 1 до maxRating
+      const rating = typeof answer === "string" ? parseFloat(answer) : (typeof answer === "number" ? answer : 0);
+      return !Number.isNaN(rating) && rating >= 1 && rating <= (form.maxRating ?? 5);
+    }
+    // Для форм с выбором вариантов (CHOICE и SCORED)
+    const selected = Array.isArray(answer) ? answer : (answer ? [answer] : []);
+    return selected.length > 0;
+  }, [answers, currentQuestion, form.type, form.maxRating]);
+
   // ВСЕ ХУКИ ДОЛЖНЫ БЫТЬ ВЫЗВАНЫ ДО ЛЮБЫХ УСЛОВНЫХ ВОЗВРАТОВ!
   const allAnswered = useMemo(() => {
     return form.questions.every((question) => {
@@ -984,7 +998,7 @@ function FormRunner({
         <button
           type="button"
           onClick={handleNext}
-          disabled={!allAnswered || isSubmitting}
+          disabled={!isCurrentQuestionAnswered || isSubmitting || !attemptId}
           className="rounded-full bg-brand-pink px-4 py-2 text-xs font-semibold text-white transition-transform active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {isSubmitting
@@ -995,7 +1009,7 @@ function FormRunner({
         </button>
       </div>
 
-      {!isLastQuestion && !allAnswered ? (
+      {!isCurrentQuestionAnswered && !isLastQuestion ? (
         <p className="text-[10px] text-text-light">
           {t("Чтобы продолжить, ответьте на вопрос.")}
         </p>
