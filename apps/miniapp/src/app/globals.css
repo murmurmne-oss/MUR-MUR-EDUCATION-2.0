@@ -65,6 +65,7 @@ video::-webkit-media-controls-enclosure {
   max-width: 100% !important;
 }
 
+@layer utilities {
   .font-handwriting {
     font-family: "Caveat", "Comic Sans MS", cursive;
   }
