@@ -9,25 +9,37 @@
 
 1. Найдите slug курса в админке (например, `eros-everyday-srb`)
 
-2. Выполните SQL запрос на сервере через Prisma:
+2. Выполните SQL запрос на сервере через Prisma Client (рекомендуемый способ):
 ```bash
 cd /opt/murmur/deploy
 docker exec -i $(docker ps -q -f name=backend) sh -c "
   cd /app && \
-  npx prisma db execute --stdin <<'SQL'
-UPDATE \"Course\"
-SET language = 'SR'
-WHERE slug = 'eros-everyday-srb';
-SELECT id, slug, title, language, \"isPublished\" FROM \"Course\" WHERE slug = 'eros-everyday-srb';
-SQL
+  node -e \"
+    const { PrismaClient } = require('@prisma/client');
+    const prisma = new PrismaClient();
+    prisma.course.update({
+      where: { slug: 'eros-everyday-srb' },
+      data: { language: 'SR' },
+      select: { id: true, slug: true, title: true, language: true, isPublished: true }
+    }).then(course => {
+      console.log('Курс обновлен:', JSON.stringify(course, null, 2));
+      prisma.\$disconnect();
+    }).catch(e => {
+      console.error('Ошибка:', e);
+      prisma.\$disconnect();
+      process.exit(1);
+    });
+  \"
 "
 ```
 
-**Или используйте готовый скрипт:**
+**Или скопируйте скрипт и используйте его:**
 ```bash
 cd /opt/murmur/deploy
-chmod +x fix-course-language-command.sh
-./fix-course-language-command.sh eros-everyday-srb SR
+# Скопируйте fix-course-language.js в контейнер
+docker cp fix-course-language.js $(docker ps -q -f name=backend):/app/
+# Выполните скрипт
+docker exec -i $(docker ps -q -f name=backend) sh -c "cd /app && node fix-course-language.js eros-everyday-srb SR"
 ```
 
 3. Проверьте, что язык обновился:
