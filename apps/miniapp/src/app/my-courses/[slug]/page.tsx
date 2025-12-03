@@ -1261,10 +1261,54 @@ export default function MyCourseDetailsPage({
     return parseLessonBlocks(selectedLesson.lesson.content);
   }, [selectedLesson]);
 
-  // Получаем формы, привязанные к текущему уроку
+  // Получаем формы, привязанные к текущему уроку и преобразуем их в PublicForm
   const selectedLessonForms = useMemo(() => {
     if (!course || !selectedLesson) return [];
-    return course.forms?.filter((form) => form.lessonId === selectedLesson.lesson.id) ?? [];
+    const forms = course.forms?.filter((form) => form.lessonId === selectedLesson.lesson.id) ?? [];
+    
+    // Преобразуем формы из course.forms в PublicForm
+    return forms.map((form): PublicForm => {
+      // Преобразуем questions из unknown в PublicFormQuestion[]
+      let questions: PublicForm['questions'] = [];
+      if (Array.isArray(form.questions)) {
+        questions = form.questions.map((q: unknown) => {
+          if (typeof q === 'object' && q !== null && 'id' in q && 'text' in q) {
+            const qObj = q as { id: unknown; text: unknown; options?: unknown };
+            return {
+              id: String(qObj.id),
+              text: String(qObj.text),
+              options: Array.isArray(qObj.options)
+                ? qObj.options.map((opt: unknown) => {
+                    if (typeof opt === 'object' && opt !== null && 'id' in opt && 'text' in opt) {
+                      const optObj = opt as { id: unknown; text: unknown; category?: unknown; score?: unknown };
+                      return {
+                        id: String(optObj.id),
+                        text: String(optObj.text),
+                        category: typeof optObj.category === 'string' ? optObj.category : undefined,
+                        score: typeof optObj.score === 'number' ? optObj.score : undefined,
+                      };
+                    }
+                    return { id: String(Math.random()), text: String(opt) };
+                  })
+                : [],
+            };
+          }
+          return { id: String(Math.random()), text: String(q), options: [] };
+        });
+      }
+      
+      return {
+        id: form.id,
+        title: form.title,
+        description: form.description,
+        type: (form.type ?? 'CHOICE') as 'CHOICE' | 'RATING' | 'SCORED',
+        maxRating: form.maxRating ?? null,
+        questionCount: questions.length,
+        questions,
+        unlockLesson: form.unlockLessonId ? { id: form.unlockLessonId, title: '' } : undefined,
+        unlockModule: form.unlockModuleId ? { id: form.unlockModuleId, title: '' } : undefined,
+      };
+    });
   }, [course, selectedLesson]);
 
   const progressLabel = useMemo(() => {
