@@ -114,98 +114,10 @@ export default function HomePage() {
     };
   }, [t]);
 
-  // Фильтруем каталог по языку с fallback на SR
+  // На главной странице показываем все курсы без фильтрации по языку
   const filteredCatalog = useMemo(
-    () => {
-      // Сначала фильтруем по предпочитаемому языку
-      const filtered = catalog
-        .map((category) => ({
-          ...category,
-          courses: category.courses.filter(
-            (course) => {
-              // Нормализуем язык курса: приводим к верхнему регистру, если null/undefined - используем SR
-              // Prisma enum сериализуется как строка "SR" или "RU"
-              let courseLang: string;
-              if (!course.language) {
-                courseLang = "SR";
-              } else if (typeof course.language === 'string') {
-                courseLang = course.language.toUpperCase().trim();
-              } else {
-                // Если это объект или что-то другое, преобразуем в строку
-                courseLang = String(course.language).toUpperCase().trim();
-              }
-              
-              const matches = courseLang === normalizedLanguage;
-              
-              // Логирование для диагностики (временно включено для production)
-              console.log('[HomePage filter course]', {
-                title: course.title,
-                courseLanguageRaw: course.language,
-                courseLanguageType: typeof course.language,
-                courseLang,
-                normalizedLanguage,
-                matches,
-                comparison: `${courseLang} === ${normalizedLanguage}`,
-              });
-              
-              return matches;
-            },
-          ),
-        }))
-        .filter((category) => category.courses.length > 0);
-      
-      // Если нет курсов на предпочитаемом языке, показываем сербские (SR)
-      if (filtered.length === 0 && normalizedLanguage !== "SR") {
-        const fallbackFiltered = catalog
-          .map((category) => ({
-            ...category,
-            courses: category.courses.filter(
-              (course) => {
-                const courseLang = course.language 
-                  ? String(course.language).toUpperCase().trim()
-                  : "SR";
-                return courseLang === "SR";
-              },
-            ),
-          }))
-          .filter((category) => category.courses.length > 0);
-        
-        // Логирование для диагностики (временно включено для production)
-        console.log('[HomePage filter] Fallback to SR', {
-          normalizedLanguage,
-          fallbackCourses: fallbackFiltered.length,
-          fallbackCoursesList: fallbackFiltered.flatMap(c => c.courses).map(c => ({
-            title: c.title,
-            language: c.language,
-          })),
-        });
-        
-        return fallbackFiltered;
-      }
-      
-      // Логирование для диагностики (временно включено для production)
-      const allCourses = catalog.flatMap(c => c.courses);
-      console.log('[HomePage filter]', {
-        totalCategories: catalog.length,
-        filteredCategories: filtered.length,
-        normalizedLanguage,
-        preferredLanguage,
-        allCoursesCount: allCourses.length,
-        allCourses: allCourses.map(c => ({ 
-          title: c.title, 
-          language: c.language,
-          languageType: typeof c.language,
-          languageUpper: c.language ? c.language.toUpperCase() : 'NULL',
-        })),
-        filteredCourses: filtered.flatMap(c => c.courses).map(c => ({
-          title: c.title,
-          language: c.language,
-        })),
-      });
-      
-      return filtered;
-    },
-    [catalog, normalizedLanguage, preferredLanguage],
+    () => catalog,
+    [catalog],
   );
 
   const featuredCourse = useMemo(() => {

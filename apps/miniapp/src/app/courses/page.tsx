@@ -87,17 +87,6 @@ export default function CoursesPage() {
               
               const matches = courseLang === normalizedLanguage;
               
-              // Логирование для диагностики (временно включено для production)
-              console.log('[Course filter course]', {
-                title: course.title,
-                courseLanguageRaw: course.language,
-                courseLanguageType: typeof course.language,
-                courseLang,
-                normalizedLanguage,
-                matches,
-                comparison: `${courseLang} === ${normalizedLanguage}`,
-              });
-              
               return matches;
             },
           ),
@@ -120,37 +109,8 @@ export default function CoursesPage() {
           }))
           .filter((category) => category.courses.length > 0);
         
-        // Логирование для диагностики (временно включено для production)
-        console.log('[Course filter] Fallback to SR', {
-          normalizedLanguage,
-          fallbackCourses: fallbackFiltered.length,
-          fallbackCoursesList: fallbackFiltered.flatMap(c => c.courses).map(c => ({
-            title: c.title,
-            language: c.language,
-          })),
-        });
-        
         return fallbackFiltered;
       }
-      
-      // Логирование для диагностики (временно включено для production)
-      const allCourses = catalog.flatMap(c => c.courses);
-      console.log('[Course filter]', {
-        totalCategories: catalog.length,
-        filteredCategories: filtered.length,
-        normalizedLanguage,
-        allCoursesCount: allCourses.length,
-        allCourses: allCourses.map(c => ({ 
-          title: c.title, 
-          language: c.language,
-          languageType: typeof c.language,
-          languageUpper: c.language ? c.language.toUpperCase() : 'NULL',
-        })),
-        filteredCourses: filtered.flatMap(c => c.courses).map(c => ({
-          title: c.title,
-          language: c.language,
-        })),
-      });
       
       return filtered;
     },
