@@ -123,8 +123,23 @@ export default function HomePage() {
           ...category,
           courses: category.courses.filter(
             (course) => {
-              const courseLang = (course.language ?? "SR").toUpperCase();
-              return courseLang === normalizedLanguage;
+              // Нормализуем язык курса: приводим к верхнему регистру, если null/undefined - используем SR
+              const courseLang = course.language 
+                ? String(course.language).toUpperCase().trim()
+                : "SR";
+              const matches = courseLang === normalizedLanguage;
+              
+              if (process.env.NODE_ENV === 'development' || true) {
+                console.log('[HomePage filter course]', {
+                  title: course.title,
+                  courseLanguage: course.language,
+                  courseLang,
+                  normalizedLanguage,
+                  matches,
+                });
+              }
+              
+              return matches;
             },
           ),
         }))
@@ -137,31 +152,44 @@ export default function HomePage() {
             ...category,
             courses: category.courses.filter(
               (course) => {
-                const courseLang = (course.language ?? "SR").toUpperCase();
+                const courseLang = course.language 
+                  ? String(course.language).toUpperCase().trim()
+                  : "SR";
                 return courseLang === "SR";
               },
             ),
           }))
           .filter((category) => category.courses.length > 0);
         
-        if (process.env.NODE_ENV === 'development') {
-          console.log('[HomePage filter] Fallback to SR', {
-            normalizedLanguage,
-            fallbackCourses: fallbackFiltered.length,
-          });
-        }
+        // Логирование для диагностики (временно включено для production)
+        console.log('[HomePage filter] Fallback to SR', {
+          normalizedLanguage,
+          fallbackCourses: fallbackFiltered.length,
+          fallbackCoursesList: fallbackFiltered.flatMap(c => c.courses).map(c => ({
+            title: c.title,
+            language: c.language,
+          })),
+        });
         
         return fallbackFiltered;
       }
       
       // Логирование для диагностики (временно включено для production)
+      const allCourses = catalog.flatMap(c => c.courses);
       console.log('[HomePage filter]', {
         totalCategories: catalog.length,
         filteredCategories: filtered.length,
         normalizedLanguage,
         preferredLanguage,
-        allCourses: catalog.flatMap(c => c.courses).map(c => ({ 
+        allCoursesCount: allCourses.length,
+        allCourses: allCourses.map(c => ({ 
           title: c.title, 
+          language: c.language,
+          languageType: typeof c.language,
+          languageUpper: c.language ? c.language.toUpperCase() : 'NULL',
+        })),
+        filteredCourses: filtered.flatMap(c => c.courses).map(c => ({
+          title: c.title,
           language: c.language,
         })),
       });
