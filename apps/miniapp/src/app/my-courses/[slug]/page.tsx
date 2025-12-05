@@ -2065,14 +2065,22 @@ export default function MyCourseDetailsPage({
                                 </p>
                               ) : null}
                               {block.items.length > 0 ? (
-                                <ul className="space-y-2 text-sm text-text-medium">
+                                <ul className="space-y-2 text-sm leading-relaxed text-text-medium">
                                   {block.items.map((item) => (
                                     <li
                                       key={item.id}
                                       className="flex items-start gap-2"
                                     >
-                                      <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-brand-orange" />
-                                      <span className="leading-relaxed">{item.text}</span>
+                                      <span 
+                                        className="shrink-0 rounded-full bg-brand-orange" 
+                                        style={{
+                                          width: '6px',
+                                          height: '6px',
+                                          marginTop: '0.5em',
+                                          transform: 'translateY(0)',
+                                        }}
+                                      />
+                                      <span className="flex-1">{item.text}</span>
                                     </li>
                                   ))}
                                 </ul>
