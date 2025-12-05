@@ -2197,25 +2197,47 @@ export default function MyCourseDetailsPage({
                     >
                       {/* Заголовок модуля с выделением */}
                       <div
-                        className={`rounded-2xl border-2 px-4 py-3 ${
+                        className={`rounded-2xl border-2 px-4 py-3 relative ${
                           isLocked
-                            ? 'border-card/50 bg-card/30 opacity-60'
+                            ? 'border-brand-orange/40 bg-gradient-to-br from-card/50 to-card/30 backdrop-blur-sm'
                             : 'border-brand-orange/30 bg-brand-orange/5'
                         }`}
                       >
-                        <div className="flex items-center justify-between gap-2">
+                        {isLocked && (
+                          <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-black/5 to-transparent pointer-events-none" />
+                        )}
+                        <div className="flex items-center justify-between gap-2 relative">
                           <div className="flex-1">
-                            <p className={`text-base font-semibold ${
-                              isLocked ? 'text-text-medium' : 'text-text-dark'
+                            <div className="flex items-center gap-2">
+                              {isLocked && (
+                                <svg
+                                  className="w-4 h-4 text-brand-orange flex-shrink-0"
+                                  fill="none"
+                                  viewBox="0 0 24 24"
+                                  stroke="currentColor"
+                                  strokeWidth={2}
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                                  />
+                                </svg>
+                              )}
+                              <p className={`text-base font-semibold ${
+                                isLocked ? 'text-text-medium' : 'text-text-dark'
+                              }`}>
+                                {module.title}
+                              </p>
+                            </div>
+                            <p className={`mt-1 text-xs ${
+                              isLocked ? 'text-text-light/70' : 'text-text-light'
                             }`}>
-                              {module.title}
-                            </p>
-                            <p className="mt-1 text-xs text-text-light">
                               {t('{count} уроков', { count: module.lessons.length })}
                             </p>
                           </div>
                           {isLocked ? (
-                            <span className="rounded-full bg-brand-orange/10 px-2 py-1 text-[10px] font-semibold text-brand-orange flex-shrink-0">
+                            <span className="rounded-full bg-brand-orange/20 border border-brand-orange/40 px-3 py-1 text-[10px] font-semibold text-brand-orange flex-shrink-0 shadow-sm">
                               {t('Заблокировано')}
                             </span>
                           ) : null}
