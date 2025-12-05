@@ -2184,8 +2184,8 @@ export default function MyCourseDetailsPage({
               <h2 className="text-lg font-semibold text-text-dark">
                 {t('Программа курса')}
               </h2>
-              <div className="space-y-3">
-                {course.modules.map((module) => {
+              <div className="space-y-4">
+                {course.modules.map((module, moduleIndex) => {
                   const access = moduleAccessibility.get(module.id);
                   const isLocked = access?.isLocked ?? false;
                   const requiredTest = access?.requiredTest ?? null;
@@ -2195,41 +2195,44 @@ export default function MyCourseDetailsPage({
                       key={module.id}
                       className="space-y-2"
                     >
+                      {/* Заголовок модуля с выделением */}
                       <div
-                        className={`space-y-2 rounded-2xl border px-4 py-3 text-sm text-text-medium ${
+                        className={`rounded-2xl border-2 px-4 py-3 ${
                           isLocked
                             ? 'border-card/50 bg-card/30 opacity-60'
-                            : 'border-card bg-white'
+                            : 'border-brand-orange/30 bg-brand-orange/5'
                         }`}
                       >
-                        <div>
-                          <div className="flex items-center justify-between gap-2">
-                            <p className="font-medium text-text-dark">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex-1">
+                            <p className={`text-base font-semibold ${
+                              isLocked ? 'text-text-medium' : 'text-text-dark'
+                            }`}>
                               {module.title}
                             </p>
-                            {isLocked ? (
-                              <span className="rounded-full bg-brand-orange/10 px-2 py-1 text-[10px] font-semibold text-brand-orange">
-                                {t('Заблокировано')}
-                              </span>
-                            ) : null}
-                          </div>
-                          <p className="text-xs text-text-light">
-                            {t('{count} уроков', { count: module.lessons.length })}
-                          </p>
-                          {module.description ? (
                             <p className="mt-1 text-xs text-text-light">
-                              {module.description}
+                              {t('{count} уроков', { count: module.lessons.length })}
                             </p>
-                          ) : null}
-                          {isLocked && requiredTest ? (
-                            <div className="mt-2 rounded-xl bg-brand-orange/10 px-3 py-2 text-xs text-brand-orange">
-                              <p className="font-medium">
-                                {t('Для доступа к этому модулю необходимо пройти тест:')}
-                              </p>
-                              <p className="mt-1">{requiredTest.title}</p>
-                            </div>
+                          </div>
+                          {isLocked ? (
+                            <span className="rounded-full bg-brand-orange/10 px-2 py-1 text-[10px] font-semibold text-brand-orange flex-shrink-0">
+                              {t('Заблокировано')}
+                            </span>
                           ) : null}
                         </div>
+                        {module.description ? (
+                          <p className="mt-2 text-xs text-text-light">
+                            {module.description}
+                          </p>
+                        ) : null}
+                        {isLocked && requiredTest ? (
+                          <div className="mt-3 rounded-xl bg-brand-orange/10 px-3 py-2 text-xs text-brand-orange">
+                            <p className="font-medium">
+                              {t('Для доступа к этому модулю необходимо пройти тест:')}
+                            </p>
+                            <p className="mt-1">{requiredTest.title}</p>
+                          </div>
+                        ) : null}
                       </div>
                       {isLocked && requiredTest ? (
                         <div className="px-4">
