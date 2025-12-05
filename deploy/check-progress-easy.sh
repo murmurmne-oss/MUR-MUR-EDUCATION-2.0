@@ -12,7 +12,7 @@ fi
 echo "🔍 Проверка прогресса для пользователя: $USER_ID"
 echo ""
 
-# Копируем JS файл в контейнер и выполняем
-docker compose -f docker-compose.prod.yml cp check-progress.js backend:/tmp/check-progress.js
-docker compose -f docker-compose.prod.yml exec -T backend sh -c "cd /app && node /tmp/check-progress.js $USER_ID"
+# Копируем JS файл в рабочую директорию backend и выполняем
+docker compose -f docker-compose.prod.yml cp check-progress.js backend:/app/check-progress.js
+docker compose -f docker-compose.prod.yml exec -T backend sh -c "cd /app && node check-progress.js $USER_ID"
 
