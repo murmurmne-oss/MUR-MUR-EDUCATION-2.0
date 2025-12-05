@@ -282,7 +282,7 @@ export default function HomePage() {
 
         {/* Декоративный блок "Our shop" */}
         <div
-          className="relative -ml-4 w-[70%] rounded-r-[50px] bg-brand-pink px-8 py-3 text-left text-white shadow-md"
+          className="relative -ml-4 w-[55%] rounded-r-[50px] bg-brand-pink px-8 py-3 text-left text-white shadow-md"
         >
           <span className="block text-2xl font-bold leading-tight">
             {t("Our shop")}
@@ -291,22 +291,21 @@ export default function HomePage() {
 
         {/* Блок с изображением и кнопкой */}
         <section className="relative -mx-4 overflow-hidden rounded-2xl">
-          <div className="relative h-[180px] w-full">
-            {/* Изображение фона */}
+          <div className="relative aspect-[16/9] w-full">
             <Image
-              src="https://i.postimg.cc/tgtc7FJZ/Neutral-Black-And-White-Minimalist-Aesthetic-Modern-Simple-Laser-Hair-Removal-Instagram-Post.png"
-              alt="Shop"
+              src="https://murmurmne.com/wp-content/uploads/2025/12/photo_2025-12-05_14-07-07.jpg"
+              alt={t("Our shop")}
               fill
               className="object-cover"
               unoptimized
             />
-            {/* Кнопка поверх изображения */}
-            <div className="absolute inset-0 flex items-center justify-center">
+            {/* Кнопка в левом нижнем углу */}
+            <div className="absolute bottom-4 left-4">
               <a
                 href="https://murmurmne.com"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="rounded-full bg-brand-pink px-6 py-3 text-sm font-semibold text-white transition-transform active:scale-95 shadow-lg"
+                className="inline-block rounded-full bg-brand-pink px-5 py-2.5 text-sm font-semibold text-white shadow-lg transition-transform active:scale-95"
               >
                 {t("Go to shop")}
               </a>
