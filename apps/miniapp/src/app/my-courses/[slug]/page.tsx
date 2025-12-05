@@ -2185,48 +2185,55 @@ export default function MyCourseDetailsPage({
                   return (
                     <div
                       key={module.id}
-                      className={`space-y-2 rounded-2xl border px-4 py-3 text-sm text-text-medium ${
-                        isLocked
-                          ? 'border-card/50 bg-card/30 opacity-60'
-                          : 'border-card bg-white'
-                      }`}
+                      className="space-y-2"
                     >
-                      <div>
-                        <div className="flex items-center justify-between gap-2">
-                          <p className="font-medium text-text-dark">
-                            {module.title}
+                      <div
+                        className={`space-y-2 rounded-2xl border px-4 py-3 text-sm text-text-medium ${
+                          isLocked
+                            ? 'border-card/50 bg-card/30 opacity-60'
+                            : 'border-card bg-white'
+                        }`}
+                      >
+                        <div>
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="font-medium text-text-dark">
+                              {module.title}
+                            </p>
+                            {isLocked ? (
+                              <span className="rounded-full bg-brand-orange/10 px-2 py-1 text-[10px] font-semibold text-brand-orange">
+                                {t('Заблокировано')}
+                              </span>
+                            ) : null}
+                          </div>
+                          <p className="text-xs text-text-light">
+                            {t('{count} уроков', { count: module.lessons.length })}
                           </p>
-                          {isLocked ? (
-                            <span className="rounded-full bg-brand-orange/10 px-2 py-1 text-[10px] font-semibold text-brand-orange">
-                              {t('Заблокировано')}
-                            </span>
+                          {module.description ? (
+                            <p className="mt-1 text-xs text-text-light">
+                              {module.description}
+                            </p>
+                          ) : null}
+                          {isLocked && requiredTest ? (
+                            <div className="mt-2 rounded-xl bg-brand-orange/10 px-3 py-2 text-xs text-brand-orange">
+                              <p className="font-medium">
+                                {t('Для доступа к этому модулю необходимо пройти тест:')}
+                              </p>
+                              <p className="mt-1">{requiredTest.title}</p>
+                            </div>
                           ) : null}
                         </div>
-                        <p className="text-xs text-text-light">
-                          {t('{count} уроков', { count: module.lessons.length })}
-                        </p>
-                        {module.description ? (
-                          <p className="mt-1 text-xs text-text-light">
-                            {module.description}
-                          </p>
-                        ) : null}
-                        {isLocked && requiredTest ? (
-                          <div className="mt-2 rounded-xl bg-brand-orange/10 px-3 py-2 text-xs text-brand-orange relative" style={{ opacity: 1 }}>
-                            <p className="font-medium">
-                              {t('Для доступа к этому модулю необходимо пройти тест:')}
-                            </p>
-                            <p className="mt-1">{requiredTest.title}</p>
-                            <button
-                              type="button"
-                              onClick={() => setSelectedTest(requiredTest)}
-                              className="mt-2 rounded-full bg-brand-pink px-4 py-2 text-xs font-semibold text-white transition-transform active:scale-95 relative z-10"
-                              style={{ opacity: 1 }}
-                            >
-                              {t('Пройти тест')}
-                            </button>
-                          </div>
-                        ) : null}
                       </div>
+                      {isLocked && requiredTest ? (
+                        <div className="px-4">
+                          <button
+                            type="button"
+                            onClick={() => setSelectedTest(requiredTest)}
+                            className="w-full rounded-full bg-brand-pink px-4 py-2 text-xs font-semibold text-white transition-transform active:scale-95"
+                          >
+                            {t('Пройти тест')}
+                          </button>
+                        </div>
+                      ) : null}
                       <div className="space-y-2">
                         {module.lessons.map((lesson) => {
                           const lessonRef: LessonRef = {
