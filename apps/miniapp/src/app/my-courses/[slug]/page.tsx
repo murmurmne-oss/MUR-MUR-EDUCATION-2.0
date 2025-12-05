@@ -58,11 +58,18 @@ const STATUS_LABELS: Record<LessonStatus, string> = {
   COMPLETED: 'Завершён',
 };
 
+// Унифицированные стили для всех бейджей статусов
 const STATUS_BADGES: Record<LessonStatus, string> = {
   NOT_STARTED: 'bg-card text-text-light',
   IN_PROGRESS: 'bg-brand-orange/10 text-brand-orange',
   COMPLETED: 'bg-brand-pink text-white',
 };
+
+// Единый размер для всех бейджей статусов
+const STATUS_BADGE_CLASSES = 'rounded-full px-2.5 py-1 text-[10px] font-semibold';
+
+// Единый стиль для всех кнопок действий
+const ACTION_BUTTON_CLASSES = 'rounded-full bg-brand-pink px-4 py-2 text-xs font-semibold text-white transition-transform active:scale-95 disabled:cursor-not-allowed disabled:opacity-50';
 
 const STATUS_ACCENTS: Record<LessonStatus, string> = {
   NOT_STARTED: 'text-text-light',
@@ -1830,7 +1837,7 @@ export default function MyCourseDetailsPage({
                       </h2>
                       {selectedLessonProgress ? (
                         <span
-                          className={`rounded-full px-3 py-1 text-[11px] font-semibold ${STATUS_BADGES[selectedLessonProgress.status]}`}
+                          className={`${STATUS_BADGE_CLASSES} ${STATUS_BADGES[selectedLessonProgress.status]}`}
                         >
                           {t(STATUS_LABELS[selectedLessonProgress.status])}
                         </span>
@@ -2236,11 +2243,6 @@ export default function MyCourseDetailsPage({
                               {t('{count} уроков', { count: module.lessons.length })}
                             </p>
                           </div>
-                          {isLocked ? (
-                            <span className="rounded-full bg-brand-orange/20 border border-brand-orange/40 px-3 py-1 text-[10px] font-semibold text-brand-orange flex-shrink-0 shadow-sm">
-                              {t('Заблокировано')}
-                            </span>
-                          ) : null}
                         </div>
                         {module.description ? (
                           <p className="mt-2 text-xs text-text-light">
@@ -2261,7 +2263,7 @@ export default function MyCourseDetailsPage({
                           <button
                             type="button"
                             onClick={() => setSelectedTest(requiredTest)}
-                            className="w-full rounded-full bg-brand-pink px-4 py-2 text-xs font-semibold text-white transition-transform active:scale-95"
+                            className={`w-full ${ACTION_BUTTON_CLASSES}`}
                           >
                             {t('Пройти тест')}
                           </button>
@@ -2312,7 +2314,7 @@ export default function MyCourseDetailsPage({
                                   {lesson.title}
                                 </p>
                                 <span
-                                  className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${STATUS_BADGES[status]}`}
+                                  className={`${STATUS_BADGE_CLASSES} ${STATUS_BADGES[status]}`}
                                 >
                                   {t(STATUS_LABELS[status])}
                                 </span>
@@ -2412,9 +2414,9 @@ export default function MyCourseDetailsPage({
                                         type="button"
                                         onClick={() => handleStartForm(form.id)}
                                         disabled={questionCount === 0 || isLocked}
-                                        className="rounded-full bg-brand-pink px-4 py-2 text-xs font-semibold text-white transition-transform active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 flex-shrink-0"
-                                      >
-                                        {t('Пройти форму')}
+                                      className={`${ACTION_BUTTON_CLASSES} flex-shrink-0`}
+                                    >
+                                      {t('Пройти форму')}
                                       </button>
                                     </div>
                                   </div>
@@ -2464,7 +2466,7 @@ export default function MyCourseDetailsPage({
                                       type="button"
                                       onClick={() => handleStartForm(form.id)}
                                       disabled={questionCount === 0 || isLocked}
-                                      className="rounded-full bg-brand-pink px-4 py-2 text-xs font-semibold text-white transition-transform active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 flex-shrink-0"
+                                      className={`${ACTION_BUTTON_CLASSES} flex-shrink-0`}
                                     >
                                       {t('Пройти форму')}
                                     </button>
@@ -2508,7 +2510,7 @@ export default function MyCourseDetailsPage({
                           type="button"
                           onClick={() => setSelectedTest(test)}
                           disabled={test.questions.length === 0}
-                          className="rounded-full bg-brand-pink px-4 py-2 text-xs font-semibold text-white transition-transform active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+                          className={ACTION_BUTTON_CLASSES}
                         >
                           {t('Пройти тест')}
                         </button>
@@ -2559,7 +2561,7 @@ export default function MyCourseDetailsPage({
                               type="button"
                               onClick={() => handleStartForm(form.id)}
                               disabled={questionCount === 0}
-                              className="rounded-full bg-brand-pink px-4 py-2 text-xs font-semibold text-white transition-transform active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+                              className={ACTION_BUTTON_CLASSES}
                             >
                               {t('Пройти форму')}
                             </button>
