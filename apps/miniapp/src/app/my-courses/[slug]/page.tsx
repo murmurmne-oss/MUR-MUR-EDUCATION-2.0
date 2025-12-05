@@ -66,10 +66,10 @@ const STATUS_BADGES: Record<LessonStatus, string> = {
 };
 
 // Единый размер для всех бейджей статусов
-const STATUS_BADGE_CLASSES = 'rounded-full px-2.5 py-1 text-[10px] font-semibold whitespace-nowrap';
+const STATUS_BADGE_CLASSES = 'rounded-full px-2.5 py-1 text-[10px] font-semibold whitespace-nowrap flex-shrink-0';
 
-// Единый стиль для всех кнопок действий с фиксированной шириной
-const ACTION_BUTTON_CLASSES = 'rounded-full bg-brand-pink px-4 py-2 text-xs font-semibold text-white transition-transform active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 whitespace-nowrap min-w-[100px]';
+// Единый стиль для всех кнопок действий
+const ACTION_BUTTON_CLASSES = 'rounded-full bg-brand-pink px-4 py-2 text-xs font-semibold text-white transition-transform active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 whitespace-nowrap flex-shrink-0';
 
 const STATUS_ACCENTS: Record<LessonStatus, string> = {
   NOT_STARTED: 'text-text-light',
