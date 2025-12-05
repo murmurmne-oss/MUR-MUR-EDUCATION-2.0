@@ -280,25 +280,37 @@ export default function HomePage() {
           )}
         </section>
 
-        {/* Баннер магазина */}
-        <section className="relative -mx-4 overflow-hidden rounded-2xl bg-gradient-to-r from-brand-orange/20 via-brand-pink/20 to-brand-orange/20 border border-brand-orange/30">
-          <div className="flex items-center justify-between gap-4 px-6 py-4">
-            <div className="flex-1">
-              <p className="text-sm font-semibold text-text-dark">
-                {t("У нас также есть магазин")}
-              </p>
-              <p className="mt-1 text-xs text-text-light">
-                {t("Посмотрите, что у нас есть")}
-              </p>
+        {/* Декоративный блок "Our shop" */}
+        <div
+          className="relative -ml-4 w-[70%] rounded-r-[50px] bg-brand-pink px-8 py-3 text-left text-white shadow-md"
+        >
+          <span className="block text-2xl font-bold leading-tight">
+            {t("Our shop")}
+          </span>
+        </div>
+
+        {/* Блок с изображением и кнопкой */}
+        <section className="relative -mx-4 overflow-hidden rounded-2xl">
+          <div className="relative h-[180px] w-full">
+            {/* Изображение фона */}
+            <Image
+              src="https://i.postimg.cc/tgtc7FJZ/Neutral-Black-And-White-Minimalist-Aesthetic-Modern-Simple-Laser-Hair-Removal-Instagram-Post.png"
+              alt="Shop"
+              fill
+              className="object-cover"
+              unoptimized
+            />
+            {/* Кнопка поверх изображения */}
+            <div className="absolute inset-0 flex items-center justify-center">
+              <a
+                href="https://murmurmne.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="rounded-full bg-brand-pink px-6 py-3 text-sm font-semibold text-white transition-transform active:scale-95 shadow-lg"
+              >
+                {t("Go to shop")}
+              </a>
             </div>
-            <a
-              href="https://murmurmne.com"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex-shrink-0 rounded-full bg-brand-pink px-4 py-2 text-xs font-semibold text-white transition-transform active:scale-95 shadow-sm"
-            >
-              {t("Посмотреть")}
-            </a>
           </div>
         </section>
 

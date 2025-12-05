@@ -59,9 +59,8 @@ const TRANSLATIONS: Record<Locale, Record<string, string>> = {
     "To discover": "Za otkrivanje",
     "Исследуйте наши курсы и начните обучение уже сегодня!":
       "Istražite naše kurseve i počnite sa učenjem već danas!",
-    "У нас также есть магазин": "Takođe imamo prodavnicu",
-    "Посмотрите, что у нас есть": "Pogledajte šta imamo",
-    "Посмотреть": "Pogledaj",
+    "Our shop": "Naša prodavnica",
+    "Go to shop": "Idi u prodavnicu",
 
     // Courses page
     "Откройте курс, чтобы узнать подробности и оформить доступ.":
