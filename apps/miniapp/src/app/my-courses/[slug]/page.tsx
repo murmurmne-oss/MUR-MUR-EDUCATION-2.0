@@ -2211,7 +2211,7 @@ export default function MyCourseDetailsPage({
                           </p>
                         ) : null}
                         {isLocked && requiredTest ? (
-                          <div className="mt-2 rounded-xl bg-brand-orange/10 px-3 py-2 text-xs text-brand-orange">
+                          <div className="mt-2 rounded-xl bg-brand-orange/10 px-3 py-2 text-xs text-brand-orange relative" style={{ opacity: 1 }}>
                             <p className="font-medium">
                               {t('Для доступа к этому модулю необходимо пройти тест:')}
                             </p>
@@ -2219,7 +2219,7 @@ export default function MyCourseDetailsPage({
                             <button
                               type="button"
                               onClick={() => setSelectedTest(requiredTest)}
-                              className="mt-2 rounded-full bg-brand-pink px-4 py-2 text-xs font-semibold text-white transition-transform active:scale-95"
+                              className="mt-2 rounded-full bg-brand-pink px-4 py-2 text-xs font-semibold text-white transition-transform active:scale-95 relative z-10"
                               style={{ opacity: 1 }}
                             >
                               {t('Пройти тест')}
