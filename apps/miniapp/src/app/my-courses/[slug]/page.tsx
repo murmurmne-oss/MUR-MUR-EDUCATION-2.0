@@ -66,10 +66,10 @@ const STATUS_BADGES: Record<LessonStatus, string> = {
 };
 
 // Единый размер для всех бейджей статусов
-const STATUS_BADGE_CLASSES = 'rounded-full px-2.5 py-1 text-[10px] font-semibold';
+const STATUS_BADGE_CLASSES = 'rounded-full px-2.5 py-1 text-[10px] font-semibold whitespace-nowrap';
 
-// Единый стиль для всех кнопок действий
-const ACTION_BUTTON_CLASSES = 'rounded-full bg-brand-pink px-4 py-2 text-xs font-semibold text-white transition-transform active:scale-95 disabled:cursor-not-allowed disabled:opacity-50';
+// Единый стиль для всех кнопок действий с фиксированной шириной
+const ACTION_BUTTON_CLASSES = 'rounded-full bg-brand-pink px-4 py-2 text-xs font-semibold text-white transition-transform active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 whitespace-nowrap min-w-[100px]';
 
 const STATUS_ACCENTS: Record<LessonStatus, string> = {
   NOT_STARTED: 'text-text-light',
@@ -2301,7 +2301,7 @@ export default function MyCourseDetailsPage({
                                 }
                               }}
                               disabled={isLocked}
-                              className={`w-full rounded-xl border px-3 py-2 text-left text-xs transition-colors ${
+                              className={`w-full rounded-xl border px-3 py-3 text-left transition-colors ${
                                 isLocked
                                   ? 'cursor-not-allowed border-card/30 bg-card/20 opacity-50'
                                   : isSelected
@@ -2309,21 +2309,23 @@ export default function MyCourseDetailsPage({
                                     : 'border-card bg-surface hover:border-brand-orange/60 hover:text-text-dark'
                               }`}
                             >
-                              <div className="flex items-center justify-between gap-2">
-                                <p className="font-medium text-text-dark">
-                                  {lesson.title}
-                                </p>
+                              <div className="flex items-center justify-between gap-3">
+                                <div className="flex-1 min-w-0 pr-2">
+                                  <p className="text-sm font-medium text-text-dark leading-tight">
+                                    {lesson.title}
+                                  </p>
+                                  {lesson.summary ? (
+                                    <p className="mt-1 text-xs text-text-light line-clamp-2">
+                                      {lesson.summary}
+                                    </p>
+                                  ) : null}
+                                </div>
                                 <span
                                   className={`${STATUS_BADGE_CLASSES} ${STATUS_BADGES[status]}`}
                                 >
                                   {t(STATUS_LABELS[status])}
                                 </span>
                               </div>
-                              {lesson.summary ? (
-                                <p className="mt-1 text-text-light">
-                                  {lesson.summary}
-                                </p>
-                              ) : null}
                               {previewBlock && !lesson.summary ? (() => {
                                 const isHTML = typeof previewBlock.text === 'string' && /<[a-z][\s\S]*>/i.test(previewBlock.text.trim());
                                 
@@ -2392,21 +2394,17 @@ export default function MyCourseDetailsPage({
                                 return (
                                   <div
                                     key={form.id}
-                                    className="rounded-xl border border-card bg-surface px-3 py-2 text-xs"
+                                    className="rounded-xl border border-card bg-surface px-3 py-3"
                                   >
-                                    <div className="flex items-start justify-between gap-3">
-                                      <div className="space-y-1 flex-1">
-                                        <p className="font-medium text-text-dark">{form.title}</p>
-                                        {form.description ? (
-                                          <p className="text-text-light">{form.description}</p>
-                                        ) : null}
-                                        <p className="text-text-light">
+                                    <div className="flex items-center justify-between gap-3">
+                                      <div className="flex-1 min-w-0 pr-2">
+                                        <p className="text-sm font-medium text-text-dark leading-tight">
+                                          {form.title}
+                                        </p>
+                                        <p className="mt-1 text-xs text-text-light">
                                           {t('Вопросов: {count}', { count: questionCount })}
                                           {form.type === "RATING" && form.maxRating && (
                                             <> · {t("Оценка от 1 до {max}", { max: form.maxRating })}</>
-                                          )}
-                                          {relatedLesson && (
-                                            <> · {t("После урока: {lesson}", { lesson: relatedLesson.title })}</>
                                           )}
                                         </p>
                                       </div>
@@ -2414,9 +2412,9 @@ export default function MyCourseDetailsPage({
                                         type="button"
                                         onClick={() => handleStartForm(form.id)}
                                         disabled={questionCount === 0 || isLocked}
-                                      className={`${ACTION_BUTTON_CLASSES} flex-shrink-0`}
-                                    >
-                                      {t('Пройти форму')}
+                                        className={ACTION_BUTTON_CLASSES}
+                                      >
+                                        {t('Пройти форму')}
                                       </button>
                                     </div>
                                   </div>
