@@ -290,7 +290,7 @@ export default function HomePage() {
         </div>
 
         {/* Блок с изображением и кнопкой */}
-        <section className="relative -mx-4 overflow-hidden rounded-2xl">
+        <section className="relative overflow-hidden rounded-2xl">
           <div className="relative aspect-[16/9] w-full">
             <Image
               src="https://murmurmne.com/wp-content/uploads/2025/12/photo_2025-12-05_14-07-07.jpg"
@@ -299,8 +299,8 @@ export default function HomePage() {
               className="object-cover"
               unoptimized
             />
-            {/* Кнопка в левом нижнем углу */}
-            <div className="absolute bottom-4 left-4">
+            {/* Кнопка в правом нижнем углу */}
+            <div className="absolute bottom-4 right-4">
               <a
                 href="https://murmurmne.com"
                 target="_blank"
