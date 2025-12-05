@@ -2331,7 +2331,6 @@ export default function MyCourseDetailsPage({
                                 
                                 if (isHTML) {
                                   // Для HTML-контента извлекаем только текст без HTML-тегов для превью
-                                  // Используем тот же стиль, что и для summary (без text-xs)
                                   let plainText = previewBlock.text;
                                   if (typeof document !== 'undefined') {
                                     const tempDiv = document.createElement('div');
@@ -2340,33 +2339,15 @@ export default function MyCourseDetailsPage({
                                   }
                                   
                                   return (
-                                    <p
-                                      className="mt-1 text-text-light"
-                                      style={{ 
-                                        overflow: 'hidden',
-                                        display: '-webkit-box',
-                                        WebkitLineClamp: 3,
-                                        WebkitBoxOrient: 'vertical',
-                                        lineHeight: '1.4',
-                                      }}
-                                    >
+                                    <p className="mt-2 text-xs text-text-light">
                                       {plainText}
                                     </p>
                                   );
                                 }
                                 
-                                // Рендерим plain text с тем же стилем, что и summary (без text-xs)
+                                // Рендерим plain text с тем же стилем, что и описание модуля
                                 return (
-                                  <p
-                                    className="mt-1 text-text-light"
-                                    style={{ 
-                                      overflow: 'hidden',
-                                      display: '-webkit-box',
-                                      WebkitLineClamp: 3,
-                                      WebkitBoxOrient: 'vertical',
-                                      lineHeight: '1.4',
-                                    }}
-                                  >
+                                  <p className="mt-2 text-xs text-text-light">
                                     {previewBlock.text}
                                   </p>
                                 );
