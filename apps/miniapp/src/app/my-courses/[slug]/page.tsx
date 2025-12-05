@@ -2219,7 +2219,7 @@ export default function MyCourseDetailsPage({
                             <button
                               type="button"
                               onClick={() => setSelectedTest(requiredTest)}
-                              className="mt-2 rounded-full bg-brand-pink px-4 py-2 text-xs font-semibold text-white transition-transform active:scale-95"
+                              className="mt-2 w-full rounded-full bg-brand-pink px-4 py-3 text-sm font-semibold text-white shadow-md transition-all hover:bg-brand-pink/90 active:scale-95"
                             >
                               {t('Пройти тест')}
                             </button>
