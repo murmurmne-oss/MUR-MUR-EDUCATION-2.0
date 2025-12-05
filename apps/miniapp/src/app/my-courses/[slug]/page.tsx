@@ -2069,18 +2069,16 @@ export default function MyCourseDetailsPage({
                                   {block.items.map((item) => (
                                     <li
                                       key={item.id}
-                                      className="flex items-start gap-2"
+                                      className="relative pl-4"
                                     >
                                       <span 
-                                        className="shrink-0 rounded-full bg-brand-orange" 
+                                        className="absolute left-0 top-[0.5em] -translate-y-1/2 rounded-full bg-brand-orange" 
                                         style={{
                                           width: '6px',
                                           height: '6px',
-                                          marginTop: '0.5em',
-                                          transform: 'translateY(0)',
                                         }}
                                       />
-                                      <span className="flex-1">{item.text}</span>
+                                      <span>{item.text}</span>
                                     </li>
                                   ))}
                                 </ul>
