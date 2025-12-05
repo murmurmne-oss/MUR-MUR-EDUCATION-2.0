@@ -1634,9 +1634,32 @@ export default function MyCourseDetailsPage({
             setSelectedTest(nextModuleAccess.requiredTest);
             return;
           }
+          
+          // Если следующий модуль доступен - переходим к его первому уроку
+          if (!nextModuleAccess?.isLocked && nextModule.lessons.length > 0) {
+            const firstLessonOfNextModule = nextModule.lessons[0];
+            const nextLessonRef: LessonRef = {
+              moduleId: nextModule.id,
+              moduleTitle: nextModule.title,
+              moduleOrder: nextModule.order,
+              lesson: firstLessonOfNextModule,
+            };
+            
+            await refreshEnrollment();
+            setSelectedLesson(nextLessonRef);
+            await ensureLessonStarted(nextLessonRef);
+            
+            // Прокрутка наверх к началу урока
+            if (typeof window !== 'undefined') {
+              setTimeout(() => {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }, 100);
+            }
+            return;
+          }
         }
         
-        // Если это последний урок последнего модуля или следующий модуль доступен
+        // Если это последний урок последнего модуля
         await refreshEnrollment();
         return;
       }
@@ -1671,7 +1694,7 @@ export default function MyCourseDetailsPage({
     } finally {
       setIsProgressUpdating(false);
     }
-  }, [course, refreshEnrollment, selectedLesson, updateLessonProgress, moduleAccessibility]);
+  }, [course, refreshEnrollment, selectedLesson, updateLessonProgress, moduleAccessibility, ensureLessonStarted]);
 
   const handleStartForm = useCallback(async (formId: string) => {
     if (!course) return;
@@ -2048,8 +2071,8 @@ export default function MyCourseDetailsPage({
                                       key={item.id}
                                       className="flex items-start gap-2"
                                     >
-                                      <span className="mt-1 size-1.5 rounded-full bg-brand-orange" />
-                                      <span>{item.text}</span>
+                                      <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-brand-orange" />
+                                      <span className="leading-relaxed">{item.text}</span>
                                     </li>
                                   ))}
                                 </ul>
