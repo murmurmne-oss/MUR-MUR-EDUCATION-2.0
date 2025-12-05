@@ -2339,15 +2339,15 @@ export default function MyCourseDetailsPage({
                                   }
                                   
                                   return (
-                                    <p className="mt-2 text-xs text-text-light">
+                                    <p className="mt-2 text-xs text-text-light line-clamp-2">
                                       {plainText}
                                     </p>
                                   );
                                 }
                                 
-                                // Рендерим plain text с тем же стилем, что и описание модуля
+                                // Рендерим plain text с ограничением на 2 строки
                                 return (
-                                  <p className="mt-2 text-xs text-text-light">
+                                  <p className="mt-2 text-xs text-text-light line-clamp-2">
                                     {previewBlock.text}
                                   </p>
                                 );
