@@ -252,7 +252,6 @@ const TRANSLATIONS: Record<Locale, Record<string, string>> = {
       "Još nemate rezultata. Prođite testove i forme u kursevima da biste ih videli ovde.",
     "Всего результатов: {total} (тестов: {tests}, форм: {forms})": 
       "Ukupno rezultata: {total} (testova: {tests}, formi: {forms})",
-    "Тест": "Test",
     "Форма": "Forma",
     "Результат: {score} из {max} ({percent}%)": 
       "Rezultat: {score} od {max} ({percent}%)",
