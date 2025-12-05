@@ -2490,15 +2490,14 @@ export default function MyCourseDetailsPage({
                   {parsedTests.map((test) => (
                     <li
                       key={test.id}
-                      className="rounded-2xl border border-card bg-surface px-4 py-3 text-sm text-text-medium"
+                      className="rounded-xl border border-card bg-surface px-3 py-3"
                     >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="space-y-1">
-                          <p className="font-medium text-text-dark">{test.title}</p>
-                          {test.description ? (
-                            <p className="text-xs text-text-light">{test.description}</p>
-                          ) : null}
-                          <p className="text-xs text-text-light">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex-1 min-w-0 pr-2">
+                          <p className="text-sm font-medium text-text-dark leading-tight">
+                            {test.title}
+                          </p>
+                          <p className="mt-1 text-xs text-text-light">
                             {t('Вопросов: {count}', {
                               count: test.questions.length,
                             })}
