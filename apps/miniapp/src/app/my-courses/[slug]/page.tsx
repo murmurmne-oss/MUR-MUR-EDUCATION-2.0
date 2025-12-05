@@ -1594,6 +1594,14 @@ export default function MyCourseDetailsPage({
         
         await refreshEnrollment();
         setSelectedLesson(nextLessonRef);
+        
+        // Прокрутка наверх к началу урока после обновления DOM
+        if (typeof window !== 'undefined') {
+          // Используем setTimeout, чтобы дать React время обновить DOM
+          setTimeout(() => {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }, 100);
+        }
         return;
       }
       
