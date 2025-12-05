@@ -2309,16 +2309,11 @@ export default function MyCourseDetailsPage({
                                     : 'border-card bg-surface hover:border-brand-orange/60 hover:text-text-dark'
                               }`}
                             >
-                              <div className="flex items-center justify-between gap-3">
+                              <div className="flex items-start justify-between gap-3">
                                 <div className="flex-1 min-w-0 pr-2">
                                   <p className="text-sm font-medium text-text-dark leading-tight">
                                     {lesson.title}
                                   </p>
-                                  {lesson.summary ? (
-                                    <p className="mt-1 text-xs text-text-light line-clamp-2">
-                                      {lesson.summary}
-                                    </p>
-                                  ) : null}
                                 </div>
                                 <span
                                   className={`${STATUS_BADGE_CLASSES} ${STATUS_BADGES[status]}`}
@@ -2326,6 +2321,11 @@ export default function MyCourseDetailsPage({
                                   {t(STATUS_LABELS[status])}
                                 </span>
                               </div>
+                              {lesson.summary ? (
+                                <p className="mt-2 text-xs text-text-light">
+                                  {lesson.summary}
+                                </p>
+                              ) : null}
                               {previewBlock && !lesson.summary ? (() => {
                                 const isHTML = typeof previewBlock.text === 'string' && /<[a-z][\s\S]*>/i.test(previewBlock.text.trim());
                                 
