@@ -32,6 +32,11 @@ export class CoursesController {
     return this.coursesService.findAll();
   }
 
+  @Get('user/:userId/results')
+  getUserResults(@Param('userId') userId: string) {
+    return this.coursesService.getUserResults(userId);
+  }
+
   @Get(':idOrSlug')
   getCourse(
     @Param('idOrSlug') idOrSlug: string,
@@ -153,10 +158,5 @@ export class CoursesController {
       throw new BadRequestException('percent must be a number between 0 and 100');
     }
     return this.coursesService.getTestResultStatistics(idOrSlug, testId, percentNum);
-  }
-
-  @Get('user/:userId/results')
-  getUserResults(@Param('userId') userId: string) {
-    return this.coursesService.getUserResults(userId);
   }
 }
