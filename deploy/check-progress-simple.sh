@@ -1,5 +1,5 @@
 #!/bin/bash
-# Простая проверка прогресса через временный postgres контейнер
+# Проверка прогресса через Node.js скрипт в backend контейнере
 
 USER_ID="${1:-}"
 
@@ -12,68 +12,151 @@ fi
 echo "🔍 Проверка прогресса для пользователя: $USER_ID"
 echo ""
 
-# Получаем DATABASE_URL из backend контейнера
-DB_URL=$(docker compose -f docker-compose.prod.yml exec -T backend sh -c 'echo $DATABASE_URL' | tr -d '\r')
+# Копируем скрипт в контейнер и выполняем
+docker compose -f docker-compose.prod.yml exec -T backend sh <<EOF
+cat > /tmp/check-progress.js <<'SCRIPT'
+const { PrismaClient } = require('@prisma/client');
+const prisma = new PrismaClient();
 
-if [ -z "$DB_URL" ]; then
-    echo "❌ Не удалось получить DATABASE_URL"
-    exit 1
-fi
+async function checkProgress(userId) {
+  console.log(\`\n🔍 Проверка прогресса для пользователя: \${userId}\n\`);
 
-echo "📊 Проверка enrollment..."
-echo ""
+  try {
+    // 1. Проверка enrollment
+    console.log('📊 Проверка enrollment...\n');
+    const enrollments = await prisma.courseEnrollment.findMany({
+      where: { userId },
+      include: {
+        course: {
+          select: {
+            id: true,
+            title: true,
+            slug: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
 
-docker run --rm -i postgres:15 psql "$DB_URL" <<EOF
-SELECT 
-    ce.id,
-    ce."userId",
-    ce."courseId",
-    ce.status,
-    c.title as course_title,
-    c.slug as course_slug
-FROM "CourseEnrollment" ce
-JOIN "Course" c ON ce."courseId" = c.id
-WHERE ce."userId" = '$USER_ID'
-ORDER BY ce."createdAt" DESC;
+    if (enrollments.length === 0) {
+      console.log('❌ Пользователь не записан ни на один курс\n');
+    } else {
+      console.log(\`✅ Найдено enrollment: \${enrollments.length}\n\`);
+      enrollments.forEach((enrollment) => {
+        console.log(\`  - Курс: \${enrollment.course.title} (\${enrollment.course.slug})\`);
+        console.log(\`    Status: \${enrollment.status}\`);
+        console.log(\`    Access Type: \${enrollment.accessType}\`);
+        console.log(\`    Created: \${enrollment.createdAt}\`);
+        console.log('');
+      });
+    }
+
+    // 2. Проверка прогресса
+    console.log('📈 Проверка прогресса по урокам...\n');
+    const progress = await prisma.courseProgress.findMany({
+      where: { userId },
+      include: {
+        lesson: {
+          include: {
+            module: {
+              include: {
+                course: {
+                  select: {
+                    title: true,
+                    slug: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      orderBy: { updatedAt: 'desc' },
+      take: 20,
+    });
+
+    if (progress.length === 0) {
+      console.log('❌ Прогресс не найден\n');
+    } else {
+      console.log(\`✅ Найдено записей прогресса: \${progress.length}\n\`);
+      progress.forEach((p) => {
+        console.log(\`  - Урок: \${p.lesson.title}\`);
+        console.log(\`    Модуль: \${p.lesson.module.title}\`);
+        console.log(\`    Курс: \${p.lesson.module.course.title}\`);
+        console.log(\`    Status: \${p.status}\`);
+        console.log(\`    Progress: \${p.progressPercent}%\`);
+        if (p.completedAt) {
+          console.log(\`    Завершен: \${p.completedAt}\`);
+        }
+        console.log('');
+      });
+    }
+
+    // 3. Проверка логов сбросов
+    console.log('📋 Проверка логов на наличие сбросов...\n');
+    const resetLogs = await prisma.activityLog.findMany({
+      where: {
+        action: 'admin.progress.reset',
+        metadata: {
+          path: ['userId'],
+          equals: userId,
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 10,
+    });
+
+    if (resetLogs.length === 0) {
+      console.log('✅ Логов сброса не найдено\n');
+    } else {
+      console.log(\`⚠️  Найдено логов сброса: \${resetLogs.length}\n\`);
+      resetLogs.forEach((log) => {
+        console.log(\`  - Дата: \${log.createdAt}\`);
+        console.log(\`    Actor: \${log.actorId || 'N/A'}\`);
+        console.log(\`    Metadata: \${JSON.stringify(log.metadata)}\`);
+        console.log('');
+      });
+    }
+
+    // 4. Статистика
+    console.log('📊 Статистика:\n');
+    const totalProgress = await prisma.courseProgress.count({
+      where: { userId },
+    });
+    const completedProgress = await prisma.courseProgress.count({
+      where: {
+        userId,
+        status: 'COMPLETED',
+      },
+    });
+    const inProgress = await prisma.courseProgress.count({
+      where: {
+        userId,
+        status: 'IN_PROGRESS',
+      },
+    });
+
+    console.log(\`  Всего записей прогресса: \${totalProgress}\`);
+    console.log(\`  Завершено: \${completedProgress}\`);
+    console.log(\`  В процессе: \${inProgress}\`);
+    console.log('');
+
+  } catch (error) {
+    console.error('❌ Ошибка при проверке:', error);
+  } finally {
+    await prisma.\$disconnect();
+  }
+}
+
+const userId = process.argv[2];
+if (!userId) {
+  console.error('❌ Укажите User ID');
+  process.exit(1);
+}
+
+checkProgress(userId);
+SCRIPT
+
+node /tmp/check-progress.js $USER_ID
 EOF
-
-echo ""
-echo "📈 Проверка прогресса..."
-echo ""
-
-docker run --rm -i postgres:15 psql "$DB_URL" <<EOF
-SELECT 
-    cp.status,
-    cp."progressPercent",
-    cp."completedAt",
-    l.title as lesson_title,
-    m.title as module_title,
-    c.title as course_title
-FROM "CourseProgress" cp
-JOIN "Lesson" l ON cp."lessonId" = l.id
-JOIN "CourseModule" m ON l."moduleId" = m.id
-JOIN "Course" c ON m."courseId" = c.id
-WHERE cp."userId" = '$USER_ID'
-ORDER BY cp."updatedAt" DESC
-LIMIT 20;
-EOF
-
-echo ""
-echo "📋 Проверка логов сбросов..."
-echo ""
-
-docker run --rm -i postgres:15 psql "$DB_URL" <<EOF
-SELECT 
-    al.action,
-    al."actorId",
-    al."metadata",
-    al."createdAt"
-FROM "ActivityLog" al
-WHERE al.action = 'admin.progress.reset'
-AND (al."metadata"->>'userId')::text = '$USER_ID'
-ORDER BY al."createdAt" DESC;
-EOF
-
-echo ""
-echo "✅ Проверка завершена"
 
