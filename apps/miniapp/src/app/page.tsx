@@ -280,6 +280,43 @@ export default function HomePage() {
           )}
         </section>
 
+        {/* Секция магазина */}
+        <section className="rounded-3xl bg-gradient-to-br from-brand-orange/10 to-brand-pink/10 border border-brand-orange/20 p-6">
+          <div className="flex flex-col items-center text-center gap-4">
+            <div className="flex items-center justify-center w-16 h-16 rounded-full bg-brand-orange/20">
+              <svg
+                className="w-8 h-8 text-brand-orange"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"
+                />
+              </svg>
+            </div>
+            <div className="space-y-2">
+              <h3 className="text-lg font-semibold text-text-dark">
+                {t("Наш магазин")}
+              </h3>
+              <p className="text-sm text-text-light">
+                {t("Откройте для себя уникальные товары для вашего благополучия")}
+              </p>
+            </div>
+            <a
+              href="https://murmurmne.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full rounded-full bg-brand-pink px-6 py-3 text-sm font-semibold text-white transition-transform active:scale-95 shadow-md hover:shadow-lg"
+            >
+              {t("Перейти в магазин")}
+            </a>
+          </div>
+        </section>
+
         {error ? (
           <p className="rounded-2xl bg-card px-4 py-3 text-center text-sm text-brand-orange">
             {error}
