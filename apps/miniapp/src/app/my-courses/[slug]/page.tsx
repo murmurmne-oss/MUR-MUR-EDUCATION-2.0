@@ -438,10 +438,8 @@ function TestRunner({
             </p>
             {statistics && statistics.totalAttempts > 0 && (
               <p className="text-xs text-text-light mt-1">
-                {t("Такой же результат получили {percentage}% людей ({count} из {total})", {
+                {t("Такой же результат получили {percentage}% людей", {
                   percentage: statistics.percentage,
-                  count: Math.round((statistics.percentage / 100) * statistics.totalAttempts),
-                  total: statistics.totalAttempts,
                 })}
               </p>
             )}
@@ -936,10 +934,8 @@ function FormRunner({
             )}
             {statistics && statistics.totalAttempts > 0 && (
               <p className="text-xs text-text-light mt-2">
-                {t("Такой же результат получили {percentage}% людей ({count} из {total})", {
+                {t("Такой же результат получили {percentage}% людей", {
                   percentage: statistics.percentage,
-                  count: Math.round((statistics.percentage / 100) * statistics.totalAttempts),
-                  total: statistics.totalAttempts,
                 })}
               </p>
             )}

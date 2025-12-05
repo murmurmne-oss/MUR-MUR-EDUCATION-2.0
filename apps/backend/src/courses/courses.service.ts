@@ -2237,4 +2237,116 @@ export class CoursesService {
 
     return { percentage, totalAttempts };
   }
+
+  async getUserResults(userId: string) {
+    // Получаем все завершенные попытки тестов
+    const testAttempts = await this.prisma.testAttempt.findMany({
+      where: {
+        userId,
+        status: TestAttemptStatus.COMPLETED,
+        score: { not: null },
+        maxScore: { not: null },
+      },
+      include: {
+        test: {
+          include: {
+            course: {
+              select: {
+                id: true,
+                title: true,
+                slug: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: {
+        completedAt: 'desc',
+      },
+    });
+
+    // Получаем все завершенные попытки форм
+    const formAttempts = await this.prisma.formAttempt.findMany({
+      where: {
+        userId,
+        status: FormAttemptStatus.COMPLETED,
+        resultId: { not: null },
+      },
+      include: {
+        form: {
+          include: {
+            course: {
+              select: {
+                id: true,
+                title: true,
+                slug: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: {
+        completedAt: 'desc',
+      },
+    });
+
+    // Формируем результаты тестов
+    const testResults = testAttempts.map((attempt) => {
+      const percent = attempt.maxScore && attempt.maxScore > 0
+        ? Math.round((attempt.score! / attempt.maxScore) * 100)
+        : 0;
+
+      return {
+        type: 'test' as const,
+        id: attempt.id,
+        courseId: attempt.test.course.id,
+        courseTitle: attempt.test.course.title,
+        courseSlug: attempt.test.course.slug,
+        testId: attempt.test.id,
+        testTitle: attempt.test.title,
+        score: attempt.score,
+        maxScore: attempt.maxScore,
+        percent,
+        completedAt: attempt.completedAt,
+      };
+    });
+
+    // Формируем результаты форм
+    const formResults = formAttempts.map((attempt) => {
+      const result = attempt.resultId
+        ? this.getFormResultById(attempt.form.results, attempt.resultId)
+        : null;
+
+      return {
+        type: 'form' as const,
+        id: attempt.id,
+        courseId: attempt.form.course.id,
+        courseTitle: attempt.form.course.title,
+        courseSlug: attempt.form.course.slug,
+        formId: attempt.form.id,
+        formTitle: attempt.form.title,
+        resultId: attempt.resultId,
+        result: result ? {
+          id: result.id,
+          title: result.title,
+          description: result.description,
+        } : null,
+        completedAt: attempt.completedAt,
+      };
+    });
+
+    // Объединяем и сортируем по дате
+    const allResults = [...testResults, ...formResults].sort((a, b) => {
+      const dateA = a.completedAt ? new Date(a.completedAt).getTime() : 0;
+      const dateB = b.completedAt ? new Date(b.completedAt).getTime() : 0;
+      return dateB - dateA;
+    });
+
+    return {
+      results: allResults,
+      total: allResults.length,
+      tests: testResults.length,
+      forms: formResults.length,
+    };
+  }
 }

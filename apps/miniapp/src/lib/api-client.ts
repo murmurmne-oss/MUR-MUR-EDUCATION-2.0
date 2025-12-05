@@ -436,6 +436,46 @@ export type SubmitFormResult = {
   };
 };
 
+export type UserTestResult = {
+  type: 'test';
+  id: string;
+  courseId: string;
+  courseTitle: string;
+  courseSlug: string;
+  testId: string;
+  testTitle: string;
+  score: number | null;
+  maxScore: number | null;
+  percent: number;
+  completedAt: string | null;
+};
+
+export type UserFormResult = {
+  type: 'form';
+  id: string;
+  courseId: string;
+  courseTitle: string;
+  courseSlug: string;
+  formId: string;
+  formTitle: string;
+  resultId: string | null;
+  result: {
+    id: string;
+    title: string;
+    description?: string;
+  } | null;
+  completedAt: string | null;
+};
+
+export type UserResult = UserTestResult | UserFormResult;
+
+export type UserResultsResponse = {
+  results: UserResult[];
+  total: number;
+  tests: number;
+  forms: number;
+};
+
 export type TelegramStarsInvoiceUser = {
   id: string;
   firstName?: string | null;
@@ -591,6 +631,11 @@ export const apiClient = {
   ) =>
     request<{ percentage: number; totalAttempts: number }>(
       `/courses/${idOrSlug}/tests/${testId}/statistics?percent=${encodeURIComponent(percent)}`,
+      { method: "GET" },
+    ),
+  getUserResults: (userId: string) =>
+    request<UserResultsResponse>(
+      `/courses/user/${encodeURIComponent(userId)}/results`,
       { method: "GET" },
     ),
 };

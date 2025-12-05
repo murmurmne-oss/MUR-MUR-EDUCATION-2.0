@@ -3,8 +3,6 @@ export type Locale = "ru" | "sr";
 const TRANSLATIONS: Record<Locale, Record<string, string>> = {
   ru: {},
   sr: {
-    "Такой же результат получили {percentage}% людей ({count} из {total})": 
-      "Isti rezultat dobilo je {percentage}% ljudi ({count} od {total})",
     // Common words & phrases
     "Гость": "Gost",
     "Бесплатно": "Besplatno",
@@ -244,6 +242,24 @@ const TRANSLATIONS: Record<Locale, Record<string, string>> = {
     "Для доступа к этому модулю необходимо пройти тест:":
       "Za pristup ovom modulu potrebno je proći test:",
     "Перейти к следующему уроку": "Pređi na sledeću lekciju",
+    "Такой же результат получили {percentage}% людей": 
+      "Isti rezultat dobilo je {percentage}% ljudi",
+    "Мои результаты": "Moji rezultati",
+    "Все результаты прохождения тестов и форм из курсов": 
+      "Svi rezultati prolaska testova i formi iz kurseva",
+    "Загрузка...": "Učitavanje...",
+    "У вас пока нет результатов. Пройдите тесты и формы в курсах, чтобы увидеть их здесь.": 
+      "Još nemate rezultata. Prođite testove i forme u kursevima da biste ih videli ovde.",
+    "Всего результатов: {total} (тестов: {tests}, форм: {forms})": 
+      "Ukupno rezultata: {total} (testova: {tests}, formi: {forms})",
+    "Тест": "Test",
+    "Форма": "Forma",
+    "Результат: {score} из {max} ({percent}%)": 
+      "Rezultat: {score} od {max} ({percent}%)",
+    "Дата неизвестна": "Datum nepoznat",
+    "Просмотр всех результатов прохождения тестов и форм": 
+      "Pregled svih rezultata prolaska testova i formi",
+    "Посмотреть результаты": "Pogledaj rezultate",
   },
 };
 

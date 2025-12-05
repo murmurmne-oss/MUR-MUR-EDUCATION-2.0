@@ -154,4 +154,9 @@ export class CoursesController {
     }
     return this.coursesService.getTestResultStatistics(idOrSlug, testId, percentNum);
   }
+
+  @Get('user/:userId/results')
+  getUserResults(@Param('userId') userId: string) {
+    return this.coursesService.getUserResults(userId);
+  }
 }

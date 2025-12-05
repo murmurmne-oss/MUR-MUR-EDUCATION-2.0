@@ -368,6 +368,22 @@ export default function AccountPage() {
 
         <section className="space-y-3 rounded-3xl bg-white p-5 text-sm text-text-medium shadow-sm">
           <h2 className="text-lg font-semibold text-text-dark">
+            {t("Мои результаты")}
+          </h2>
+          <p className="text-xs text-text-light">
+            {t("Просмотр всех результатов прохождения тестов и форм")}
+          </p>
+          <button
+            type="button"
+            onClick={() => router.push("/account/results")}
+            className="w-full rounded-full border border-brand-pink px-4 py-3 text-sm font-semibold text-brand-pink transition-transform active:scale-95"
+          >
+            {t("Посмотреть результаты")}
+          </button>
+        </section>
+
+        <section className="space-y-3 rounded-3xl bg-white p-5 text-sm text-text-medium shadow-sm">
+          <h2 className="text-lg font-semibold text-text-dark">
             {t("Поддержка и доступ")}
           </h2>
           <p className="text-xs text-text-light">
