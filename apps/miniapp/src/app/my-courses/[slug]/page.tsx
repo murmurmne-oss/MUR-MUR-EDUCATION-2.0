@@ -197,6 +197,7 @@ function TestRunner({
   const [isStarting, setIsStarting] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [statistics, setStatistics] = useState<{ percentage: number; totalAttempts: number } | null>(null);
 
   // Начинаем тест при монтировании
   useEffect(() => {
@@ -381,12 +382,23 @@ function TestRunner({
         }),
       };
 
-      await apiClient.submitCourseTest(courseSlug, test.id, payload);
+      const testResult = await apiClient.submitCourseTest(courseSlug, test.id, payload);
       
       // Оцениваем локально для отображения результатов
       const result = evaluateTest();
       setEvaluations(result);
       setIsFinished(true);
+      
+      // Загружаем статистику на основе процента из результата
+      if (testResult.percent !== undefined) {
+        try {
+          const stats = await apiClient.getTestStatistics(courseSlug, test.id, testResult.percent);
+          setStatistics(stats);
+        } catch (statsError) {
+          console.error("Failed to load test statistics", statsError);
+          // Не показываем ошибку пользователю, статистика не критична
+        }
+      }
     } catch (submitError) {
       console.error('Failed to submit test', submitError);
       setError(
@@ -424,6 +436,15 @@ function TestRunner({
                 percent,
               })}
             </p>
+            {statistics && statistics.totalAttempts > 0 && (
+              <p className="text-xs text-text-light mt-1">
+                {t("Такой же результат получили {percentage}% людей ({count} из {total})", {
+                  percentage: statistics.percentage,
+                  count: Math.round((statistics.percentage / 100) * statistics.totalAttempts),
+                  total: statistics.totalAttempts,
+                })}
+              </p>
+            )}
           </div>
           <button
             type="button"
@@ -703,6 +724,7 @@ function FormRunner({
   const [isStarting, setIsStarting] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [attemptId, setAttemptId] = useState<string | null>(null);
+  const [statistics, setStatistics] = useState<{ percentage: number; totalAttempts: number } | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -729,6 +751,20 @@ function FormRunner({
             result: response.result,
           });
           setIsFinished(true);
+          
+          // Загружаем статистику для уже завершенной формы
+          if (response.result.id) {
+            apiClient.getFormStatistics(courseSlug, form.id, response.result.id)
+              .then((stats) => {
+                if (active) {
+                  setStatistics(stats);
+                }
+              })
+              .catch((statsError) => {
+                console.error("Failed to load form statistics", statsError);
+                // Не показываем ошибку пользователю, статистика не критична
+              });
+          }
         }
         
         setIsStarting(false);
@@ -853,6 +889,17 @@ function FormRunner({
       setFormResult(result);
       setIsFinished(true);
       
+      // Загружаем статистику, если есть resultId
+      if (result.resultId) {
+        try {
+          const stats = await apiClient.getFormStatistics(courseSlug, form.id, result.resultId);
+          setStatistics(stats);
+        } catch (statsError) {
+          console.error("Failed to load form statistics", statsError);
+          // Не показываем ошибку пользователю, статистика не критична
+        }
+      }
+      
       // Вызываем callback после завершения формы
       if (onFormComplete) {
         onFormComplete();
@@ -886,6 +933,15 @@ function FormRunner({
             <h4 className="font-semibold text-text-dark">{formResult.result.title}</h4>
             {formResult.result.description && (
               <p className="text-sm text-text-medium">{formResult.result.description}</p>
+            )}
+            {statistics && statistics.totalAttempts > 0 && (
+              <p className="text-xs text-text-light mt-2">
+                {t("Такой же результат получили {percentage}% людей ({count} из {total})", {
+                  percentage: statistics.percentage,
+                  count: Math.round((statistics.percentage / 100) * statistics.totalAttempts),
+                  total: statistics.totalAttempts,
+                })}
+              </p>
             )}
           </div>
         ) : (

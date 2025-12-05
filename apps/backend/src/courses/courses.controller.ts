@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -127,5 +128,30 @@ export class CoursesController {
     @Body() body: SubmitFormInput,
   ) {
     return this.coursesService.submitForm(idOrSlug, formId, body);
+  }
+
+  @Get(':idOrSlug/forms/:formId/statistics')
+  getFormStatistics(
+    @Param('idOrSlug') idOrSlug: string,
+    @Param('formId') formId: string,
+    @Query('resultId') resultId: string,
+  ) {
+    if (!resultId) {
+      throw new BadRequestException('resultId is required');
+    }
+    return this.coursesService.getFormResultStatistics(idOrSlug, formId, resultId);
+  }
+
+  @Get(':idOrSlug/tests/:testId/statistics')
+  getTestStatistics(
+    @Param('idOrSlug') idOrSlug: string,
+    @Param('testId') testId: string,
+    @Query('percent') percent: string,
+  ) {
+    const percentNum = parseFloat(percent);
+    if (isNaN(percentNum) || percentNum < 0 || percentNum > 100) {
+      throw new BadRequestException('percent must be a number between 0 and 100');
+    }
+    return this.coursesService.getTestResultStatistics(idOrSlug, testId, percentNum);
   }
 }

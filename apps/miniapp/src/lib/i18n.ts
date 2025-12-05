@@ -3,6 +3,8 @@ export type Locale = "ru" | "sr";
 const TRANSLATIONS: Record<Locale, Record<string, string>> = {
   ru: {},
   sr: {
+    "Такой же результат получили {percentage}% людей ({count} из {total})": 
+      "Isti rezultat dobilo je {percentage}% ljudi ({count} od {total})",
     // Common words & phrases
     "Гость": "Gost",
     "Бесплатно": "Besplatno",

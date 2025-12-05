@@ -2107,4 +2107,134 @@ export class CoursesService {
         : undefined,
     };
   }
+
+  async getFormResultStatistics(
+    idOrSlug: string,
+    formId: string,
+    resultId: string,
+  ): Promise<{ percentage: number; totalAttempts: number }> {
+    const course = await this.prisma.course.findFirst({
+      where: {
+        OR: [{ id: idOrSlug }, { slug: idOrSlug }],
+      },
+      select: { id: true },
+    });
+
+    if (!course) {
+      throw new NotFoundException(`Course ${idOrSlug} not found`);
+    }
+
+    const form = await this.prisma.courseForm.findFirst({
+      where: {
+        id: formId,
+        courseId: course.id,
+      },
+      select: { id: true },
+    });
+
+    if (!form) {
+      throw new NotFoundException(`Form ${formId} not found`);
+    }
+
+    // Подсчитываем общее количество завершенных попыток
+    const totalAttempts = await this.prisma.formAttempt.count({
+      where: {
+        formId: form.id,
+        status: FormAttemptStatus.COMPLETED,
+        resultId: { not: null },
+      },
+    });
+
+    if (totalAttempts === 0) {
+      return { percentage: 0, totalAttempts: 0 };
+    }
+
+    // Подсчитываем количество попыток с таким же результатом
+    const sameResultAttempts = await this.prisma.formAttempt.count({
+      where: {
+        formId: form.id,
+        status: FormAttemptStatus.COMPLETED,
+        resultId,
+      },
+    });
+
+    const percentage = Math.round((sameResultAttempts / totalAttempts) * 100);
+
+    return { percentage, totalAttempts };
+  }
+
+  async getTestResultStatistics(
+    idOrSlug: string,
+    testId: string,
+    percent: number,
+  ): Promise<{ percentage: number; totalAttempts: number }> {
+    const course = await this.prisma.course.findFirst({
+      where: {
+        OR: [{ id: idOrSlug }, { slug: idOrSlug }],
+      },
+      select: { id: true },
+    });
+
+    if (!course) {
+      throw new NotFoundException(`Course ${idOrSlug} not found`);
+    }
+
+    const test = await this.prisma.courseTest.findFirst({
+      where: {
+        id: testId,
+        courseId: course.id,
+      },
+      select: { id: true },
+    });
+
+    if (!test) {
+      throw new NotFoundException(`Test ${testId} not found`);
+    }
+
+    // Подсчитываем общее количество завершенных попыток
+    const totalAttempts = await this.prisma.testAttempt.count({
+      where: {
+        testId: test.id,
+        status: TestAttemptStatus.COMPLETED,
+        score: { not: null },
+        maxScore: { not: null },
+      },
+    });
+
+    if (totalAttempts === 0) {
+      return { percentage: 0, totalAttempts: 0 };
+    }
+
+    // Подсчитываем количество попыток с таким же или близким процентом (±5%)
+    const percentRange = 5; // Диапазон ±5%
+    const minPercent = Math.max(0, percent - percentRange);
+    const maxPercent = Math.min(100, percent + percentRange);
+
+    // Получаем все завершенные попытки с вычисленным процентом
+    const allAttempts = await this.prisma.testAttempt.findMany({
+      where: {
+        testId: test.id,
+        status: TestAttemptStatus.COMPLETED,
+        score: { not: null },
+        maxScore: { not: null },
+      },
+      select: {
+        score: true,
+        maxScore: true,
+      },
+    });
+
+    // Вычисляем процент для каждой попытки и считаем те, что попадают в диапазон
+    const samePercentAttempts = allAttempts.filter((attempt) => {
+      if (!attempt.score || !attempt.maxScore || attempt.maxScore === 0) {
+        return false;
+      }
+      const attemptPercent = Math.round((attempt.score / attempt.maxScore) * 100);
+      return attemptPercent >= minPercent && attemptPercent <= maxPercent;
+    }).length;
+
+    const percentage = Math.round((samePercentAttempts / totalAttempts) * 100);
+
+    return { percentage, totalAttempts };
+  }
 }

@@ -575,6 +575,24 @@ export const apiClient = {
       method: "POST",
       body: JSON.stringify(payload),
     }),
+  getFormStatistics: (
+    idOrSlug: string,
+    formId: string,
+    resultId: string,
+  ) =>
+    request<{ percentage: number; totalAttempts: number }>(
+      `/courses/${idOrSlug}/forms/${formId}/statistics?resultId=${encodeURIComponent(resultId)}`,
+      { method: "GET" },
+    ),
+  getTestStatistics: (
+    idOrSlug: string,
+    testId: string,
+    percent: number,
+  ) =>
+    request<{ percentage: number; totalAttempts: number }>(
+      `/courses/${idOrSlug}/tests/${testId}/statistics?percent=${encodeURIComponent(percent)}`,
+      { method: "GET" },
+    ),
 };
 
 export function formatPrice(amount: number, currency: string) {
