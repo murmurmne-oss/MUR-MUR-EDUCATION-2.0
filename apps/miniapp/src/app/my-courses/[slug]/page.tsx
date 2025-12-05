@@ -1056,7 +1056,7 @@ function FormRunner({
                             : "border-text-light"
                         }`}
                       >
-                        {selected && <span className="text-xs text-white">✓</span>}
+                        {selected && <span className="text-sm font-bold text-white leading-none">✔</span>}
                       </div>
                       <span className="text-sm text-text-dark">{option.text}</span>
                     </div>
