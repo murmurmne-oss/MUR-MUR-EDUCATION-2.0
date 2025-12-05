@@ -293,7 +293,7 @@ export default function HomePage() {
         <section className="relative overflow-hidden rounded-2xl">
           <div className="relative aspect-[16/9] w-full">
             <Image
-              src="https://murmurmne.com/wp-content/uploads/2025/12/Oblik-brige-o-uzbudjenju-scaled.jpg"
+              src="https://murmurmne.com/wp-content/uploads/2025/12/Oblik-brige-o-uzbudjenju.-1-scaled.jpg"
               alt={t("Our shop")}
               fill
               className="object-cover"
