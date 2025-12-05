@@ -413,6 +413,12 @@ export type StartFormPayload = {
 export type StartFormResponse = {
   attemptId: string;
   form: PublicForm;
+  completed?: boolean;
+  result?: {
+    id: string;
+    title: string;
+    description?: string;
+  };
 };
 
 export type SubmitFormPayload = {

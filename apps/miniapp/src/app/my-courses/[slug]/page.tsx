@@ -678,6 +678,7 @@ function FormRunner({
   t,
   userProfilePayload,
   embedded = false,
+  onFormComplete,
 }: {
   form: PublicForm;
   courseSlug: string;
@@ -685,6 +686,7 @@ function FormRunner({
   t: TranslateFn;
   userProfilePayload: StartFormPayload;
   embedded?: boolean;
+  onFormComplete?: () => void;
 }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string | string[]>>({});
@@ -711,6 +713,17 @@ function FormRunner({
       .then((response) => {
         if (!active) return;
         setAttemptId(response.attemptId);
+        
+        // Если форма уже завершена, показываем результат
+        if (response.completed && response.result) {
+          setFormResult({
+            attemptId: response.attemptId,
+            resultId: response.result.id,
+            result: response.result,
+          });
+          setIsFinished(true);
+        }
+        
         setIsStarting(false);
       })
       .catch((startError) => {
@@ -832,6 +845,11 @@ function FormRunner({
       const result = await apiClient.submitCourseForm(courseSlug, form.id, payload);
       setFormResult(result);
       setIsFinished(true);
+      
+      // Вызываем callback после завершения формы
+      if (onFormComplete) {
+        onFormComplete();
+      }
     } catch (submitError) {
       console.error("Failed to submit form", submitError);
       setError(
@@ -866,7 +884,17 @@ function FormRunner({
         ) : (
           <p className="text-sm text-text-medium">{t("Спасибо за прохождение формы!")}</p>
         )}
-        {!embedded && (
+        {embedded && onFormComplete ? (
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={onFormComplete}
+              className="rounded-full bg-brand-pink px-4 py-2 text-xs font-semibold text-white transition-transform active:scale-95"
+            >
+              {t("Изучить следующий урок")}
+            </button>
+          </div>
+        ) : !embedded ? (
           <div className="flex justify-end">
             <button
               type="button"
@@ -876,7 +904,7 @@ function FormRunner({
               {t("Закрыть")}
             </button>
           </div>
-        )}
+        ) : null}
       </div>
     );
   }
@@ -1821,6 +1849,7 @@ export default function MyCourseDetailsPage({
                               t={t}
                               userProfilePayload={formProfilePayload}
                               embedded={true}
+                              onFormComplete={handleCompleteLesson}
                             />
                           </div>
                         ))
@@ -2036,6 +2065,7 @@ export default function MyCourseDetailsPage({
                               t={t}
                               userProfilePayload={formProfilePayload}
                               embedded={true}
+                              onFormComplete={handleCompleteLesson}
                             />
                           </div>
                         ))}

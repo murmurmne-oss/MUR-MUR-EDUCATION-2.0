@@ -1594,7 +1594,7 @@ export class CoursesService {
     idOrSlug: string,
     formId: string,
     payload: StartFormInput,
-  ): Promise<{ attemptId: string; form: PublicForm }> {
+  ): Promise<{ attemptId: string; form: PublicForm; completed?: boolean; result?: { id: string; title: string; description?: string } }> {
     const course = await this.prisma.course.findFirst({
       where: { OR: [{ id: idOrSlug }, { slug: idOrSlug }] },
       select: {
@@ -1672,13 +1672,57 @@ export class CoursesService {
       throw new BadRequestException('У вас нет доступа к этому курсу');
     }
 
-    const attempt = await this.prisma.formAttempt.create({
-      data: {
+    // Проверяем, есть ли уже завершенная попытка для этой формы
+    const existingCompletedAttempt = await this.prisma.formAttempt.findFirst({
+      where: {
+        formId: formRecord.id,
+        userId,
+        status: FormAttemptStatus.COMPLETED,
+      },
+      orderBy: {
+        completedAt: 'desc',
+      },
+    });
+
+    // Если есть завершенная попытка, возвращаем её
+    if (existingCompletedAttempt) {
+      const publicForm = this.mapStoredFormToPublic(formRecord);
+      return {
+        attemptId: existingCompletedAttempt.id,
+        form: publicForm,
+        completed: true,
+        result: existingCompletedAttempt.resultId
+          ? this.getFormResultById(formRecord.results, existingCompletedAttempt.resultId)
+          : undefined,
+      };
+    }
+
+    // Проверяем, есть ли незавершенная попытка
+    const existingInProgressAttempt = await this.prisma.formAttempt.findFirst({
+      where: {
         formId: formRecord.id,
         userId,
         status: FormAttemptStatus.IN_PROGRESS,
       },
+      orderBy: {
+        startedAt: 'desc',
+      },
     });
+
+    let attempt;
+    if (existingInProgressAttempt) {
+      // Используем существующую незавершенную попытку
+      attempt = existingInProgressAttempt;
+    } else {
+      // Создаем новую попытку
+      attempt = await this.prisma.formAttempt.create({
+        data: {
+          formId: formRecord.id,
+          userId,
+          status: FormAttemptStatus.IN_PROGRESS,
+        },
+      });
+    }
 
     const publicForm = this.mapStoredFormToPublic(formRecord);
 
