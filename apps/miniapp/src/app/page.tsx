@@ -293,14 +293,14 @@ export default function HomePage() {
         <section className="relative overflow-hidden rounded-2xl">
           <div className="relative aspect-[16/9] w-full">
             <Image
-              src="https://murmurmne.com/wp-content/uploads/2025/12/photo_2025-12-05_14-07-07.jpg"
+              src="https://murmurmne.com/wp-content/uploads/2025/12/Oblik-brige-o-uzbudjenju-scaled.jpg"
               alt={t("Our shop")}
               fill
               className="object-cover"
               unoptimized
             />
-            {/* Кнопка в правом нижнем углу */}
-            <div className="absolute bottom-4 right-4">
+            {/* Кнопка в левом нижнем углу */}
+            <div className="absolute bottom-4 left-4">
               <a
                 href="https://murmurmne.com"
                 target="_blank"
