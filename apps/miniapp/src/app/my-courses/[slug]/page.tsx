@@ -2645,9 +2645,11 @@ export default function MyCourseDetailsPage({
           userId={userId}
           userProfilePayload={testProfilePayload}
           onClose={async () => {
+            // Сохраняем ID теста до закрытия, чтобы найти разблокированный модуль
+            const completedTestId = selectedTest?.id;
             setSelectedTest(null);
             // Обновляем курс и enrollment после закрытия теста, чтобы проверить разблокировку модулей
-            if (course) {
+            if (course && completedTestId) {
               try {
                 // Небольшая задержка, чтобы дать серверу время обработать попытку
                 await new Promise(resolve => setTimeout(resolve, 500));
@@ -2699,13 +2701,17 @@ export default function MyCourseDetailsPage({
                     }
                   }
                   
-                  // Находим модуль, который был разблокирован этим тестом
+                  // Находим модуль, который был разблокирован именно этим завершенным тестом
                   const unlockedModule = updatedCourse.modules.find((module) => {
-                    const moduleAccess = accessMap.get(module.id);
-                    const wasUnlockedByTest = parsedTests.some(
-                      (test) => test.unlockModuleId === module.id
+                    // Проверяем, что этот модуль разблокируется именно тем тестом, который был завершен
+                    const unlockTest = parsedTests.find(
+                      (test) => test.id === completedTestId && test.unlockModuleId === module.id
                     );
-                    return wasUnlockedByTest && !moduleAccess?.isLocked && module.lessons.length > 0;
+                    if (!unlockTest) return false;
+                    
+                    // Проверяем, что модуль теперь разблокирован
+                    const moduleAccess = accessMap.get(module.id);
+                    return !moduleAccess?.isLocked && module.lessons.length > 0;
                   });
                   
                   // Если нашли разблокированный модуль - переходим к его первому уроку
