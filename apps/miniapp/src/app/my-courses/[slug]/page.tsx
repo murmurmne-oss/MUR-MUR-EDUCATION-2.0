@@ -759,12 +759,14 @@ function FormRunnerModal({
   onClose,
   t,
   userProfilePayload,
+  onRestartForm,
 }: {
   form: PublicForm;
   courseSlug: string;
   onClose: () => void;
   t: TranslateFn;
   userProfilePayload: StartFormPayload;
+  onRestartForm?: () => void;
 }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4 py-6">
@@ -775,6 +777,7 @@ function FormRunnerModal({
           onClose={onClose}
           t={t}
           userProfilePayload={userProfilePayload}
+          onRestartForm={onRestartForm}
         />
       </div>
     </div>
@@ -790,6 +793,7 @@ function FormRunner({
   embedded = false,
   onFormComplete,
   nextButtonText,
+  onRestartForm,
 }: {
   form: PublicForm;
   courseSlug: string;
@@ -799,6 +803,7 @@ function FormRunner({
   embedded?: boolean;
   onFormComplete?: () => void;
   nextButtonText?: string;
+  onRestartForm?: () => void;
 }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string | string[]>>({});
@@ -809,9 +814,9 @@ function FormRunner({
   const [error, setError] = useState<string | null>(null);
   const [attemptId, setAttemptId] = useState<string | null>(null);
   const [statistics, setStatistics] = useState<{ percentage: number; totalAttempts: number } | null>(null);
+  const [restartKey, setRestartKey] = useState(0);
 
-  useEffect(() => {
-    let active = true;
+  const resetForm = useCallback(() => {
     setIsStarting(true);
     setCurrentIndex(0);
     setAnswers({});
@@ -819,6 +824,22 @@ function FormRunner({
     setFormResult(null);
     setError(null);
     setAttemptId(null);
+    setStatistics(null);
+  }, []);
+
+  const handleRestart = useCallback(() => {
+    if (onRestartForm) {
+      onRestartForm();
+    } else {
+      // Если onRestartForm не передан, просто сбрасываем форму
+      setRestartKey(prev => prev + 1);
+      resetForm();
+    }
+  }, [onRestartForm, resetForm]);
+
+  useEffect(() => {
+    let active = true;
+    resetForm();
 
     // Начинаем форму при монтировании
     apiClient
@@ -868,7 +889,7 @@ function FormRunner({
       active = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [form.id, courseSlug, userProfilePayload]); // Убрали t и form из зависимостей, используем только стабильные значения
+  }, [form.id, courseSlug, userProfilePayload, restartKey]); // Добавили restartKey для перезапуска формы
 
   const currentQuestion = form.questions[currentIndex];
   const totalQuestions = form.questions.length;
@@ -1030,7 +1051,14 @@ function FormRunner({
           <p className="text-sm text-text-medium">{t("Спасибо за прохождение формы!")}</p>
         )}
         {embedded && onFormComplete ? (
-          <div className="flex justify-end">
+          <div className="flex gap-2 justify-end">
+            <button
+              type="button"
+              onClick={handleRestart}
+              className="rounded-full border border-border bg-surface px-4 py-2 text-xs font-semibold text-text-dark transition-transform hover:border-brand-pink hover:text-brand-pink active:scale-95"
+            >
+              {t("Пройти повторно")}
+            </button>
             <button
               type="button"
               onClick={onFormComplete}
@@ -1040,7 +1068,14 @@ function FormRunner({
             </button>
           </div>
         ) : !embedded ? (
-          <div className="flex justify-end">
+          <div className="flex gap-2 justify-end">
+            <button
+              type="button"
+              onClick={handleRestart}
+              className="rounded-full border border-border bg-surface px-4 py-2 text-xs font-semibold text-text-dark transition-transform hover:border-brand-pink hover:text-brand-pink active:scale-95"
+            >
+              {t("Пройти повторно")}
+            </button>
             <button
               type="button"
               onClick={onClose}
@@ -1765,6 +1800,17 @@ export default function MyCourseDetailsPage({
       // Ошибка будет обработана в FormRunner
     }
   }, [course, courseSlug, formProfilePayload]);
+
+  const handleRestartForm = useCallback(() => {
+    if (!selectedForm) return;
+    // Сбрасываем форму и начинаем новую попытку
+    const formId = selectedForm.id;
+    setSelectedForm(null);
+    // Небольшая задержка для сброса состояния, затем запускаем заново
+    setTimeout(() => {
+      handleStartForm(formId);
+    }, 100);
+  }, [selectedForm, handleStartForm]);
 
   const handleResetLesson = useCallback(async () => {
     if (!course || !selectedLesson) return;
@@ -2860,6 +2906,7 @@ export default function MyCourseDetailsPage({
           }}
           t={t}
           userProfilePayload={formProfilePayload}
+          onRestartForm={handleRestartForm}
         />
       ) : null}
 
