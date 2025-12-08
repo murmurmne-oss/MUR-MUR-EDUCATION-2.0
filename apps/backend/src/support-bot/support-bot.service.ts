@@ -79,7 +79,7 @@ export class SupportBotService {
     await this.forwardToManagers(message, text);
     await this.safeSendMessage(userId, {
       text:
-        'Спасибо! Я передал ваше сообщение менеджеру. Он ответит прямо в этом диалоге.',
+        'Hvala! Prosledio sam vašu poruku menadžeru. On će odgovoriti direktno u ovom četu.',
     });
   }
 
@@ -100,16 +100,16 @@ export class SupportBotService {
 
       await this.safeNotifyManagers(
         [
-          '🛒 Новый запрос на покупку курса',
+          '🛒 Novi zahtev za kupovinu kursa',
           this.formatUserLine(message),
           `#uid:${userId}`,
           '',
-          `Курс: ${courseLabel}`,
+          `Kurs: ${courseLabel}`,
         ].join('\n'),
       );
 
       await this.safeSendMessage(userId, {
-        text: `Добрый день! Мы сообщили менеджеру, что вы хотите купить курс «${courseLabel}». Пожалуйста, дождитесь ответа в этом чате.`,
+        text: `Dobar dan! Obavestili smo menadžera da želite da kupite kurs «${courseLabel}». Molimo sačekajte odgovor u ovom četu.`,
       });
       return;
     }
@@ -125,11 +125,11 @@ export class SupportBotService {
     }
 
     const lines = [
-      '✉️ Новое сообщение',
+      '✉️ Nova poruka',
       this.formatUserLine(message),
       `#uid:${message.from.id}`,
       '',
-      body && body.length > 0 ? body : '(без текста)',
+      body && body.length > 0 ? body : '(bez teksta)',
     ];
 
     await this.safeNotifyManagers(lines.join('\n'));
@@ -159,7 +159,7 @@ export class SupportBotService {
 
     await this.safeSendMessage(targetId, { text: answer });
     await this.safeNotifyManagers(
-      '✅ Сообщение отправлено пользователю.',
+      '✅ Poruka je poslata korisniku.',
       message.message_id,
     );
   }
@@ -167,12 +167,12 @@ export class SupportBotService {
   private formatUserLine(message: TelegramMessage) {
     const from = message.from;
     if (!from) {
-      return 'Не удалось определить отправителя';
+      return 'Nije moguće odrediti pošiljoca';
     }
 
     const parts = [
       `${from.first_name ?? ''} ${from.last_name ?? ''}`.trim() ||
-        'Неизвестный пользователь',
+        'Nepoznat korisnik',
     ];
     if (from.username) {
       parts.push(`@${from.username}`);
