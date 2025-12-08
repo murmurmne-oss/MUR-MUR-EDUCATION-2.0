@@ -1702,86 +1702,8 @@ export default function MyCourseDetailsPage({
         (l) => l.id === selectedLesson.lesson.id,
       );
       
-      // Проверяем, является ли это последним уроком в модуле
-      const isLastLessonInModule = currentLessonIndex >= 0 && 
-        currentLessonIndex === currentModule.lessons.length - 1;
-      
-      if (isLastLessonInModule) {
-        // Это последний урок модуля - проверяем следующий модуль
-        const currentModuleIndex = course.modules.findIndex(
-          (m) => m.id === currentModule.id,
-        );
-        
-        if (currentModuleIndex >= 0 && currentModuleIndex < course.modules.length - 1) {
-          const nextModule = course.modules[currentModuleIndex + 1];
-          const nextModuleAccess = moduleAccessibility.get(nextModule.id);
-          
-          // Если следующий модуль заблокирован тестом - обновляем состояние и остаёмся на текущем месте
-          // Пользователь увидит кнопку "Пройти тест" в интерфейсе модуля
-          if (nextModuleAccess?.isLocked && nextModuleAccess.requiredTest) {
-            await refreshEnrollment();
-            // Прокрутка наверх, чтобы пользователь увидел кнопку теста
-            if (typeof window !== 'undefined') {
-              setTimeout(() => {
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-              }, 100);
-            }
-            return;
-          }
-          
-          // Если следующий модуль доступен - переходим к его первому уроку
-          if (!nextModuleAccess?.isLocked && nextModule.lessons.length > 0) {
-            const firstLessonOfNextModule = nextModule.lessons[0];
-            const nextLessonRef: LessonRef = {
-              moduleId: nextModule.id,
-              moduleTitle: nextModule.title,
-              moduleOrder: nextModule.order,
-              lesson: firstLessonOfNextModule,
-            };
-            
-            await refreshEnrollment();
-            setSelectedLesson(nextLessonRef);
-            await ensureLessonStarted(nextLessonRef);
-            
-            // Прокрутка наверх к началу урока
-            if (typeof window !== 'undefined') {
-              setTimeout(() => {
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-              }, 100);
-            }
-            return;
-          }
-        }
-        
-        // Если это последний урок последнего модуля
-        await refreshEnrollment();
-        return;
-      }
-      
-      // Это не последний урок - переходим к следующему уроку в том же модуле
-      if (currentLessonIndex >= 0 && currentLessonIndex < currentModule.lessons.length - 1) {
-        const nextLesson = currentModule.lessons[currentLessonIndex + 1];
-        const nextLessonRef: LessonRef = {
-          moduleId: currentModule.id,
-          moduleTitle: currentModule.title,
-          moduleOrder: currentModule.order,
-          lesson: nextLesson,
-        };
-        
-        await refreshEnrollment();
-        setSelectedLesson(nextLessonRef);
-        
-        // Прокрутка наверх к началу урока после обновления DOM
-        if (typeof window !== 'undefined') {
-          // Используем setTimeout, чтобы дать React время обновить DOM
-          setTimeout(() => {
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-          }, 100);
-        }
-        return;
-      }
-      
-      // Fallback
+      // Обновляем состояние курса после завершения урока
+      // НЕ делаем автоматический переход - пользователь сам выберет следующий урок/модуль/тест
       await refreshEnrollment();
     } catch (lessonError) {
       console.error('Failed to complete lesson', lessonError);
@@ -2907,37 +2829,9 @@ export default function MyCourseDetailsPage({
                     }
                   }
                   
-                  // Находим модуль, который был разблокирован именно этим завершенным тестом
-                  const unlockedModule = updatedCourse.modules.find((module) => {
-                    // Проверяем, что этот модуль разблокируется именно тем тестом, который был завершен
-                    const unlockTest = parsedTests.find(
-                      (test) => test.id === completedTestId && test.unlockModuleId === module.id
-                    );
-                    if (!unlockTest) return false;
-                    
-                    // Проверяем, что модуль теперь разблокирован
-                    const moduleAccess = accessMap.get(module.id);
-                    return !moduleAccess?.isLocked && module.lessons.length > 0;
-                  });
-                  
-                  // Если нашли разблокированный модуль - переходим к его первому уроку
-                  if (unlockedModule) {
-                    const firstLessonOfUnlockedModule = unlockedModule.lessons[0];
-                    const nextLessonRef: LessonRef = {
-                      moduleId: unlockedModule.id,
-                      moduleTitle: unlockedModule.title,
-                      moduleOrder: unlockedModule.order,
-                      lesson: firstLessonOfUnlockedModule,
-                    };
-                    
-                    setSelectedLesson(nextLessonRef);
-                    await ensureLessonStarted(nextLessonRef);
-                    
-                    // Прокрутка наверх
-                    if (typeof window !== 'undefined') {
-                      window.scrollTo({ top: 0, behavior: 'smooth' });
-                    }
-                  }
+                  // Доступность модулей обновится автоматически через useMemo
+                  // после обновления course и enrollment
+                  // НЕ делаем автоматический переход - пользователь сам выберет следующий урок/модуль
                 }
               } catch (refreshError) {
                 console.error('Failed to refresh course after test', refreshError);
