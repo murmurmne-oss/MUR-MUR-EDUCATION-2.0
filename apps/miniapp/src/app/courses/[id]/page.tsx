@@ -453,6 +453,60 @@ export default function CourseDetailsPage({
 
   return (
     <div className="flex flex-1 flex-col bg-background text-text-dark">
+      <style jsx global>{`
+        .prose {
+          color: inherit;
+        }
+        .prose p {
+          margin: 0.5rem 0;
+        }
+        .prose ul, .prose ol {
+          margin: 0.5rem 0;
+          padding-left: 1.5rem;
+          display: block;
+          list-style-type: disc;
+        }
+        .prose ol {
+          list-style-type: decimal;
+        }
+        .prose ul {
+          list-style-type: disc;
+        }
+        .prose li {
+          margin: 0.25rem 0;
+          display: list-item;
+        }
+        .prose strong {
+          font-weight: 600;
+        }
+        .prose em {
+          font-style: italic;
+        }
+        .prose u {
+          text-decoration: underline;
+        }
+        .prose s {
+          text-decoration: line-through;
+        }
+        .prose a {
+          color: rgb(255 90 95);
+          text-decoration: underline;
+        }
+        .prose h1, .prose h2, .prose h3 {
+          font-weight: 600;
+          margin-top: 1rem;
+          margin-bottom: 0.5rem;
+        }
+        .prose h1 {
+          font-size: 1.5rem;
+        }
+        .prose h2 {
+          font-size: 1.25rem;
+        }
+        .prose h3 {
+          font-size: 1.125rem;
+        }
+      `}</style>
       <header className="space-y-2 px-4 pt-6">
         <button
           type="button"
