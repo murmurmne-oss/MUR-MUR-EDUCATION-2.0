@@ -623,20 +623,47 @@ export default function CourseDetailsPage({
                   <div className="space-y-2">
                     {module.lessons.map((lesson) => {
                       const blocks = parseLessonBlocks(lesson.content);
-                      // Проверяем, является ли контент HTML-строкой
-                      const isContentHTML = typeof lesson.content === "string" && 
-                        (lesson.content.trim().startsWith("<") || lesson.content.includes("<p") || lesson.content.includes("<div") || lesson.content.includes("<span"));
-                      const isSummaryHTML = lesson.summary && typeof lesson.summary === "string" &&
-                        (lesson.summary.trim().startsWith("<") || lesson.summary.includes("<p") || lesson.summary.includes("<div") || lesson.summary.includes("<span"));
                       
-                      // Если контент - HTML, используем его напрямую, иначе извлекаем текст
-                      const previewContent = !lesson.summary && isContentHTML 
-                        ? typeof lesson.content === "string" 
-                          ? lesson.content.substring(0, 500) // Ограничиваем длину для превью
-                          : ""
-                        : lesson.summary && lesson.summary.length > 0
-                          ? ""
-                          : extractPlainText(lesson.content, 180);
+                      // Проверяем, является ли контент или summary HTML-строкой
+                      const isContentHTML = typeof lesson.content === "string" && 
+                        (lesson.content.trim().startsWith("<") || 
+                         lesson.content.includes("<p") || 
+                         lesson.content.includes("<div") || 
+                         lesson.content.includes("<span") ||
+                         lesson.content.includes("<strong") ||
+                         lesson.content.includes("<em"));
+                      
+                      const isSummaryHTML = lesson.summary && typeof lesson.summary === "string" &&
+                        (lesson.summary.trim().startsWith("<") || 
+                         lesson.summary.includes("<p") || 
+                         lesson.summary.includes("<div") || 
+                         lesson.summary.includes("<span") ||
+                         lesson.summary.includes("<strong") ||
+                         lesson.summary.includes("<em"));
+                      
+                      // Извлекаем превью контента
+                      let previewContent = "";
+                      let previewIsHTML = false;
+                      
+                      if (lesson.summary && lesson.summary.length > 0) {
+                        // Если есть summary, используем его
+                        previewContent = lesson.summary;
+                        previewIsHTML = isSummaryHTML;
+                      } else if (isContentHTML && typeof lesson.content === "string") {
+                        // Если контент - HTML, используем его напрямую (ограничиваем длину)
+                        previewContent = lesson.content.substring(0, 500);
+                        previewIsHTML = true;
+                      } else {
+                        // Иначе извлекаем текст
+                        previewContent = extractPlainText(lesson.content, 180);
+                        // Проверяем, не содержит ли извлеченный текст HTML-теги
+                        previewIsHTML = previewContent.includes("<p") || 
+                                       previewContent.includes("<div") || 
+                                       previewContent.includes("<span") ||
+                                       previewContent.includes("<strong") ||
+                                       previewContent.includes("<em") ||
+                                       previewContent.trim().startsWith("<");
+                      }
                       
                       return (
                         <div
@@ -646,20 +673,8 @@ export default function CourseDetailsPage({
                           <p className="font-medium text-text-dark">
                             {lesson.title}
                           </p>
-                          {lesson.summary ? (
-                            isSummaryHTML ? (
-                              <div
-                                className="mt-1 text-text-light prose prose-xs max-w-none"
-                                dangerouslySetInnerHTML={{ __html: lesson.summary }}
-                              />
-                            ) : (
-                              <p className="mt-1 text-text-light">
-                                {lesson.summary}
-                              </p>
-                            )
-                          ) : null}
-                          {!lesson.summary && previewContent ? (
-                            isContentHTML ? (
+                          {previewContent ? (
+                            previewIsHTML ? (
                               <div
                                 className="mt-2 text-text-medium prose prose-xs max-w-none"
                                 dangerouslySetInnerHTML={{ __html: previewContent }}
