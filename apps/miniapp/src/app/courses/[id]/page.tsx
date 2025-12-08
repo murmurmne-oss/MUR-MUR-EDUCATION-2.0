@@ -623,10 +623,21 @@ export default function CourseDetailsPage({
                   <div className="space-y-2">
                     {module.lessons.map((lesson) => {
                       const blocks = parseLessonBlocks(lesson.content);
-                      const previewText =
-                        lesson.summary && lesson.summary.length > 0
+                      // Проверяем, является ли контент HTML-строкой
+                      const isContentHTML = typeof lesson.content === "string" && 
+                        (lesson.content.trim().startsWith("<") || lesson.content.includes("<p") || lesson.content.includes("<div") || lesson.content.includes("<span"));
+                      const isSummaryHTML = lesson.summary && typeof lesson.summary === "string" &&
+                        (lesson.summary.trim().startsWith("<") || lesson.summary.includes("<p") || lesson.summary.includes("<div") || lesson.summary.includes("<span"));
+                      
+                      // Если контент - HTML, используем его напрямую, иначе извлекаем текст
+                      const previewContent = !lesson.summary && isContentHTML 
+                        ? typeof lesson.content === "string" 
+                          ? lesson.content.substring(0, 500) // Ограничиваем длину для превью
+                          : ""
+                        : lesson.summary && lesson.summary.length > 0
                           ? ""
                           : extractPlainText(lesson.content, 180);
+                      
                       return (
                         <div
                           key={lesson.id}
@@ -636,14 +647,28 @@ export default function CourseDetailsPage({
                             {lesson.title}
                           </p>
                           {lesson.summary ? (
-                            <p className="mt-1 text-text-light">
-                              {lesson.summary}
-                            </p>
+                            isSummaryHTML ? (
+                              <div
+                                className="mt-1 text-text-light prose prose-xs max-w-none"
+                                dangerouslySetInnerHTML={{ __html: lesson.summary }}
+                              />
+                            ) : (
+                              <p className="mt-1 text-text-light">
+                                {lesson.summary}
+                              </p>
+                            )
                           ) : null}
-                          {!lesson.summary && previewText ? (
-                            <p className="mt-2 whitespace-pre-wrap text-text-medium">
-                              {previewText}
-                            </p>
+                          {!lesson.summary && previewContent ? (
+                            isContentHTML ? (
+                              <div
+                                className="mt-2 text-text-medium prose prose-xs max-w-none"
+                                dangerouslySetInnerHTML={{ __html: previewContent }}
+                              />
+                            ) : (
+                              <p className="mt-2 whitespace-pre-wrap text-text-medium">
+                                {previewContent}
+                              </p>
+                            )
                           ) : null}
                           {!lesson.summary && !previewText && blocks.length ? (
                             <ul className="mt-2 list-inside list-disc space-y-1 text-text-medium">
