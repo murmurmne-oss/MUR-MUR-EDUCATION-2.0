@@ -1628,10 +1628,16 @@ export default function MyCourseDetailsPage({
           const nextModule = course.modules[currentModuleIndex + 1];
           const nextModuleAccess = moduleAccessibility.get(nextModule.id);
           
-          // Если следующий модуль заблокирован тестом - открываем тест
+          // Если следующий модуль заблокирован тестом - обновляем состояние и остаёмся на текущем месте
+          // Пользователь увидит кнопку "Пройти тест" в интерфейсе модуля
           if (nextModuleAccess?.isLocked && nextModuleAccess.requiredTest) {
             await refreshEnrollment();
-            setSelectedTest(nextModuleAccess.requiredTest);
+            // Прокрутка наверх, чтобы пользователь увидел кнопку теста
+            if (typeof window !== 'undefined') {
+              setTimeout(() => {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }, 100);
+            }
             return;
           }
           

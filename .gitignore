@@ -21,5 +21,8 @@ package-lock.json
 .DS_Store
 Thumbs.db
 
+# backups
+deploy/backups/
+
 
 
