@@ -136,15 +136,22 @@ function ImageModal({
       }
     };
 
+    // Блокируем скролл страницы при открытии модального окна
+    const originalStyle = window.getComputedStyle(document.body).overflow;
+    document.body.style.overflow = 'hidden';
+
     window.addEventListener('keydown', handleEscape);
+    
     return () => {
       window.removeEventListener('keydown', handleEscape);
+      // Восстанавливаем скролл при закрытии
+      document.body.style.overflow = originalStyle;
     };
   }, [onClose]);
 
   return (
     <div 
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 px-4 py-6"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/95 backdrop-blur-sm px-4 py-6"
       onClick={(e) => {
         // Закрываем при клике на фон
         if (e.target === e.currentTarget) {
@@ -156,7 +163,7 @@ function ImageModal({
         <button
           type="button"
           onClick={onClose}
-          className="absolute top-4 right-4 z-10 rounded-full bg-black/50 p-2 text-white hover:bg-black/70 transition-colors"
+          className="absolute top-4 right-4 z-10 rounded-full bg-black/60 backdrop-blur-sm p-3 text-white hover:bg-black/80 transition-all hover:scale-110 active:scale-95 shadow-lg"
           aria-label={t("Закрыть")}
         >
           <svg
@@ -164,7 +171,7 @@ function ImageModal({
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
-            strokeWidth={2}
+            strokeWidth={2.5}
           >
             <path
               strokeLinecap="round"
@@ -173,17 +180,24 @@ function ImageModal({
             />
           </svg>
         </button>
-        <div className="max-w-full max-h-full flex flex-col items-center justify-center">
-          <img
-            src={imageUrl}
-            alt={caption ?? t('Изображение урока')}
-            className="max-w-full max-h-[90vh] object-contain"
-            onClick={(e) => e.stopPropagation()}
-          />
+        <div className="max-w-full max-h-full flex flex-col items-center justify-center gap-4">
+          <div className="relative max-w-[95vw] max-h-[85vh] flex items-center justify-center">
+            <img
+              src={imageUrl}
+              alt={caption ?? t('Изображение урока')}
+              className="max-w-full max-h-[85vh] w-auto h-auto object-contain rounded-lg shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                imageRendering: 'high-quality',
+              }}
+            />
+          </div>
           {caption && (
-            <p className="mt-4 px-4 text-sm text-white text-center max-w-2xl">
-              {caption}
-            </p>
+            <div className="px-6 py-3 rounded-2xl bg-black/60 backdrop-blur-sm max-w-2xl">
+              <p className="text-sm text-white text-center leading-relaxed">
+                {caption}
+              </p>
+            </div>
           )}
         </div>
       </div>
