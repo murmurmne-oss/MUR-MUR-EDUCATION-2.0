@@ -511,12 +511,18 @@ export default function CourseDetailsPage({
 
         <section className="rounded-3xl bg-card p-5 text-sm text-text-medium shadow-sm">
           <h2 className="text-lg font-semibold text-text-dark">{t("О курсе")}</h2>
-          <p className="mt-3 leading-relaxed text-text-medium">
-            {course?.description ??
-              t(
+          {course?.description ? (
+            <div
+              className="mt-3 leading-relaxed text-text-medium prose prose-sm max-w-none"
+              dangerouslySetInnerHTML={{ __html: course.description }}
+            />
+          ) : (
+            <p className="mt-3 leading-relaxed text-text-medium">
+              {t(
                 "Описание появится в ближайшее время. Если у вас есть вопросы, напишите в поддержку.",
               )}
-          </p>
+            </p>
+          )}
         </section>
 
         {isPaidCourse && starsPaymentError ? (
@@ -554,9 +560,10 @@ export default function CourseDetailsPage({
                       {t("{count} уроков", { count: module.lessons.length })}
                     </p>
                     {module.description ? (
-                      <p className="mt-1 text-xs text-text-light">
-                        {module.description}
-                      </p>
+                      <div
+                        className="mt-1 text-xs text-text-light prose prose-xs max-w-none"
+                        dangerouslySetInnerHTML={{ __html: module.description }}
+                      />
                     ) : null}
                   </div>
                   <div className="space-y-2">
