@@ -118,6 +118,79 @@ function clampPercent(status: LessonStatus) {
   return 0;
 }
 
+function ImageModal({
+  imageUrl,
+  caption,
+  onClose,
+  t,
+}: {
+  imageUrl: string;
+  caption: string | null;
+  onClose: () => void;
+  t: TranslateFn;
+}) {
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+
+    window.addEventListener('keydown', handleEscape);
+    return () => {
+      window.removeEventListener('keydown', handleEscape);
+    };
+  }, [onClose]);
+
+  return (
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 px-4 py-6"
+      onClick={(e) => {
+        // Закрываем при клике на фон
+        if (e.target === e.currentTarget) {
+          onClose();
+        }
+      }}
+    >
+      <div className="relative w-full h-full flex items-center justify-center">
+        <button
+          type="button"
+          onClick={onClose}
+          className="absolute top-4 right-4 z-10 rounded-full bg-black/50 p-2 text-white hover:bg-black/70 transition-colors"
+          aria-label={t("Закрыть")}
+        >
+          <svg
+            className="w-6 h-6"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2}
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M6 18L18 6M6 6l12 12"
+            />
+          </svg>
+        </button>
+        <div className="max-w-full max-h-full flex flex-col items-center justify-center">
+          <img
+            src={imageUrl}
+            alt={caption ?? t('Изображение урока')}
+            className="max-w-full max-h-[90vh] object-contain"
+            onClick={(e) => e.stopPropagation()}
+          />
+          {caption && (
+            <p className="mt-4 px-4 text-sm text-white text-center max-w-2xl">
+              {caption}
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function TestRunnerModal({
   test,
   courseSlug,
@@ -1158,6 +1231,8 @@ export default function MyCourseDetailsPage({
   );
   const [selectedTest, setSelectedTest] = useState<ParsedCourseTest | null>(null);
   const [selectedForm, setSelectedForm] = useState<PublicForm | null>(null);
+  const [selectedImageUrl, setSelectedImageUrl] = useState<string | null>(null);
+  const [selectedImageCaption, setSelectedImageCaption] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isProgressUpdating, setIsProgressUpdating] = useState(false);
@@ -2049,11 +2124,15 @@ export default function MyCourseDetailsPage({
                               <img
                                 src={normalizeImageUrl(block.url)}
                                 alt={block.caption ?? t('Изображение урока')}
-                                className={`h-auto w-full object-cover ${
+                                className={`h-auto w-full object-cover cursor-pointer transition-opacity hover:opacity-90 ${
                                   block.width === 'full'
                                     ? 'max-h-[360px]'
                                     : 'max-h-[280px]'
                                 }`}
+                                onClick={() => {
+                                  setSelectedImageUrl(normalizeImageUrl(block.url));
+                                  setSelectedImageCaption(block.caption ?? null);
+                                }}
                                 onError={(e) => {
                                   const imgSrc = normalizeImageUrl(block.url);
                                   if (process.env.NODE_ENV === 'development') {
@@ -2876,6 +2955,18 @@ export default function MyCourseDetailsPage({
           }}
           t={t}
           userProfilePayload={formProfilePayload}
+        />
+      ) : null}
+
+      {selectedImageUrl ? (
+        <ImageModal
+          imageUrl={selectedImageUrl}
+          caption={selectedImageCaption}
+          onClose={() => {
+            setSelectedImageUrl(null);
+            setSelectedImageCaption(null);
+          }}
+          t={t}
         />
       ) : null}
     </div>
