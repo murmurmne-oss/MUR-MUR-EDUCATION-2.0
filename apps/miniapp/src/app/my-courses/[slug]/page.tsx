@@ -187,9 +187,6 @@ function ImageModal({
               alt={caption ?? t('Изображение урока')}
               className="max-w-full max-h-[85vh] w-auto h-auto object-contain rounded-lg shadow-2xl"
               onClick={(e) => e.stopPropagation()}
-              style={{
-                imageRendering: 'high-quality',
-              }}
             />
           </div>
           {caption && (
