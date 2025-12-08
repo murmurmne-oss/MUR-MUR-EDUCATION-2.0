@@ -705,6 +705,7 @@ function FormRunner({
   userProfilePayload,
   embedded = false,
   onFormComplete,
+  nextButtonText,
 }: {
   form: PublicForm;
   courseSlug: string;
@@ -713,6 +714,7 @@ function FormRunner({
   userProfilePayload: StartFormPayload;
   embedded?: boolean;
   onFormComplete?: () => void;
+  nextButtonText?: string;
 }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string | string[]>>({});
@@ -950,7 +952,7 @@ function FormRunner({
               onClick={onFormComplete}
               className="rounded-full bg-brand-pink px-4 py-2 text-xs font-semibold text-white transition-transform active:scale-95"
             >
-              {t("Изучить следующий урок")}
+              {nextButtonText || t("Изучить следующий урок")}
             </button>
           </div>
         ) : !embedded ? (
@@ -1702,6 +1704,44 @@ export default function MyCourseDetailsPage({
     }
   }, [course, refreshEnrollment, selectedLesson, updateLessonProgress, moduleAccessibility, ensureLessonStarted]);
 
+  // Обработчик завершения урока с возможностью открытия теста
+  const handleCompleteLessonAndOpenTest = useCallback(async () => {
+    if (!course || !selectedLesson) return;
+
+    // Определяем, нужен ли тест для следующего модуля
+    const currentModule = course.modules.find(
+      (m) => m.id === selectedLesson.moduleId,
+    );
+    const isLastLessonInModule = currentModule
+      ? currentModule.lessons.findIndex(
+          (l) => l.id === selectedLesson.lesson.id,
+        ) === currentModule.lessons.length - 1
+      : false;
+
+    let requiredTest: ParsedCourseTest | null = null;
+    if (isLastLessonInModule && currentModule) {
+      const currentModuleIndex = course.modules.findIndex(
+        (m) => m.id === currentModule.id,
+      );
+      if (currentModuleIndex >= 0 && currentModuleIndex < course.modules.length - 1) {
+        const nextModule = course.modules[currentModuleIndex + 1];
+        const nextModuleAccess = moduleAccessibility.get(nextModule.id);
+        
+        if (nextModuleAccess?.isLocked && nextModuleAccess.requiredTest) {
+          requiredTest = nextModuleAccess.requiredTest;
+        }
+      }
+    }
+
+    // Завершаем урок
+    await handleCompleteLesson();
+
+    // Если нужен тест, открываем его
+    if (requiredTest) {
+      setSelectedTest(requiredTest);
+    }
+  }, [course, selectedLesson, moduleAccessibility, handleCompleteLesson]);
+
   const handleStartForm = useCallback(async (formId: string) => {
     if (!course) return;
 
@@ -1936,19 +1976,47 @@ export default function MyCourseDetailsPage({
                       // Если нет контента, проверяем есть ли форма
                       selectedLessonForms.length > 0 ? (
                         // Если есть форма, показываем её вместо сообщения
-                        selectedLessonForms.map((form) => (
-                          <div key={form.id} className="rounded-2xl border border-border bg-surface p-4">
-                            <FormRunner
-                              form={form}
-                              courseSlug={courseSlug}
-                              onClose={() => {}}
-                              t={t}
-                              userProfilePayload={formProfilePayload}
+                        selectedLessonForms.map((form) => {
+                          // Определяем текст кнопки для формы
+                          const currentModule = course.modules.find(
+                            (m) => m.id === selectedLesson.moduleId,
+                          );
+                          const isLastLessonInModule = currentModule
+                            ? currentModule.lessons.findIndex(
+                                (l) => l.id === selectedLesson.lesson.id,
+                              ) === currentModule.lessons.length - 1
+                            : false;
+                          
+                          let formNextButtonText: string | undefined;
+                          if (isLastLessonInModule && currentModule) {
+                            const currentModuleIndex = course.modules.findIndex(
+                              (m) => m.id === currentModule.id,
+                            );
+                            if (currentModuleIndex >= 0 && currentModuleIndex < course.modules.length - 1) {
+                              const nextModule = course.modules[currentModuleIndex + 1];
+                              const nextModuleAccess = moduleAccessibility.get(nextModule.id);
+                              
+                              if (nextModuleAccess?.isLocked && nextModuleAccess.requiredTest) {
+                                formNextButtonText = t('Пройти тест');
+                              }
+                            }
+                          }
+                          
+                          return (
+                            <div key={form.id} className="rounded-2xl border border-border bg-surface p-4">
+                              <FormRunner
+                                form={form}
+                                courseSlug={courseSlug}
+                                onClose={() => {}}
+                                t={t}
+                                userProfilePayload={formProfilePayload}
                               embedded={true}
-                              onFormComplete={handleCompleteLesson}
-                            />
-                          </div>
-                        ))
+                              onFormComplete={formNextButtonText === t('Пройти тест') ? handleCompleteLessonAndOpenTest : handleCompleteLesson}
+                              nextButtonText={formNextButtonText}
+                              />
+                            </div>
+                          );
+                        })
                       ) : selectedLesson.lesson.contentType === 'VIDEO' ? (
                         <p className="rounded-2xl bg-card px-4 py-3 text-sm text-text-medium">
                             {t(
@@ -2160,19 +2228,47 @@ export default function MyCourseDetailsPage({
                     {/* Показываем формы после контента, если они есть */}
                     {selectedLessonBlocks.length > 0 && selectedLessonForms.length > 0 && (
                       <div className="space-y-4">
-                        {selectedLessonForms.map((form) => (
-                          <div key={form.id} className="rounded-2xl border border-border bg-surface p-4">
-                            <FormRunner
-                              form={form}
-                              courseSlug={courseSlug}
-                              onClose={() => {}}
-                              t={t}
-                              userProfilePayload={formProfilePayload}
+                        {selectedLessonForms.map((form) => {
+                          // Определяем текст кнопки для формы
+                          const currentModule = course.modules.find(
+                            (m) => m.id === selectedLesson.moduleId,
+                          );
+                          const isLastLessonInModule = currentModule
+                            ? currentModule.lessons.findIndex(
+                                (l) => l.id === selectedLesson.lesson.id,
+                              ) === currentModule.lessons.length - 1
+                            : false;
+                          
+                          let formNextButtonText: string | undefined;
+                          if (isLastLessonInModule && currentModule) {
+                            const currentModuleIndex = course.modules.findIndex(
+                              (m) => m.id === currentModule.id,
+                            );
+                            if (currentModuleIndex >= 0 && currentModuleIndex < course.modules.length - 1) {
+                              const nextModule = course.modules[currentModuleIndex + 1];
+                              const nextModuleAccess = moduleAccessibility.get(nextModule.id);
+                              
+                              if (nextModuleAccess?.isLocked && nextModuleAccess.requiredTest) {
+                                formNextButtonText = t('Пройти тест');
+                              }
+                            }
+                          }
+                          
+                          return (
+                            <div key={form.id} className="rounded-2xl border border-border bg-surface p-4">
+                              <FormRunner
+                                form={form}
+                                courseSlug={courseSlug}
+                                onClose={() => {}}
+                                t={t}
+                                userProfilePayload={formProfilePayload}
                               embedded={true}
-                              onFormComplete={handleCompleteLesson}
-                            />
-                          </div>
-                        ))}
+                              onFormComplete={formNextButtonText === t('Пройти тест') ? handleCompleteLessonAndOpenTest : handleCompleteLesson}
+                              nextButtonText={formNextButtonText}
+                              />
+                            </div>
+                          );
+                        })}
                       </div>
                     )}
                   </div>
@@ -2220,6 +2316,7 @@ export default function MyCourseDetailsPage({
                       
                       // Определяем следующий модуль и его доступность
                       let buttonText = t('Перейти к следующему уроку');
+                      let requiredTest: ParsedCourseTest | null = null;
                       if (isLastLessonInModule && currentModule) {
                         const currentModuleIndex = course.modules.findIndex(
                           (m) => m.id === currentModule.id,
@@ -2230,16 +2327,29 @@ export default function MyCourseDetailsPage({
                           
                           if (nextModuleAccess?.isLocked && nextModuleAccess.requiredTest) {
                             buttonText = t('Пройти тест');
+                            requiredTest = nextModuleAccess.requiredTest;
                           } else {
                             buttonText = t('Перейти на следующий модуль');
                           }
                         }
                       }
                       
+                      // Обработчик для кнопки завершения урока
+                      const handleButtonClick = async () => {
+                        if (requiredTest) {
+                          // Если нужен тест, сначала завершаем урок, затем открываем тест
+                          await handleCompleteLesson();
+                          setSelectedTest(requiredTest);
+                        } else {
+                          // Иначе просто завершаем урок
+                          await handleCompleteLesson();
+                        }
+                      };
+                      
                       return (
                         <button
                           type="button"
-                          onClick={handleCompleteLesson}
+                          onClick={handleButtonClick}
                           disabled={isProgressUpdating}
                           className="rounded-full bg-brand-orange px-5 py-2 text-sm font-semibold text-white transition-transform active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
                         >
