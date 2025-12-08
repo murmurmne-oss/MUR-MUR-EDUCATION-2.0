@@ -633,13 +633,13 @@ export default function CourseDetailsPage({
                          lesson.content.includes("<strong") ||
                          lesson.content.includes("<em"));
                       
-                      const isSummaryHTML = lesson.summary && typeof lesson.summary === "string" &&
+                      const isSummaryHTML = Boolean(lesson.summary && typeof lesson.summary === "string" &&
                         (lesson.summary.trim().startsWith("<") || 
                          lesson.summary.includes("<p") || 
                          lesson.summary.includes("<div") || 
                          lesson.summary.includes("<span") ||
                          lesson.summary.includes("<strong") ||
-                         lesson.summary.includes("<em"));
+                         lesson.summary.includes("<em")));
                       
                       // Извлекаем превью контента
                       let previewContent = "";
