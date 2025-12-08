@@ -1,6 +1,6 @@
 "use client";
 
-import { startTransition, useEffect, useMemo, useState } from "react";
+import { startTransition, useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTelegram } from "@/hooks/useTelegram";
 import { useUserProfile } from "@/hooks/useUserProfile";
@@ -68,36 +68,64 @@ export default function MyCoursesPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    let active = true;
-    if (!resolvedUserId) {
-      setEnrollments([]);
-      setIsLoading(false);
-      return;
-    }
-    const targetUserId = resolvedUserId;
+  const loadEnrollments = useCallback(async (userId: string, attempt: number = 0) => {
+    const maxRetries = 3;
+    const retryDelay = Math.min(1000 * Math.pow(2, attempt), 5000); // Exponential backoff, max 5s
 
-    startTransition(() => setIsLoading(true));
-    apiClient
-      .getUserEnrollments(targetUserId)
-      .then((response) => {
-        if (!active) return;
-        startTransition(() => {
-          setEnrollments(response.enrollments);
-          setReminderLabel(buildReminderLabel(response, t));
-          setError(null);
-        });
-      })
-      .catch((enrollmentsError: unknown) => {
-        console.error("Failed to load enrollments", enrollmentsError);
-        if (!active) return;
+    try {
+      // Небольшая задержка перед первой попыткой, чтобы дать время инициализироваться Telegram SDK
+      if (attempt === 0) {
+        await new Promise(resolve => setTimeout(resolve, 300));
+      }
+
+      const response = await apiClient.getUserEnrollments(userId);
+      startTransition(() => {
+        setEnrollments(response.enrollments);
+        setReminderLabel(buildReminderLabel(response, t));
+        setError(null);
+      });
+      return true;
+    } catch (enrollmentsError: unknown) {
+      console.error(`Failed to load enrollments (attempt ${attempt + 1})`, enrollmentsError);
+      
+      // Если это последняя попытка, показываем ошибку
+      if (attempt >= maxRetries - 1) {
         startTransition(() => {
           setError(
             t("Не удалось загрузить ваши курсы. Обновите страницу позже."),
           );
         });
+        return false;
+      }
+
+      // Если это не последняя попытка, ждём и повторяем
+      await new Promise(resolve => setTimeout(resolve, retryDelay));
+      return loadEnrollments(userId, attempt + 1);
+    }
+  }, [t]);
+
+  useEffect(() => {
+    let active = true;
+    if (!resolvedUserId) {
+      setEnrollments([]);
+      setIsLoading(false);
+      setError(null);
+      return;
+    }
+    const targetUserId = resolvedUserId;
+
+    startTransition(() => {
+      setIsLoading(true);
+      setError(null);
+    });
+
+    loadEnrollments(targetUserId)
+      .then(() => {
+        if (active) {
+          startTransition(() => setIsLoading(false));
+        }
       })
-      .finally(() => {
+      .catch(() => {
         if (active) {
           startTransition(() => setIsLoading(false));
         }
@@ -106,7 +134,22 @@ export default function MyCoursesPage() {
     return () => {
       active = false;
     };
-  }, [resolvedUserId, t]);
+  }, [resolvedUserId, loadEnrollments]);
+
+  const handleRetry = useCallback(() => {
+    if (!resolvedUserId) return;
+    startTransition(() => {
+      setIsLoading(true);
+      setError(null);
+    });
+    loadEnrollments(resolvedUserId)
+      .then(() => {
+        startTransition(() => setIsLoading(false));
+      })
+      .catch(() => {
+        startTransition(() => setIsLoading(false));
+      });
+  }, [resolvedUserId, loadEnrollments]);
 
   const hasCourses = useMemo(() => enrollments.length > 0, [enrollments]);
 
@@ -128,8 +171,16 @@ export default function MyCoursesPage() {
             ))}
           </div>
         ) : error ? (
-          <div className="rounded-3xl bg-card p-6 text-center text-sm text-brand-orange">
-            {error}
+          <div className="rounded-3xl bg-card p-6 text-center space-y-4">
+            <p className="text-sm text-brand-orange">{error}</p>
+            <button
+              type="button"
+              onClick={handleRetry}
+              disabled={isLoading}
+              className="rounded-full bg-brand-orange px-5 py-2 text-sm font-semibold text-white transition-transform active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isLoading ? t("Загрузка...") : t("Повторить")}
+            </button>
           </div>
         ) : hasCourses ? (
           enrollments.map((enrollment) => (
