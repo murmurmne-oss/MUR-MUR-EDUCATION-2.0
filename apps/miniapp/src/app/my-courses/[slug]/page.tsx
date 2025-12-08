@@ -815,6 +815,7 @@ function FormRunner({
   const [attemptId, setAttemptId] = useState<string | null>(null);
   const [statistics, setStatistics] = useState<{ percentage: number; totalAttempts: number } | null>(null);
   const [restartKey, setRestartKey] = useState(0);
+  const isRestartingRef = useRef(false);
 
   const resetForm = useCallback(() => {
     setIsStarting(true);
@@ -832,6 +833,7 @@ function FormRunner({
       onRestartForm();
     } else {
       // Если onRestartForm не передан, просто сбрасываем форму
+      isRestartingRef.current = true;
       setRestartKey(prev => prev + 1);
       resetForm();
     }
@@ -842,14 +844,21 @@ function FormRunner({
     resetForm();
 
     // Начинаем форму при монтировании
+    const wasRestarting = isRestartingRef.current;
+    
     apiClient
       .startCourseForm(courseSlug, form.id, userProfilePayload)
       .then((response) => {
         if (!active) return;
+        
+        // Сбрасываем флаг перезапуска после получения ответа
+        isRestartingRef.current = false;
+        
         setAttemptId(response.attemptId);
         
         // Если форма уже завершена, показываем результат
-        if (response.completed && response.result) {
+        // НО только если мы не перезапускаем форму
+        if (response.completed && response.result && !wasRestarting) {
           setFormResult({
             attemptId: response.attemptId,
             resultId: response.result.id,
@@ -870,6 +879,10 @@ function FormRunner({
                 // Не показываем ошибку пользователю, статистика не критична
               });
           }
+        } else if (wasRestarting) {
+          // Если мы перезапускаем, игнорируем завершенную форму
+          // и начинаем заново - не устанавливаем isFinished и formResult
+          // Форма должна начаться с первого вопроса
         }
         
         setIsStarting(false);
