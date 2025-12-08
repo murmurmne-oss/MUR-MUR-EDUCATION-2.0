@@ -670,7 +670,7 @@ export default function CourseDetailsPage({
                               </p>
                             )
                           ) : null}
-                          {!lesson.summary && !previewText && blocks.length ? (
+                          {!lesson.summary && !previewContent && blocks.length ? (
                             <ul className="mt-2 list-inside list-disc space-y-1 text-text-medium">
                               {blocks
                                 .filter((block) => block.type === "heading")
