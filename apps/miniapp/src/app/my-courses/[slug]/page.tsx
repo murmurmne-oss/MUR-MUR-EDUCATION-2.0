@@ -1713,8 +1713,8 @@ export default function MyCourseDetailsPage({
       previousModuleOrderRef.current = newModuleOrder;
       await ensureLessonStarted(lessonRef);
       
-      // Прокрутка наверх при переходе на новый модуль
-      if (newModuleOrder !== previousModuleOrder && typeof window !== 'undefined') {
+      // Прокрутка к началу урока для удобства пользователя
+      if (typeof window !== 'undefined') {
         window.scrollTo({ top: 0, behavior: 'smooth' });
       }
     },
