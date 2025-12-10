@@ -1721,6 +1721,55 @@ export default function MyCourseDetailsPage({
     [ensureLessonStarted, moduleAccessibility],
   );
 
+  // Функция для поиска следующего урока
+  const findNextLesson = useCallback((currentLessonRef: LessonRef): LessonRef | null => {
+    if (!course) return null;
+
+    const currentModule = course.modules.find(
+      (m) => m.id === currentLessonRef.moduleId,
+    );
+    
+    if (!currentModule) return null;
+
+    const currentLessonIndex = currentModule.lessons.findIndex(
+      (l) => l.id === currentLessonRef.lesson.id,
+    );
+
+    // Если это не последний урок в модуле - возвращаем следующий урок в том же модуле
+    if (currentLessonIndex >= 0 && currentLessonIndex < currentModule.lessons.length - 1) {
+      const nextLesson = currentModule.lessons[currentLessonIndex + 1];
+      return {
+        moduleId: currentModule.id,
+        moduleTitle: currentModule.title,
+        moduleOrder: currentModule.order,
+        lesson: nextLesson,
+      };
+    }
+
+    // Если это последний урок в модуле - ищем первый урок следующего модуля
+    const currentModuleIndex = course.modules.findIndex(
+      (m) => m.id === currentModule.id,
+    );
+    
+    if (currentModuleIndex >= 0 && currentModuleIndex < course.modules.length - 1) {
+      const nextModule = course.modules[currentModuleIndex + 1];
+      const nextModuleAccess = moduleAccessibility.get(nextModule.id);
+      
+      // Если следующий модуль не заблокирован и в нем есть уроки
+      if (!nextModuleAccess?.isLocked && nextModule.lessons.length > 0) {
+        const firstLesson = nextModule.lessons[0];
+        return {
+          moduleId: nextModule.id,
+          moduleTitle: nextModule.title,
+          moduleOrder: nextModule.order,
+          lesson: firstLesson,
+        };
+      }
+    }
+
+    return null;
+  }, [course, moduleAccessibility]);
+
   const handleCompleteLesson = useCallback(async () => {
     if (!course || !selectedLesson) return;
 
@@ -2405,9 +2454,23 @@ export default function MyCourseDetailsPage({
                       
                       // Обработчик для кнопки завершения урока
                       const handleButtonClick = async () => {
-                        // Всегда только завершаем урок, без автоматического открытия теста
-                        // Пользователь сам выберет, когда открыть тест
+                        // Завершаем урок
                         await handleCompleteLesson();
+                        
+                        // Небольшая задержка, чтобы состояние успело обновиться
+                        await new Promise(resolve => setTimeout(resolve, 300));
+                        
+                        // Если нужен тест для следующего модуля - открываем тест
+                        if (requiredTest) {
+                          setSelectedTest(requiredTest);
+                          return;
+                        }
+                        
+                        // Иначе ищем следующий урок и переходим к нему
+                        const nextLesson = findNextLesson(selectedLesson);
+                        if (nextLesson) {
+                          await handleSelectLesson(nextLesson);
+                        }
                       };
                       
                       return (
