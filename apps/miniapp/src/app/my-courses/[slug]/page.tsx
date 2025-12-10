@@ -1546,12 +1546,6 @@ export default function MyCourseDetailsPage({
     });
   }, [course, selectedLesson]);
 
-  // Определяем следующий урок на основе текущего выбранного урока
-  const nextLessonForDisplay = useMemo(() => {
-    if (!selectedLesson || !course) return null;
-    return findNextLesson(selectedLesson);
-  }, [selectedLesson, course, findNextLesson]);
-
   const progressLabel = useMemo(() => {
     if (!enrollment) return t('Прогресс недоступен');
 
@@ -1777,6 +1771,12 @@ export default function MyCourseDetailsPage({
 
     return null;
   }, [course, moduleAccessibility]);
+
+  // Определяем следующий урок на основе текущего выбранного урока
+  const nextLessonForDisplay = useMemo(() => {
+    if (!selectedLesson || !course) return null;
+    return findNextLesson(selectedLesson);
+  }, [selectedLesson, course, findNextLesson]);
 
   const handleCompleteLesson = useCallback(async () => {
     if (!course || !selectedLesson) return;
