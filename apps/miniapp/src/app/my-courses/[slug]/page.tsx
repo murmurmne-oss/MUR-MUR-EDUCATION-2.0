@@ -1018,10 +1018,8 @@ function FormRunner({
         }
       }
       
-      // Вызываем callback после завершения формы
-      if (onFormComplete) {
-        onFormComplete();
-      }
+      // НЕ вызываем callback автоматически - пользователь сам нажмет кнопку
+      // onFormComplete будет вызван только при нажатии кнопки в UI
     } catch (submitError) {
       console.error("Failed to submit form", submitError);
       setError(
@@ -2407,14 +2405,9 @@ export default function MyCourseDetailsPage({
                       
                       // Обработчик для кнопки завершения урока
                       const handleButtonClick = async () => {
-                        if (requiredTest) {
-                          // Если нужен тест, сначала завершаем урок, затем открываем тест
-                          await handleCompleteLesson();
-                          setSelectedTest(requiredTest);
-                        } else {
-                          // Иначе просто завершаем урок
-                          await handleCompleteLesson();
-                        }
+                        // Всегда только завершаем урок, без автоматического открытия теста
+                        // Пользователь сам выберет, когда открыть тест
+                        await handleCompleteLesson();
                       };
                       
                       return (
