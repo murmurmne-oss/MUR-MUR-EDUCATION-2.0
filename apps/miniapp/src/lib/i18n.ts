@@ -215,6 +215,18 @@ const TRANSLATIONS: Record<Locale, Record<string, string>> = {
     "Прогресс {percent}%": "Napredak {percent}%",
     "Прогресс: {percent}% · {next}":
       "Napredak: {percent}% · {next}",
+    "Прогресс недоступен": "Napredak nije dostupan",
+    "{percent}% завершено": "{percent}% završeno",
+    "Назад к моим курсам": "Nazad na moje kurseve",
+    "Ваш прогресс": "Vaš napredak",
+    "Курс": "Kurs",
+    "Курс не найден.": "Kurs nije pronađen.",
+    "Урок завершён ": "Lekcija završena ",
+    "Сбросить прогресс": "Resetuj napredak",
+    "Сохраняем...": "Čuvamo...",
+    "Перейти на следующий модуль": "Pređi na sledeći modul",
+    "Программа курса": "Program kursa",
+    "В этом курсе пока нет уроков. Загляните позже!": "U ovom kursu još nema lekcija. Vratite se kasnije!",
 
     // My courses list
     "Не удалось загрузить ваши курсы. Обновите страницу позже.":
