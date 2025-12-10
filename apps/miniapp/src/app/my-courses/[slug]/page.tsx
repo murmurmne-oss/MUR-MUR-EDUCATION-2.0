@@ -1546,18 +1546,26 @@ export default function MyCourseDetailsPage({
     });
   }, [course, selectedLesson]);
 
+  // Определяем следующий урок на основе текущего выбранного урока
+  const nextLessonForDisplay = useMemo(() => {
+    if (!selectedLesson || !course) return null;
+    return findNextLesson(selectedLesson);
+  }, [selectedLesson, course, findNextLesson]);
+
   const progressLabel = useMemo(() => {
     if (!enrollment) return t('Прогресс недоступен');
 
+    const nextLessonTitle = nextLessonForDisplay?.lesson.title ?? null;
+
     return t('Прогресс: {percent}% · {next}', {
       percent: enrollment.progress.percent,
-      next: enrollment.progress.nextLessonTitle
+      next: nextLessonTitle
         ? t('Следующий урок: {title}', {
-            title: enrollment.progress.nextLessonTitle,
+            title: nextLessonTitle,
           })
         : t('Все уроки завершены'),
     });
-  }, [enrollment, t]);
+  }, [enrollment, nextLessonForDisplay, t]);
 
   const progressPercent = useMemo(() => {
     if (!enrollment) return 0;
@@ -2044,10 +2052,10 @@ export default function MyCourseDetailsPage({
                   style={{ width: `${progressPercent}%` }}
                 />
               </div>
-              {enrollment.progress.nextLessonTitle ? (
+              {nextLessonForDisplay ? (
                 <p className="mt-3 text-xs text-text-light">
                   {t('Следующий урок: {title}', {
-                    title: enrollment.progress.nextLessonTitle,
+                    title: nextLessonForDisplay.lesson.title,
                   })}
                 </p>
               ) : (
