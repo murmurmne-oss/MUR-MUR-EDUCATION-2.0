@@ -1546,21 +1546,6 @@ export default function MyCourseDetailsPage({
     });
   }, [course, selectedLesson]);
 
-  const progressLabel = useMemo(() => {
-    if (!enrollment) return t('Прогресс недоступен');
-
-    const nextLessonTitle = nextLessonForDisplay?.lesson.title ?? null;
-
-    return t('Прогресс: {percent}% · {next}', {
-      percent: enrollment.progress.percent,
-      next: nextLessonTitle
-        ? t('Следующий урок: {title}', {
-            title: nextLessonTitle,
-          })
-        : t('Все уроки завершены'),
-    });
-  }, [enrollment, nextLessonForDisplay, t]);
-
   const progressPercent = useMemo(() => {
     if (!enrollment) return 0;
     const raw = Number(enrollment.progress.percent);
@@ -1777,6 +1762,21 @@ export default function MyCourseDetailsPage({
     if (!selectedLesson || !course) return null;
     return findNextLesson(selectedLesson);
   }, [selectedLesson, course, findNextLesson]);
+
+  const progressLabel = useMemo(() => {
+    if (!enrollment) return t('Прогресс недоступен');
+
+    const nextLessonTitle = nextLessonForDisplay?.lesson.title ?? null;
+
+    return t('Прогресс: {percent}% · {next}', {
+      percent: enrollment.progress.percent,
+      next: nextLessonTitle
+        ? t('Следующий урок: {title}', {
+            title: nextLessonTitle,
+          })
+        : t('Все уроки завершены'),
+    });
+  }, [enrollment, nextLessonForDisplay, t]);
 
   const handleCompleteLesson = useCallback(async () => {
     if (!course || !selectedLesson) return;
