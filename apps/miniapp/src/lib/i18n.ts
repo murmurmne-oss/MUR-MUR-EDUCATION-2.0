@@ -22,6 +22,7 @@ const TRANSLATIONS: Record<Locale, Record<string, string>> = {
     "Следующий урок: {title}": "Sledeća lekcija: {title}",
     "Вы всё прошли!": "Sve lekcije su završene!",
     "Все уроки завершены": "Sve lekcije su završene",
+    "Вы завершили все уроки курса! Возвращайтесь, чтобы освежить знания.": "Završili ste sve lekcije kursa! Vratite se da osvežite znanje.",
     "Все курсы": "Svi kursevi",
     "Мои курсы": "Moji kursevi",
     "Мой профиль": "Moj profil",
