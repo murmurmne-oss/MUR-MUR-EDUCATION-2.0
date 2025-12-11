@@ -1846,12 +1846,70 @@ export default function MyCourseDetailsPage({
 
     // Завершаем урок
     await handleCompleteLesson();
+    
+    // Небольшая задержка, чтобы состояние успело обновиться
+    await new Promise(resolve => setTimeout(resolve, 300));
 
     // Если нужен тест, открываем его
     if (requiredTest) {
       setSelectedTest(requiredTest);
+      return;
     }
-  }, [course, selectedLesson, moduleAccessibility, handleCompleteLesson]);
+    
+    // Иначе ищем следующий урок и переходим к нему
+    const nextLesson = findNextLesson(selectedLesson);
+    if (nextLesson) {
+      await handleSelectLesson(nextLesson);
+    }
+  }, [course, selectedLesson, moduleAccessibility, handleCompleteLesson, findNextLesson, handleSelectLesson]);
+
+  // Обработчик завершения урока с переходом к следующему
+  const handleCompleteLessonAndNavigate = useCallback(async () => {
+    if (!course || !selectedLesson) return;
+
+    // Завершаем урок
+    await handleCompleteLesson();
+    
+    // Небольшая задержка, чтобы состояние успело обновиться
+    await new Promise(resolve => setTimeout(resolve, 300));
+    
+    // Определяем, нужен ли тест для следующего модуля
+    const currentModule = course.modules.find(
+      (m) => m.id === selectedLesson.moduleId,
+    );
+    const isLastLessonInModule = currentModule
+      ? currentModule.lessons.findIndex(
+          (l) => l.id === selectedLesson.lesson.id,
+        ) === currentModule.lessons.length - 1
+      : false;
+
+    let requiredTest: ParsedCourseTest | null = null;
+    if (isLastLessonInModule && currentModule) {
+      const currentModuleIndex = course.modules.findIndex(
+        (m) => m.id === currentModule.id,
+      );
+      if (currentModuleIndex >= 0 && currentModuleIndex < course.modules.length - 1) {
+        const nextModule = course.modules[currentModuleIndex + 1];
+        const nextModuleAccess = moduleAccessibility.get(nextModule.id);
+        
+        if (nextModuleAccess?.isLocked && nextModuleAccess.requiredTest) {
+          requiredTest = nextModuleAccess.requiredTest;
+        }
+      }
+    }
+
+    // Если нужен тест, открываем его
+    if (requiredTest) {
+      setSelectedTest(requiredTest);
+      return;
+    }
+    
+    // Иначе ищем следующий урок и переходим к нему
+    const nextLesson = findNextLesson(selectedLesson);
+    if (nextLesson) {
+      await handleSelectLesson(nextLesson);
+    }
+  }, [course, selectedLesson, handleCompleteLesson, moduleAccessibility, findNextLesson, handleSelectLesson]);
 
   const handleStartForm = useCallback(async (formId: string) => {
     if (!course) return;
@@ -2133,7 +2191,7 @@ export default function MyCourseDetailsPage({
                                 t={t}
                                 userProfilePayload={formProfilePayload}
                               embedded={true}
-                              onFormComplete={formNextButtonText === t('Пройти тест') ? handleCompleteLessonAndOpenTest : handleCompleteLesson}
+                              onFormComplete={formNextButtonText === t('Пройти тест') ? handleCompleteLessonAndOpenTest : handleCompleteLessonAndNavigate}
                               nextButtonText={formNextButtonText}
                               />
                             </div>
@@ -2389,7 +2447,7 @@ export default function MyCourseDetailsPage({
                                 t={t}
                                 userProfilePayload={formProfilePayload}
                               embedded={true}
-                              onFormComplete={formNextButtonText === t('Пройти тест') ? handleCompleteLessonAndOpenTest : handleCompleteLesson}
+                              onFormComplete={formNextButtonText === t('Пройти тест') ? handleCompleteLessonAndOpenTest : handleCompleteLessonAndNavigate}
                               nextButtonText={formNextButtonText}
                               />
                             </div>
